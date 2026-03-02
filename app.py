@@ -4863,23 +4863,6 @@ def validar_freefire_id():
         flash(f'Saldo insuficiente. Necesitas ${precio:.2f} pero tienes ${saldo_actual:.2f}', 'error')
         return redirect('/juego/freefire_id')
     
-    # === PROTECCIÓN 2: Dedup — rechazar si ya hay transacción reciente (<30s) ===
-    try:
-        conn_dedup = get_db_connection()
-        recent = conn_dedup.execute('''
-            SELECT id FROM transacciones_freefire_id
-            WHERE usuario_id = ? AND paquete_id = ? AND player_id = ?
-              AND estado IN ('pendiente', 'aprobado')
-              AND fecha > datetime('now', '-30 seconds')
-            LIMIT 1
-        ''', (user_id, package_id, player_id)).fetchone()
-        conn_dedup.close()
-        if recent:
-            flash('Ya tienes una solicitud reciente para este paquete. Espera unos segundos antes de intentar de nuevo.', 'error')
-            return redirect('/juego/freefire_id')
-    except Exception:
-        pass
-    
     try:
         # 1. Verificar si hay PIN disponible en stock de FF Global ANTES de cobrar
         pin_disponible = get_available_pin_freefire_global(package_id)
