@@ -419,6 +419,19 @@ body {
   opacity: 0.85;
 }
 
+.freefire-id-transaction {
+  position: relative;
+}
+
+.tx-corner-date {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
 /* Contenedor de transacciones simplificado */
 .transaction-container {
   max-width: 500px;
@@ -458,6 +471,7 @@ body {
 .freefire-id-transaction .ffid-voucher {
   margin-left: -0.75rem;
   margin-right: -0.75rem;
+  padding-bottom: 28px;
 }
 
 .ffid-voucher-status {
@@ -881,6 +895,12 @@ body {
   
   .transaction-card-simple {
     padding: 0.4rem;
+  }
+
+  .tx-corner-date {
+    right: 10px;
+    bottom: 8px;
+    font-size: 9px;
   }
   
   .control-num {

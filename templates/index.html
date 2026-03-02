@@ -140,9 +140,6 @@
           {% endif %}
           <div class="transaction-header">
             {{ juego }}
-            {% if transaction.get('is_freefire_id') %}
-            <span class="tx-header-date">{{ transaction.fecha.split(' ')[0] }} {{ transaction.fecha.split(' ')[1].split('.')[0] }}</span>
-            {% endif %}
           </div>
           <div class="transaction-row">
             <div class="transaction-main">
@@ -255,6 +252,9 @@
             </div>
             {% endif %}
           </div>
+          {% if transaction.get('is_freefire_id') %}
+          <div class="tx-corner-date">{{ transaction.fecha.split(' ')[0] }} {{ transaction.fecha.split(' ')[1].split('.')[0] }}</div>
+          {% endif %}
         </div>
         {% endfor %}
       {% else %}
