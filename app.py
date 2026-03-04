@@ -2830,7 +2830,7 @@ def get_bloodstriker_prices():
     packages = conn.execute('''
         SELECT id, nombre, precio, descripcion, gamepoint_package_id 
         FROM precios_bloodstriker 
-        WHERE activo = TRUE 
+        WHERE activo = TRUE AND gamepoint_package_id IS NOT NULL 
         ORDER BY id
     ''').fetchall()
     conn.close()
@@ -4735,6 +4735,18 @@ def validar_bloodstriker():
         create_data = _gameclub_order_create(gc_token, validation_token, gp_package_id, merchant_code)
         create_code = (create_data or {}).get('code')
         reference_no = (create_data or {}).get('referenceno', '')
+
+        # 4.1 Intentar obtener ingame name / item desde inquiry (si ya existe)
+        inquiry_data = None
+        ingame_name = ''
+        item_name = ''
+        try:
+            if reference_no:
+                inquiry_data = _gameclub_order_inquiry(gc_token, reference_no)
+                ingame_name = (inquiry_data or {}).get('ingamename') or ''
+                item_name = (inquiry_data or {}).get('item') or ''
+        except Exception:
+            inquiry_data = None
         
         _bs_duration = round(_time.time() - _bs_start, 1)
         
@@ -4747,17 +4759,26 @@ def validar_bloodstriker():
             
             # Registrar en transacciones generales
             conn = get_db_connection()
-            pin_info = f"ID: {player_id} - Ref: {reference_no}"
+            # Mantener estilo similar a Free Fire ID: incluir ID y nombre si existe
+            if ingame_name:
+                pin_info = f"ID: {player_id} - Jugador: {ingame_name} - Ref: {reference_no}"
+            else:
+                pin_info = f"ID: {player_id} - Ref: {reference_no}"
+
+            # Si inquiry devolvió item, úsalo como nombre mostrado del paquete (no reemplaza tu nombre local)
+            display_package_name = pkg_row['nombre']
+            if item_name:
+                display_package_name = f"{pkg_row['nombre']} ({item_name})"
             conn.execute('''
                 INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto, duracion_segundos)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (user_id, transaction_data['numero_control'], pin_info,
-                  transaction_data['transaccion_id'], pkg_row['nombre'], -precio, _bs_duration))
+                  transaction_data['transaccion_id'], display_package_name, -precio, _bs_duration))
             
             # Registrar en historial permanente
             _bs_saldo_row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
             _bs_saldo = _bs_saldo_row['saldo'] if _bs_saldo_row else 0
-            registrar_historial_compra(conn, user_id, precio, pkg_row['nombre'], pin_info, 'compra', _bs_duration, _bs_saldo + precio, _bs_saldo)
+            registrar_historial_compra(conn, user_id, precio, display_package_name, pin_info, 'compra', _bs_duration, _bs_saldo + precio, _bs_saldo)
             
             # Registrar profit
             try:
@@ -4792,6 +4813,7 @@ def validar_bloodstriker():
                 'numero_control': transaction_data['numero_control'],
                 'transaccion_id': transaction_data['transaccion_id'],
                 'player_id': player_id,
+                'player_name': ingame_name,
                 'estado': estado_txt,
                 'gamepoint_ref': reference_no,
             }
@@ -4985,6 +5007,12 @@ def admin_bloodstrike_sync_prices():
     """Sincroniza precios de Blood Strike desde GamePoint Club y actualiza precios locales manteniendo ganancia fija en USD."""
     if not session.get('is_admin'):
         return jsonify({'error': 'Acceso denegado'}), 403
+
+    # Opciones:
+    # - deactivate_missing=1: desactiva paquetes locales cuyo gamepoint_package_id ya no existe en GameClub
+    # - deactivate_unmapped=1: desactiva paquetes locales sin gamepoint_package_id
+    deactivate_missing = str(request.args.get('deactivate_missing', '')).strip() == '1'
+    deactivate_unmapped = str(request.args.get('deactivate_unmapped', '')).strip() == '1'
     
     profit_usd = float(os.environ.get('BLOODSTRIKE_PROFIT_USD', '0.11'))
     myr_to_usd = float(os.environ.get('BLOODSTRIKE_MYR_TO_USD_RATE', '0.2357'))
@@ -5003,6 +5031,13 @@ def admin_bloodstrike_sync_prices():
     gp_packages = (detail_data or {}).get('package', [])
     if not gp_packages:
         return jsonify({'error': 'No se encontraron paquetes en GamePoint para este producto'}), 500
+
+    gp_ids = set()
+    for gp_pkg in gp_packages:
+        try:
+            gp_ids.add(int(gp_pkg.get('id')))
+        except Exception:
+            continue
     
     # 3. Leer paquetes locales actuales
     conn = get_db_connection()
@@ -5013,6 +5048,22 @@ def admin_bloodstrike_sync_prices():
     for lp in local_packages:
         if lp['gamepoint_package_id']:
             gp_to_local[int(lp['gamepoint_package_id'])] = dict(lp)
+
+    # Desactivar paquetes locales sin mapeo o con mapeo no existente (si se pide)
+    if deactivate_unmapped:
+        conn.execute('UPDATE precios_bloodstriker SET activo = FALSE, fecha_actualizacion = CURRENT_TIMESTAMP WHERE gamepoint_package_id IS NULL')
+
+    if deactivate_missing:
+        # Desactivar si tiene mapeo pero ese ID no está en el catálogo actual
+        for lp in local_packages:
+            try:
+                gp_id = lp['gamepoint_package_id']
+                if gp_id is None:
+                    continue
+                if int(gp_id) not in gp_ids:
+                    conn.execute('UPDATE precios_bloodstriker SET activo = FALSE, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?', (lp['id'],))
+            except Exception:
+                continue
     
     report = []
     updated = 0

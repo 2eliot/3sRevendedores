@@ -17,8 +17,8 @@
       overflow: hidden;
     }
     .juego-titulo {
-      background: linear-gradient(90deg, #a78bfa, #7c3aed);
-      color: white;
+      background: transparent;
+      color: #a78bfa;
       text-align: center;
       padding: 25px;
       font-size: 28px;
@@ -38,13 +38,82 @@
       width: 100%;
       padding: 12px 15px;
       border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
+      border-radius: 12px;
       font-size: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
       transition: all 0.3s ease;
-      font-family: 'Inter', sans-serif;
       background: rgba(255,255,255,0.08);
       color: #e0e0e0;
+    }
+    .bs-select {
+      position: relative;
+      width: 100%;
+      margin-bottom: 18px;
+    }
+    .bs-select-trigger {
+      width: 100%;
+      padding: 12px 15px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.08);
+      color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+    }
+    .bs-select-trigger:focus {
+      outline: none;
+      border-color: rgba(255,255,255,0.26);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+    }
+    .bs-select-caret {
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid rgba(229,231,235,0.9);
+      border-bottom: 2px solid rgba(229,231,235,0.9);
+      transform: rotate(45deg);
+      margin-top: -2px;
+      flex: 0 0 auto;
+    }
+    .bs-select-menu {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      background: #0b1220;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      box-shadow: 0 14px 38px rgba(0,0,0,0.45);
+      max-height: 320px;
+      overflow: auto;
+      z-index: 50;
+      display: none;
+    }
+    .bs-select.open .bs-select-menu { display: block; }
+    .bs-select-option {
+      padding: 10px 12px;
+      color: #e5e7eb;
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .bs-select-option:last-child { border-bottom: 0; }
+    .bs-select-option:hover { background: rgba(255,255,255,0.08); }
+    .bs-select-option.active {
+      background: rgba(59,130,246,0.22);
+      color: #ffffff;
+      font-weight: 700;
+    }
+    .bs-hidden-select {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      height: 0;
+      width: 0;
     }
     .form-control:focus {
       outline: none;
@@ -213,17 +282,34 @@
       <input type="text" id="player_id" name="player_id" class="form-control" placeholder="Ingresa tu ID de jugador" required>
 
       <label for="monto">Selecciona tu paquete:</label>
-      <select id="monto" name="monto" class="form-control" required>
-        <option value="">Seleccione paquete</option>
-        {% for package_id in range(1, 11) %}
-          {% set package = prices.get(package_id, {}) %}
-          {% if package %}
-            <option id="monto_{{ package_id }}" value="{{ package_id }}">
-              {{ package.nombre }} / ${{ "%.2f"|format(package.precio) }}
-            </option>
-          {% endif %}
-        {% endfor %}
-      </select>
+
+      <div class="bs-select" id="bs-select">
+        <button type="button" class="bs-select-trigger" id="bs-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span id="bs-select-label">Seleccione paquete</span>
+          <span class="bs-select-caret" aria-hidden="true"></span>
+        </button>
+        <div class="bs-select-menu" id="bs-select-menu" role="listbox">
+          {% for package_id in range(1, 11) %}
+            {% set package = prices.get(package_id, {}) %}
+            {% if package %}
+              <div class="bs-select-option" role="option" data-value="{{ package_id }}" id="bs-opt-{{ package_id }}">
+                {{ package.nombre }} / ${{ "%.2f"|format(package.precio) }}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <select id="monto" name="monto" class="bs-hidden-select" required>
+          <option value="">Seleccione paquete</option>
+          {% for package_id in range(1, 11) %}
+            {% set package = prices.get(package_id, {}) %}
+            {% if package %}
+              <option id="monto_{{ package_id }}" value="{{ package_id }}">
+                {{ package.nombre }} / ${{ "%.2f"|format(package.precio) }}
+              </option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
 
       <button type="submit" id="btn-recargar">Recargar Ahora</button>
     </form>
@@ -233,8 +319,66 @@
       var form = document.getElementById('bs-form');
       var btn = document.getElementById('btn-recargar');
       var submitted = false;
+
+      var selWrap = document.getElementById('bs-select');
+      var selTrigger = document.getElementById('bs-select-trigger');
+      var selMenu = document.getElementById('bs-select-menu');
+      var selLabel = document.getElementById('bs-select-label');
+      var nativeSelect = document.getElementById('monto');
+
+      function closeSelect() {
+        if (!selWrap) return;
+        selWrap.classList.remove('open');
+        if (selTrigger) selTrigger.setAttribute('aria-expanded', 'false');
+      }
+
+      function openSelect() {
+        if (!selWrap) return;
+        selWrap.classList.add('open');
+        if (selTrigger) selTrigger.setAttribute('aria-expanded', 'true');
+      }
+
+      function setValue(val, text) {
+        if (nativeSelect) nativeSelect.value = val;
+        if (selLabel) selLabel.textContent = text || 'Seleccione paquete';
+        if (selMenu) {
+          selMenu.querySelectorAll('.bs-select-option').forEach(function(o) {
+            if (String(o.getAttribute('data-value')) === String(val)) o.classList.add('active');
+            else o.classList.remove('active');
+          });
+        }
+      }
+
+      if (selTrigger) {
+        selTrigger.addEventListener('click', function() {
+          if (!selWrap) return;
+          if (selWrap.classList.contains('open')) closeSelect();
+          else openSelect();
+        });
+      }
+
+      if (selMenu) {
+        selMenu.addEventListener('click', function(e) {
+          var opt = e.target.closest('.bs-select-option');
+          if (!opt) return;
+          var v = opt.getAttribute('data-value');
+          var t = (opt.textContent || '').trim();
+          setValue(v, t);
+          closeSelect();
+        });
+      }
+
+      document.addEventListener('click', function(e) {
+        if (!selWrap) return;
+        if (!selWrap.contains(e.target)) closeSelect();
+      });
+
       form.addEventListener('submit', function(e) {
         if (submitted) {
+          e.preventDefault();
+          return false;
+        }
+        if (nativeSelect && !nativeSelect.value) {
           e.preventDefault();
           return false;
         }
@@ -265,6 +409,9 @@
           <p><strong>Blood Strike</strong></p>
           <p><strong>Paquete:</strong> {{ paquete_nombre.split(' / ')[0] if ' / ' in paquete_nombre else paquete_nombre }}</p>
           <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
+          {% if player_name %}
+          <p><strong>Jugador:</strong> {{ player_name }}</p>
+          {% endif %}
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
           {% if gamepoint_ref %}
           <p><strong>Ref GamePoint:</strong> {{ gamepoint_ref }}</p>
@@ -283,6 +430,9 @@
           <p><strong>Blood Strike</strong></p>
           <p><strong>Paquete:</strong> {{ paquete_nombre.split(' / ')[0] if ' / ' in paquete_nombre else paquete_nombre }}</p>
           <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
+          {% if player_name %}
+          <p><strong>Jugador:</strong> {{ player_name }}</p>
+          {% endif %}
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
           {% if gamepoint_ref %}
           <p><strong>Ref GamePoint:</strong> {{ gamepoint_ref }}</p>
