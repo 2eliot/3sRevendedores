@@ -170,6 +170,21 @@
               Selecciona un producto para ver sus campos y paquetes.
             </div>
           </div>
+
+          <!-- Blood Strike Mapping & Sync -->
+          <div class="card" style="margin-top:20px;border:1px solid rgba(167,139,250,0.3);">
+            <div class="card-header" style="background:rgba(167,139,250,0.1);"><h3>🎯 Blood Strike — Mapeo y Sync de Precios</h3></div>
+            <div class="card-body">
+              <p style="color:#aaa;font-size:13px;margin-bottom:12px;">Mapea paquetes locales con IDs de GamePoint y sincroniza precios manteniendo tu ganancia fija en USD.</p>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+                <button type="button" class="btn btn-secondary" onclick="loadBSMapping()">Cargar Mapeo</button>
+                <button type="button" class="btn btn-primary" onclick="syncBSPrices()" style="background:#a78bfa;">Sincronizar Precios</button>
+                <div id="bs-mapping-status" style="color:#aaa;font-size:13px;display:flex;align-items:center;"></div>
+              </div>
+              <div id="bs-mapping-table" style="overflow-x:auto;"></div>
+              <div id="bs-sync-report" style="margin-top:14px;display:none;"></div>
+            </div>
+          </div>
         </section>
       </div>
       
@@ -1287,7 +1302,94 @@
         detailEl.textContent = 'Error.';
       }
     }
-    
+
+    async function loadBSMapping() {
+      const st = document.getElementById('bs-mapping-status');
+      const tbl = document.getElementById('bs-mapping-table');
+      if (!st || !tbl) return;
+      st.textContent = 'Cargando...';
+      tbl.innerHTML = '';
+      try {
+        const res = await fetch('/admin/bloodstrike/gamepoint_packages', {headers:{'Accept':'application/json'}});
+        const data = await res.json();
+        if (!res.ok || data.error) { st.textContent = data.error || 'Error'; return; }
+        st.textContent = `${data.gamepoint_packages.length} paquetes GamePoint, ${data.local_packages.length} locales`;
+        const gpOpts = data.gamepoint_packages.map(p => `<option value="${p.id}">${p.id} - ${p.name} ($${p.price})</option>`).join('');
+        let html = '<table class="table" style="width:100%;font-size:13px;"><thead><tr><th>Local ID</th><th>Nombre</th><th>Precio Venta</th><th>GamePoint Package</th><th></th></tr></thead><tbody>';
+        data.local_packages.forEach(lp => {
+          const sel = lp.gamepoint_package_id ? String(lp.gamepoint_package_id) : '';
+          html += `<tr>
+            <td>${lp.id}</td>
+            <td>${lp.nombre}</td>
+            <td>$${Number(lp.precio).toFixed(2)}</td>
+            <td><select id="bs-gp-sel-${lp.id}" style="background:#1a1a2e;color:#ddd;border:1px solid #333;padding:4px 6px;border-radius:4px;font-size:12px;width:100%;max-width:300px;">
+              <option value="">-- Sin asignar --</option>${gpOpts}
+            </select></td>
+            <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="saveBSMapping(${lp.id})">Guardar</button></td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        tbl.innerHTML = html;
+        data.local_packages.forEach(lp => {
+          if (lp.gamepoint_package_id) {
+            const sel = document.getElementById('bs-gp-sel-' + lp.id);
+            if (sel) sel.value = String(lp.gamepoint_package_id);
+          }
+        });
+      } catch(e) { st.textContent = 'Error inesperado'; }
+    }
+
+    async function saveBSMapping(localId) {
+      const sel = document.getElementById('bs-gp-sel-' + localId);
+      if (!sel) return;
+      const gpId = sel.value;
+      const st = document.getElementById('bs-mapping-status');
+      try {
+        const res = await fetch('/admin/bloodstrike/set_gamepoint_id', {
+          method: 'POST', headers: {'Content-Type':'application/json','Accept':'application/json'},
+          body: JSON.stringify({local_id: localId, gamepoint_package_id: gpId || null})
+        });
+        const data = await res.json();
+        if (data.success) {
+          st.innerHTML = '<span style="color:#4ade80;">Mapeo guardado para ' + data.nombre + '</span>';
+        } else {
+          st.innerHTML = '<span style="color:#ff6b6b;">' + (data.error || 'Error') + '</span>';
+        }
+      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error de red</span>'; }
+    }
+
+    async function syncBSPrices() {
+      const st = document.getElementById('bs-mapping-status');
+      const rpt = document.getElementById('bs-sync-report');
+      if (!st) return;
+      st.textContent = 'Sincronizando precios...';
+      if (rpt) { rpt.style.display = 'none'; rpt.innerHTML = ''; }
+      try {
+        const res = await fetch('/admin/bloodstrike/sync_prices', {method:'POST',headers:{'Accept':'application/json'}});
+        const data = await res.json();
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">' + (data.error||'Error') + '</span>'; return; }
+        st.innerHTML = '<span style="color:#4ade80;">Sync OK: ' + data.packages_updated + '/' + data.total_gamepoint_packages + ' actualizados (ganancia $' + data.profit_usd + ', tasa ' + data.myr_to_usd_rate + ')</span>';
+        if (rpt && data.report) {
+          let html = '<div style="background:#0d0d1a;border-radius:8px;padding:12px;font-size:12px;"><strong>Reporte de Sync:</strong><table class="table" style="width:100%;font-size:12px;margin-top:8px;"><thead><tr><th>GP ID</th><th>Nombre GP</th><th>Precio MYR</th><th>Costo USD</th><th>Venta USD</th><th>Local</th><th>Cambio</th></tr></thead><tbody>';
+          data.report.forEach(r => {
+            const cambioColor = r.cambio > 0 ? '#ff6b6b' : (r.cambio < 0 ? '#4ade80' : '#888');
+            const cambioTxt = r.local_id ? (r.cambio > 0 ? '+' : '') + r.cambio.toFixed(4) : (r.nota || 'N/A');
+            html += `<tr>
+              <td>${r.gamepoint_id}</td><td>${r.gamepoint_name}</td>
+              <td>${r.gamepoint_price_myr}</td><td>$${r.costo_usd.toFixed(4)}</td>
+              <td style="font-weight:700;">$${r.nuevo_precio_venta_usd.toFixed(2)}</td>
+              <td>${r.local_id ? '#'+r.local_id+' '+r.local_nombre : '<span style="color:#888;">-</span>'}</td>
+              <td style="color:${cambioColor};">${cambioTxt}</td>
+            </tr>`;
+          });
+          html += '</tbody></table></div>';
+          rpt.innerHTML = html;
+          rpt.style.display = 'block';
+        }
+        loadBSMapping();
+      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error inesperado</span>'; }
+    }
+
     async function loadAdminCostoData() {
       await loadAdminSummary();
       await loadAdminPurchases(currentAdminDay);

@@ -208,12 +208,12 @@
   <section class="juego-container">
     <h1 class="juego-titulo">Blood Striker</h1>
 
-    <form method="POST" action="/validar/bloodstriker" class="juego-form">
-      <label for="player_id">ID de Jugador:</label>
+    <form method="POST" action="/validar/bloodstriker" class="juego-form" id="bs-form">
+      <label for="player_id">ID de Jugador Blood Strike:</label>
       <input type="text" id="player_id" name="player_id" class="form-control" placeholder="Ingresa tu ID de jugador" required>
 
       <label for="monto">Selecciona tu paquete:</label>
-      <select id="monto" name="monto" class="form-control"  required>
+      <select id="monto" name="monto" class="form-control" required>
         <option value="">Seleccione paquete</option>
         {% for package_id in range(1, 11) %}
           {% set package = prices.get(package_id, {}) %}
@@ -225,11 +225,76 @@
         {% endfor %}
       </select>
 
-      <button type="submit">Solicitar Recarga</button>
+      <button type="submit" id="btn-recargar">Recargar Ahora</button>
     </form>
+
+    <script>
+    (function() {
+      var form = document.getElementById('bs-form');
+      var btn = document.getElementById('btn-recargar');
+      var submitted = false;
+      form.addEventListener('submit', function(e) {
+        if (submitted) {
+          e.preventDefault();
+          return false;
+        }
+        submitted = true;
+        btn.disabled = true;
+        btn.style.background = '#28a745';
+        btn.style.opacity = '1';
+        var seconds = 0;
+        btn.textContent = 'Procesando... 0s';
+        var timer = setInterval(function() {
+          seconds++;
+          btn.textContent = 'Procesando... ' + seconds + 's';
+        }, 1000);
+      });
+    })();
+    </script>
 
     {% if compra_exitosa %}
     <div class="compra-exitosa" id="compra-exitosa">
+      {% if estado == 'completado' %}
+      <h3>¡Recarga Realizada con Éxito!</h3>
+      <div class="solicitud-container">
+        <div class="solicitud-info">
+          <p class="solicitud-label">Estado:</p>
+          <p class="solicitud-estado" id="estadoSolicitud" style="color: #28a745;">✅ COMPLETADO</p>
+        </div>
+        <div class="detalles-info">
+          <p><strong>Blood Strike</strong></p>
+          <p><strong>Paquete:</strong> {{ paquete_nombre.split(' / ')[0] if ' / ' in paquete_nombre else paquete_nombre }}</p>
+          <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
+          <p><strong>Número de Control:</strong> {{ numero_control }}</p>
+          {% if gamepoint_ref %}
+          <p><strong>Ref GamePoint:</strong> {{ gamepoint_ref }}</p>
+          {% endif %}
+          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #8896a6; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+        </div>
+      </div>
+      {% elif estado == 'procesando' %}
+      <h3>🎯 ¡Recarga Enviada!</h3>
+      <div class="solicitud-container">
+        <div class="solicitud-info">
+          <p class="solicitud-label">Estado:</p>
+          <p class="solicitud-estado" id="estadoSolicitud" style="color: #f59e0b;">⏳ PROCESANDO</p>
+        </div>
+        <div class="detalles-info">
+          <p><strong>Blood Strike</strong></p>
+          <p><strong>Paquete:</strong> {{ paquete_nombre.split(' / ')[0] if ' / ' in paquete_nombre else paquete_nombre }}</p>
+          <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
+          <p><strong>Número de Control:</strong> {{ numero_control }}</p>
+          {% if gamepoint_ref %}
+          <p><strong>Ref GamePoint:</strong> {{ gamepoint_ref }}</p>
+          {% endif %}
+          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #8896a6; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+        </div>
+      </div>
+      <div class="entrega-info">
+        <p>⏳ Tu recarga fue enviada al proveedor y está siendo procesada.</p>
+        <p>Las monedas se agregarán a tu cuenta en breve.</p>
+      </div>
+      {% else %}
       <h3>🎯 ¡Solicitud Enviada!</h3>
       <div class="solicitud-container">
         <div class="solicitud-info">
@@ -237,30 +302,36 @@
           <p class="solicitud-estado" id="estadoSolicitud">{{ estado.upper() }}</p>
         </div>
         <div class="detalles-info">
-          <p><strong>Paquete:</strong> {{ paquete_nombre }}</p>
+          <p><strong>Paquete:</strong> {{ paquete_nombre.split(' / ')[0] if ' / ' in paquete_nombre else paquete_nombre }}</p>
           <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
-          <p><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
+          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #8896a6; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
-      <div class="entrega-info">
-        <p>⏳ Tu solicitud está pendiente de aprobación.</p>
-        <p>📧 Recibirás una notificación cuando sea procesada.</p>
-      </div>
+      {% endif %}
     </div>
     {% else %}
     <div class="juego-descripcion">
-      <p>🎯 <strong>¿Cómo funciona Blood Striker?</strong></p>
-      <ul style="list-style-type: square; padding-left: 1.5rem; line-height: 1.6; color: #c0c8d4;">
-        <li>Ingresa tu <strong>ID de jugador</strong> de Blood Striker</li>
-        <li>Selecciona el paquete de monedas que deseas</li>
-        <li>Tu solicitud quedará <strong>pendiente de aprobación</strong></li>
-        <li>Un administrador procesará tu recarga manualmente</li>
-        <li>Las monedas se agregarán directamente a tu cuenta</li>
-        <li>Recibirás confirmación una vez completada la recarga</li>
-      </ul>
-      <div class="nota-importante">
-        <p><strong>📌 Nota:</strong> Este es un servicio de recarga manual. El tiempo de procesamiento puede variar entre 1-24 horas dependiendo de la disponibilidad del administrador.</p>
+      <p>🎯 <strong>¿Cómo funciona Blood Strike?</strong></p>
+      <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 16px; margin-top: 8px;">
+        <ol style="margin: 0; padding-left: 20px; list-style: none;">
+          <li style="padding: 8px 0; color: #c0c8d4; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: #a78bfa; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">1</span>
+            Ingresa tu <strong>ID de jugador</strong> de Blood Strike
+          </li>
+          <li style="padding: 8px 0; color: #c0c8d4; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: #a78bfa; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">2</span>
+            Selecciona el paquete de monedas que deseas
+          </li>
+          <li style="padding: 8px 0; color: #c0c8d4; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: #a78bfa; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">3</span>
+            Presiona <strong>Recargar Ahora</strong> y espera unos segundos
+          </li>
+          <li style="padding: 8px 0; color: #c0c8d4; display: flex; align-items: center; gap: 10px;">
+            <span style="background: #a78bfa; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">4</span>
+            Las monedas se agregan <strong>automáticamente</strong> a tu cuenta
+          </li>
+        </ol>
       </div>
     </div>
     {% endif %}
