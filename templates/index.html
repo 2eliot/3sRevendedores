@@ -40,6 +40,9 @@
           {% if games_active.freefire_id or session.get('is_admin') %}
           <li><a href="/juego/freefire_id">Free Fire ID</a></li>
           {% endif %}
+          {% for dg in dynamic_games_menu %}
+          <li><a href="/juego/d/{{ dg.slug }}">{{ dg.icono }} {{ dg.nombre }}</a></li>
+          {% endfor %}
           <li style="border-top:1px solid #000000; margin:6px 0;"></li>
           <li><a href="/billetera">Recargar Usuario</a></li>
         </ul>
@@ -129,9 +132,11 @@
     <div class="transaction-container">
       {% if transactions %}
         {% for transaction in transactions %}
-        <div class="transaction-card-simple {% if transaction.get('is_bloodstriker') %}bloodstriker-transaction{% endif %}{% if transaction.get('is_freefire_id') %} freefire-id-transaction{% endif %}">
+        <div class="transaction-card-simple {% if transaction.get('is_bloodstriker') %}bloodstriker-transaction{% endif %}{% if transaction.get('is_freefire_id') %} freefire-id-transaction{% endif %}{% if transaction.get('is_dynamic_game') %} bloodstriker-transaction{% endif %}">
           {% set juego = 'Otros' %}
-          {% if transaction.get('is_bloodstriker') %}
+          {% if transaction.get('is_dynamic_game') %}
+            {% set juego = transaction.paquete %}
+          {% elif transaction.get('is_bloodstriker') %}
             {% set juego = 'Blood Striker' %}
           {% elif transaction.get('is_freefire_id') %}
             {% set juego = 'Free Fire ID' %}
@@ -143,7 +148,7 @@
           </div>
           <div class="transaction-row">
             <div class="transaction-main">
-              {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') %}
+              {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
               <div class="user-simple" style="margin-bottom:4px;">
                 {% if session.get('is_admin') %}
                   ID: {{ transaction.usuario_id }} - {{ transaction.nombre }} {{ transaction.apellido }}
@@ -153,10 +158,10 @@
               </div>
               {% endif %}
               <div class="control-status">
-                {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') %}
+                {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
                 <span class="control-num">{{ transaction.numero_control }}</span>
                 {% endif %}
-                {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') %}
+                {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
                   {% if transaction.get('is_bloodstriker') %}
                     {% if (transaction.get('estado') or '')|lower == 'pendiente' %}
                 <span class="status-simple">⏳</span>
@@ -168,7 +173,7 @@
                   {% endif %}
                 {% endif %}
               </div>
-              {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') %}
+              {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
               <div class="package-cost">
                 <span class="package">{{ transaction.paquete }}</span>
                 <span class="cost">${{ "%.2f"|format(transaction.monto|abs) }}</span>
@@ -177,7 +182,7 @@
             </div>
             
             <!-- En el panel derecho ahora va la FECHA/HORA -->
-            {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') %}
+            {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
             <div class="transaction-pin">
               <span class="date-simple">{{ transaction.fecha.split(' ')[0] }} {{ transaction.fecha.split(' ')[1].split('.')[0] }}</span>
             </div>
@@ -206,7 +211,7 @@
             {% endif %}
           </div>
           <div class="transaction-footer">
-            {% if transaction.get('is_freefire_id') or transaction.get('is_bloodstriker') %}
+            {% if transaction.get('is_freefire_id') or transaction.get('is_bloodstriker') or transaction.get('is_dynamic_game') %}
             <div class="ffid-voucher">
               <div class="ffid-voucher-status">
                 <span class="ffid-voucher-status-label">Estado:</span>
@@ -255,7 +260,7 @@
             </div>
             {% endif %}
           </div>
-          {% if transaction.get('is_freefire_id') or transaction.get('is_bloodstriker') %}
+          {% if transaction.get('is_freefire_id') or transaction.get('is_bloodstriker') or transaction.get('is_dynamic_game') %}
           <div class="tx-corner-date">{{ transaction.fecha.split(' ')[0] }} {{ transaction.fecha.split(' ')[1].split('.')[0] }}</div>
           {% endif %}
         </div>

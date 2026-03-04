@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin — Juegos Dinámicos</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #080810; color: #e0e0e0; padding: 20px; }
+    .back-link { color: #a78bfa; text-decoration: none; font-weight: 600; margin-bottom: 20px; display: inline-block; }
+    .back-link:hover { color: #c4b5fd; }
+    h1 { color: #fff; margin-bottom: 8px; }
+    .subtitle { color: #8896a6; margin-bottom: 24px; font-size: 0.95em; }
+
+    .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .card-title { font-size: 1.15em; font-weight: 700; color: #fff; }
+    .badge { padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 600; }
+    .badge-on { background: rgba(74,222,128,0.15); color: #4ade80; }
+    .badge-off { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+    .badge-mode { background: rgba(167,139,250,0.15); color: #a78bfa; }
+    .meta { font-size: 0.85em; color: #8896a6; }
+    .meta span { margin-right: 14px; }
+
+    .btn { padding: 8px 16px; border: none; border-radius: 8px; font-size: 0.85em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #a78bfa; color: #fff; }
+    .btn-primary:hover { background: #8b5cf6; }
+    .btn-danger { background: #ff6b6b; color: #fff; }
+    .btn-danger:hover { background: #e05555; }
+    .btn-success { background: #4ade80; color: #000; }
+    .btn-success:hover { background: #22c55e; }
+    .btn-sm { padding: 5px 12px; font-size: 0.8em; }
+    .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #c0c8d4; }
+    .btn-outline:hover { background: rgba(255,255,255,0.06); }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .form-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .form-section h3 { margin-top: 0; color: #a78bfa; font-size: 1em; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85em; color: #8896a6; margin-bottom: 4px; font-weight: 600; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; color: #e0e0e0; font-size: 0.9em; font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #a78bfa; }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .form-check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .form-check input[type=checkbox] { width: 18px; height: 18px; accent-color: #a78bfa; }
+
+    .pkg-table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 12px; }
+    .pkg-table th { text-align: left; color: #8896a6; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 600; }
+    .pkg-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .pkg-table td input { width: 100%; padding: 6px 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #e0e0e0; font-size: 0.9em; }
+
+    .catalog-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85em; }
+    .catalog-item:hover { background: rgba(255,255,255,0.03); }
+    #create-game-form { display: none; }
+    .section-divider { border: 0; border-top: 1px solid rgba(255,255,255,0.06); margin: 24px 0; }
+    .status-msg { padding: 8px 12px; border-radius: 8px; font-size: 0.85em; margin: 8px 0; }
+    .status-ok { background: rgba(74,222,128,0.1); color: #4ade80; }
+    .status-err { background: rgba(255,107,107,0.1); color: #ff6b6b; }
+  </style>
+</head>
+<body>
+  <a href="/admin" class="back-link">← Volver al Panel Admin</a>
+  <h1>🎮 Juegos Dinámicos</h1>
+  <p class="subtitle">Crea y gestiona juegos vinculados a GamePoint. Los juegos aparecerán automáticamente en el menú, historial y estadísticas.</p>
+
+  <button class="btn btn-primary" onclick="document.getElementById('create-game-form').style.display = document.getElementById('create-game-form').style.display === 'none' ? 'block' : 'none'">
+    + Crear Nuevo Juego
+  </button>
+
+  <!-- CREATE GAME FORM -->
+  <div id="create-game-form" class="form-section" style="margin-top: 16px;">
+    <h3>Nuevo Juego</h3>
+    <form id="frm-create" onsubmit="return createGame(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nombre del Juego *</label>
+          <input type="text" name="nombre" placeholder="Ej: Mobile Legends" required>
+        </div>
+        <div class="form-group">
+          <label>Product ID de GamePoint *</label>
+          <input type="number" name="gamepoint_product_id" placeholder="Ej: 155" required>
+        </div>
+        <div class="form-group">
+          <label>Modo de Entrega</label>
+          <select name="modo">
+            <option value="id">🎯 ID (Recarga Directa)</option>
+            <option value="pin">🎫 PIN (Voucher/Tarjeta)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ganancia Default (USD)</label>
+          <input type="number" step="0.01" name="ganancia_default" value="0.10" min="0">
+        </div>
+        <div class="form-group">
+          <label>Color Tema</label>
+          <input type="color" name="color_tema" value="#a78bfa">
+        </div>
+        <div class="form-group">
+          <label>Icono (emoji)</label>
+          <input type="text" name="icono" value="🎮" maxlength="4">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Descripción (opcional)</label>
+        <textarea name="descripcion" placeholder="Texto que se muestra al usuario en la página del juego"></textarea>
+      </div>
+
+      <h3 style="margin-top:16px;">Campos del Formulario (Modo ID)</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Label campo ID principal</label>
+          <input type="text" name="campo_id_label" value="ID de Jugador">
+        </div>
+        <div class="form-group">
+          <label>Placeholder campo ID</label>
+          <input type="text" name="campo_id_placeholder" value="Ingresa tu ID">
+        </div>
+        <div class="form-group">
+          <label>Patrón regex (opcional)</label>
+          <input type="text" name="campo_id_pattern" placeholder="^[0-9]+$">
+        </div>
+        <div class="form-group">
+          <label>Mensaje si patrón falla</label>
+          <input type="text" name="campo_id_pattern_msg" placeholder="Solo números permitidos">
+        </div>
+      </div>
+
+      <div class="form-check">
+        <input type="checkbox" name="dual_id" id="chk-dual-id" onchange="document.getElementById('dual-id-fields').style.display=this.checked?'grid':'none'">
+        <label for="chk-dual-id">Habilitar Doble ID (Ej: Zone ID de Mobile Legends)</label>
+      </div>
+      <div id="dual-id-fields" class="form-grid" style="display:none;">
+        <div class="form-group"><label>Label segundo ID</label><input type="text" name="campo_id2_label" value="Zone ID"></div>
+        <div class="form-group"><label>Placeholder</label><input type="text" name="campo_id2_placeholder" value="Ingresa tu Zone ID"></div>
+        <div class="form-group"><label>Patrón regex</label><input type="text" name="campo_id2_pattern" placeholder="^[0-9]+$"></div>
+        <div class="form-group"><label>Mensaje error</label><input type="text" name="campo_id2_pattern_msg" placeholder="Solo números"></div>
+      </div>
+
+      <div class="form-check" style="margin-top:12px;">
+        <input type="checkbox" name="servidor_enabled" id="chk-srv" onchange="document.getElementById('srv-fields').style.display=this.checked?'grid':'none'">
+        <label for="chk-srv">Habilitar Selector de Servidor</label>
+      </div>
+      <div id="srv-fields" class="form-grid" style="display:none;">
+        <div class="form-group"><label>Label</label><input type="text" name="servidor_label" value="Servidor"></div>
+        <div class="form-group"><label>Opciones (separadas por coma)</label><input type="text" name="servidor_opciones" placeholder="Asia, Europa, LATAM, NA"></div>
+      </div>
+
+      <button type="submit" class="btn btn-success" style="margin-top:16px;">Crear Juego</button>
+    </form>
+    <div id="create-status"></div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- EXISTING GAMES LIST -->
+  {% for game in games %}
+  <div class="card" id="game-card-{{ game.id }}">
+    <div class="card-header">
+      <div>
+        <span class="card-title">{{ game.icono }} {{ game.nombre }}</span>
+        <span class="badge badge-mode">{{ 'ID' if game.modo == 'id' else 'PIN' }}</span>
+        <span class="badge {{ 'badge-on' if game.activo else 'badge-off' }}">{{ 'ACTIVO' if game.activo else 'INACTIVO' }}</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-sm btn-outline" onclick="toggleGame({{ game.id }})">{{ '⏸️ Desactivar' if game.activo else '▶️ Activar' }}</button>
+        <button class="btn btn-sm btn-primary" onclick="syncPrices({{ game.id }})">🔄 Sync Precios</button>
+        <button class="btn btn-sm btn-outline" onclick="loadCatalog({{ game.id }})">📦 Ver Catálogo GP</button>
+        <button class="btn btn-sm btn-danger" onclick="if(confirm('¿Eliminar juego y todos sus paquetes?')) deleteGame({{ game.id }})">🗑️</button>
+      </div>
+    </div>
+    <div class="meta">
+      <span>🔗 Slug: <code>/juego/d/{{ game.slug }}</code></span>
+      <span>📦 GP Product: {{ game.gamepoint_product_id }}</span>
+      <span>💰 Ganancia: ${{ "%.2f"|format(game.ganancia_default) }}</span>
+      <span>🎨 <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:{{ game.color_tema }};vertical-align:middle;"></span></span>
+    </div>
+
+    <!-- PACKAGES -->
+    <div style="margin-top: 16px;">
+      <strong style="color:#c0c8d4;">Paquetes ({{ game._packages|length }}):</strong>
+      <button class="btn btn-sm btn-outline" style="margin-left:8px;" onclick="showAddPkg({{ game.id }})">+ Agregar</button>
+      <div id="add-pkg-{{ game.id }}" style="display:none; margin-top:10px;">
+        <div class="form-grid">
+          <div class="form-group"><label>Nombre</label><input type="text" id="new-pkg-name-{{ game.id }}" placeholder="100 Diamantes"></div>
+          <div class="form-group"><label>Precio Venta USD</label><input type="number" step="0.01" id="new-pkg-price-{{ game.id }}" placeholder="0.80"></div>
+          <div class="form-group"><label>GP Package ID</label><input type="number" id="new-pkg-gpid-{{ game.id }}" placeholder="19850"></div>
+          <div class="form-group"><label>Orden</label><input type="number" id="new-pkg-order-{{ game.id }}" value="0"></div>
+        </div>
+        <button class="btn btn-sm btn-success" onclick="addPackage({{ game.id }})">Guardar Paquete</button>
+      </div>
+
+      {% if game._packages %}
+      <table class="pkg-table">
+        <thead><tr><th>#</th><th>Nombre</th><th>Precio</th><th>GP ID</th><th>Activo</th><th></th></tr></thead>
+        <tbody id="pkg-body-{{ game.id }}">
+          {% for p in game._packages %}
+          <tr id="pkg-row-{{ p.id }}">
+            <td>{{ p.id }}</td>
+            <td><input value="{{ p.nombre }}" id="pkg-name-{{ p.id }}" style="min-width:120px;"></td>
+            <td><input type="number" step="0.01" value="{{ p.precio }}" id="pkg-price-{{ p.id }}" style="width:80px;"></td>
+            <td><input type="number" value="{{ p.gamepoint_package_id or '' }}" id="pkg-gpid-{{ p.id }}" style="width:80px;"></td>
+            <td style="text-align:center;">{{ '✅' if p.activo else '❌' }}</td>
+            <td class="actions">
+              <button class="btn btn-sm btn-outline" onclick="savePkg({{ p.id }})">💾</button>
+              <button class="btn btn-sm btn-outline" onclick="togglePkg({{ p.id }}, {{ 'false' if p.activo else 'true' }})">{{ '⏸️' if p.activo else '▶️' }}</button>
+              <button class="btn btn-sm btn-danger" onclick="if(confirm('¿Eliminar paquete?')) deletePkg({{ p.id }})">🗑️</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:#666; font-size:0.85em; margin-top:8px;">Sin paquetes. Agrega manualmente o usa "Ver Catálogo GP" para importar.</p>
+      {% endif %}
+    </div>
+
+    <!-- Catalog & Sync report areas -->
+    <div id="catalog-{{ game.id }}" style="display:none; margin-top:12px;"></div>
+    <div id="sync-status-{{ game.id }}" style="margin-top:8px;"></div>
+  </div>
+  {% endfor %}
+
+  {% if not games %}
+  <div class="card" style="text-align:center; padding:40px;">
+    <p style="color:#666;">No hay juegos dinámicos creados. Usa el botón "Crear Nuevo Juego" para comenzar.</p>
+  </div>
+  {% endif %}
+
+  <script>
+  async function createGame(e) {
+    e.preventDefault();
+    const frm = document.getElementById('frm-create');
+    const fd = new FormData(frm);
+    const body = {};
+    fd.forEach((v, k) => body[k] = v);
+    // Checkboxes
+    body.dual_id = frm.querySelector('[name=dual_id]').checked ? 'true' : 'false';
+    body.servidor_enabled = frm.querySelector('[name=servidor_enabled]').checked ? 'true' : 'false';
+    const st = document.getElementById('create-status');
+    st.innerHTML = '<div class="status-msg">Creando...</div>';
+    try {
+      const res = await fetch('/admin/dynamic-games/create', {
+        method: 'POST', headers: {'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) { st.innerHTML = '<div class="status-msg status-ok">✅ Juego creado. Recargando...</div>'; setTimeout(() => location.reload(), 800); }
+      else { st.innerHTML = '<div class="status-msg status-err">❌ ' + (data.error||'Error') + '</div>'; }
+    } catch(ex) { st.innerHTML = '<div class="status-msg status-err">❌ Error de red</div>'; }
+  }
+
+  async function toggleGame(id) {
+    const res = await fetch(`/admin/dynamic-games/${id}/toggle`, {method:'POST',headers:{'Accept':'application/json'}});
+    const data = await res.json();
+    if (data.success) location.reload();
+  }
+
+  async function deleteGame(id) {
+    await fetch(`/admin/dynamic-games/${id}/delete`, {method:'POST',headers:{'Accept':'application/json'}});
+    document.getElementById('game-card-'+id)?.remove();
+  }
+
+  async function syncPrices(id) {
+    const st = document.getElementById('sync-status-'+id);
+    st.innerHTML = '<div class="status-msg">Sincronizando...</div>';
+    try {
+      const res = await fetch(`/admin/dynamic-games/${id}/sync-prices`, {method:'POST',headers:{'Accept':'application/json'}});
+      const data = await res.json();
+      if (data.error) { st.innerHTML = '<div class="status-msg status-err">❌ '+data.error+'</div>'; return; }
+      let html = `<div class="status-msg status-ok">✅ ${data.packages_updated}/${data.total_gp} paquetes actualizados</div>`;
+      if (data.report && data.report.length) {
+        html += '<table class="pkg-table"><thead><tr><th>GP ID</th><th>Nombre</th><th>Costo</th><th>Precio</th><th>Cambio</th></tr></thead><tbody>';
+        data.report.forEach(r => {
+          const c = r.cambio > 0 ? '#ff6b6b' : (r.cambio < 0 ? '#4ade80' : '#888');
+          html += `<tr><td>${r.gp_id}</td><td>${r.gp_name||r.local_nombre||'-'}</td><td>$${(r.costo_nuevo||0).toFixed(4)}</td><td style="font-weight:700;">$${r.precio_nuevo.toFixed(2)}</td><td style="color:${c};">${r.local_id ? (r.cambio>0?'+':'')+r.cambio.toFixed(4) : (r.nota||'N/A')}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      }
+      st.innerHTML = html;
+      setTimeout(() => location.reload(), 3000);
+    } catch(ex) { st.innerHTML = '<div class="status-msg status-err">❌ Error</div>'; }
+  }
+
+  async function loadCatalog(id) {
+    const el = document.getElementById('catalog-'+id);
+    if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.innerHTML = '<div class="status-msg">Cargando catálogo GamePoint...</div>';
+    try {
+      const res = await fetch(`/admin/dynamic-games/${id}/gp-catalog`);
+      const data = await res.json();
+      if (data.error) { el.innerHTML = '<div class="status-msg status-err">❌ '+data.error+'</div>'; return; }
+      let html = '<strong style="color:#c0c8d4;">Catálogo GamePoint ('+data.packages.length+' paquetes):</strong>';
+      data.packages.forEach(p => {
+        html += `<div class="catalog-item"><span>${p.id} — ${p.name} (${p.price} MYR)</span><button class="btn btn-sm btn-outline" onclick="autoAddPkg(${id}, ${p.id}, '${(p.name||'').replace(/'/g,"\\'")}', ${p.price})">+ Agregar</button></div>`;
+      });
+      el.innerHTML = html;
+    } catch(ex) { el.innerHTML = '<div class="status-msg status-err">❌ Error</div>'; }
+  }
+
+  async function autoAddPkg(gameId, gpId, gpName, gpPriceMyr) {
+    const myrToUsd = 0.2357;
+    const costo = gpPriceMyr * myrToUsd;
+    const precio = Math.round((costo + 0.10) * 100) / 100;
+    const body = { nombre: gpName, precio: precio, gamepoint_package_id: gpId, orden: 0 };
+    const res = await fetch(`/admin/dynamic-games/${gameId}/packages/add`, {
+      method: 'POST', headers: {'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.error || 'Error');
+  }
+
+  function showAddPkg(id) {
+    const el = document.getElementById('add-pkg-'+id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function addPackage(gameId) {
+    const body = {
+      nombre: document.getElementById('new-pkg-name-'+gameId).value,
+      precio: parseFloat(document.getElementById('new-pkg-price-'+gameId).value),
+      gamepoint_package_id: document.getElementById('new-pkg-gpid-'+gameId).value || null,
+      orden: parseInt(document.getElementById('new-pkg-order-'+gameId).value) || 0,
+    };
+    const res = await fetch(`/admin/dynamic-games/${gameId}/packages/add`, {
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.error || 'Error');
+  }
+
+  async function savePkg(id) {
+    const body = {
+      nombre: document.getElementById('pkg-name-'+id).value,
+      precio: parseFloat(document.getElementById('pkg-price-'+id).value),
+      gamepoint_package_id: document.getElementById('pkg-gpid-'+id).value || null,
+    };
+    const res = await fetch(`/admin/dynamic-games/packages/${id}/update`, {
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) { const row = document.getElementById('pkg-row-'+id); if(row) row.style.background='rgba(74,222,128,0.08)'; setTimeout(()=>{if(row)row.style.background='';},1500); }
+    else alert(data.error || 'Error');
+  }
+
+  async function togglePkg(id, newState) {
+    await fetch(`/admin/dynamic-games/packages/${id}/update`, {
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({activo: newState})
+    });
+    location.reload();
+  }
+
+  async function deletePkg(id) {
+    await fetch(`/admin/dynamic-games/packages/${id}/delete`, {method:'POST',headers:{'Accept':'application/json'}});
+    document.getElementById('pkg-row-'+id)?.remove();
+  }
+  </script>
+</body>
+</html>

@@ -45,6 +45,7 @@ from functools import lru_cache
 import random
 import string
 from admin_stats import bp as admin_stats_bp
+from dynamic_games import bp as dynamic_games_bp, get_all_dynamic_games as get_dynamic_games_list, sync_all_dynamic_games_prices
 from update_monthly_spending import update_monthly_spending
 
 
@@ -272,6 +273,15 @@ mail = Mail(app)
 
 # Registrar blueprint de estadísticas de administración
 app.register_blueprint(admin_stats_bp, url_prefix='/admin/stats')
+app.register_blueprint(dynamic_games_bp)
+
+@app.context_processor
+def inject_dynamic_games_menu():
+    """Inyecta la lista de juegos dinámicos activos en todas las plantillas."""
+    try:
+        return {'dynamic_games_menu': get_dynamic_games_list(only_active=True)}
+    except Exception:
+        return {'dynamic_games_menu': []}
 
 # Configuración de la base de datos con optimizaciones y compatibilidad con Render
 def get_render_compatible_db_path():
@@ -865,6 +875,67 @@ def init_db():
                 VALUES (?, ?, ?)
             ''', precios_compra_default)
     
+        # === Tablas para sistema de juegos dinámicos ===
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS juegos_dinamicos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL,
+                slug TEXT NOT NULL UNIQUE,
+                gamepoint_product_id INTEGER NOT NULL,
+                modo TEXT NOT NULL DEFAULT 'id',
+                color_tema TEXT DEFAULT '#a78bfa',
+                icono TEXT DEFAULT '🎮',
+                activo BOOLEAN DEFAULT FALSE,
+                campos_config TEXT DEFAULT '{}',
+                descripcion TEXT DEFAULT '',
+                ganancia_default REAL DEFAULT 0.10,
+                fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+                fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS paquetes_dinamicos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                juego_id INTEGER NOT NULL,
+                nombre TEXT NOT NULL,
+                precio REAL NOT NULL,
+                descripcion TEXT DEFAULT '',
+                gamepoint_package_id INTEGER,
+                activo BOOLEAN DEFAULT TRUE,
+                orden INTEGER DEFAULT 0,
+                fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (juego_id) REFERENCES juegos_dinamicos(id)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS transacciones_dinamicas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                juego_id INTEGER NOT NULL,
+                usuario_id INTEGER NOT NULL,
+                player_id TEXT,
+                player_id2 TEXT,
+                servidor TEXT,
+                paquete_id INTEGER NOT NULL,
+                numero_control TEXT NOT NULL,
+                transaccion_id TEXT NOT NULL,
+                monto REAL DEFAULT 0.0,
+                estado TEXT DEFAULT 'pendiente',
+                gamepoint_referenceno TEXT,
+                ingame_name TEXT,
+                pin_entregado TEXT,
+                fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+                fecha_procesado DATETIME,
+                notas TEXT,
+                FOREIGN KEY (juego_id) REFERENCES juegos_dinamicos(id),
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+                FOREIGN KEY (paquete_id) REFERENCES paquetes_dinamicos(id)
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_tx_din_usuario ON transacciones_dinamicas(usuario_id, fecha DESC)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_tx_din_juego ON transacciones_dinamicas(juego_id, fecha DESC)')
+
         # Crear índices optimizados para mejor rendimiento
         create_optimized_indexes(cursor)
         
@@ -1183,6 +1254,21 @@ def get_user_transactions(user_id, is_admin=False, page=1, per_page=10):
                 m_id = re.search(r"ID:\s*([0-9]{4,})", raw_pin_info)
                 if m_id:
                     transaction_dict['player_id'] = m_id.group(1)
+                m_name = re.search(r"Jugador:\s*([^\n\r\-]+)", raw_pin_info)
+                if m_name:
+                    transaction_dict['player_name'] = m_name.group(1).strip()
+                m_ref = re.search(r"Ref:\s*(\S+)", raw_pin_info)
+                if m_ref:
+                    transaction_dict['gamepoint_ref'] = m_ref.group(1).strip()
+
+            elif txid.startswith('DG'):
+                transaction_dict['is_dynamic_game'] = True
+                transaction_dict['estado'] = transaction_dict.get('estado') or 'completado'
+
+                raw_pin_info = str(transaction_dict.get('pin') or '')
+                m_id = re.search(r"ID:\s*([^\s\-/]+(?:\s*/\s*[^\s\-]+)?)", raw_pin_info)
+                if m_id:
+                    transaction_dict['player_id'] = m_id.group(1).strip()
                 m_name = re.search(r"Jugador:\s*([^\n\r\-]+)", raw_pin_info)
                 if m_name:
                     transaction_dict['player_name'] = m_name.group(1).strip()
@@ -1937,11 +2023,24 @@ def _bloodstrike_price_sync_loop():
                 logger.info(f"[BloodStrike AutoSync] OK: {updated}/{total} paquetes actualizados (ganancia ${result.get('profit_usd', 0)}, tasa {result.get('myr_to_usd_rate', 0)})")
         except Exception as e:
             logger.error(f"[BloodStrike AutoSync] Excepción: {e}")
+
+        # === Sincronizar juegos dinámicos ===
+        try:
+            dyn_results = sync_all_dynamic_games_prices()
+            for dr in dyn_results:
+                if dr.get('error'):
+                    logger.warning(f"[DynGame AutoSync] {dr.get('game','?')}: {dr['error']}")
+                else:
+                    r = dr.get('result', {})
+                    logger.info(f"[DynGame AutoSync] {dr.get('game','?')}: {r.get('packages_updated',0)}/{r.get('total_gp',0)} actualizados")
+        except Exception as e:
+            logger.error(f"[DynGame AutoSync] Excepción: {e}")
+
         time_module.sleep(_BS_SYNC_INTERVAL_HOURS * 3600)
 
 _bs_sync_thread = threading.Thread(target=_bloodstrike_price_sync_loop, daemon=True)
 _bs_sync_thread.start()
-logger.info(f"[BloodStrike AutoSync] Thread iniciado — sincronización cada {_BS_SYNC_INTERVAL_HOURS}h")
+logger.info(f"[AutoSync] Thread iniciado — sincronización cada {_BS_SYNC_INTERVAL_HOURS}h (BloodStrike + Juegos Dinámicos)")
 
 # Funciones para sistema de noticias
 def create_news_table():

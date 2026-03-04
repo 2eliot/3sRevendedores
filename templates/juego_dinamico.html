@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ game.nombre }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
+  <style>
+    :root { --dg-accent: {{ game.color_tema }}; }
+    .juego-container {
+      max-width: 600px; margin: 30px auto;
+      background: rgba(255,255,255,0.05); border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .juego-titulo {
+      background: transparent; color: var(--dg-accent); text-align: center;
+      padding: 25px; font-size: 28px; font-weight: 700; margin: 0;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .juego-form { padding: 30px; }
+    .juego-form label { display: block; margin-bottom: 8px; font-weight: 600; color: #c0c8d4; font-size: 16px; }
+    .form-control {
+      width: 100%; padding: 12px 15px; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px; font-size: 16px; margin-bottom: 18px;
+      transition: all 0.3s ease; background: rgba(255,255,255,0.08); color: #e0e0e0;
+    }
+    .form-control:focus { outline: none; border-color: var(--dg-accent); box-shadow: 0 0 0 3px rgba(167,139,250,0.15); }
+    .form-control::placeholder { color: #6b7280; }
+    .dg-select { position: relative; width: 100%; margin-bottom: 18px; }
+    .dg-select-trigger {
+      width: 100%; padding: 12px 15px; border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 12px; background: rgba(255,255,255,0.08); color: #e5e7eb;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      cursor: pointer; user-select: none; transition: all 0.2s ease;
+    }
+    .dg-select-trigger:focus { outline: none; border-color: rgba(255,255,255,0.26); box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
+    .dg-select-caret { width: 10px; height: 10px; border-right: 2px solid rgba(229,231,235,0.9); border-bottom: 2px solid rgba(229,231,235,0.9); transform: rotate(45deg); margin-top: -2px; flex: 0 0 auto; }
+    .dg-select-menu {
+      position: absolute; left: 0; right: 0; top: calc(100% + 8px);
+      background: #0b1220; border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px; box-shadow: 0 14px 38px rgba(0,0,0,0.45);
+      max-height: 320px; overflow: auto; z-index: 50; display: none;
+    }
+    .dg-select.open .dg-select-menu { display: block; }
+    .dg-select-option { padding: 10px 12px; color: #e5e7eb; cursor: pointer; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .dg-select-option:last-child { border-bottom: 0; }
+    .dg-select-option:hover { background: rgba(255,255,255,0.08); }
+    .dg-select-option.active { background: rgba(59,130,246,0.22); color: #fff; font-weight: 700; }
+    .dg-hidden-select { position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0; }
+    .juego-form button[type=submit] {
+      width: 100%; background: linear-gradient(90deg, var(--dg-accent), #7c3aed);
+      color: white; border: none; padding: 15px; border-radius: 8px;
+      font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .juego-form button[type=submit]:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(167,139,250,0.4); }
+    .compra-exitosa {
+      background: rgba(255,255,255,0.05); margin: 20px 30px; padding: 25px;
+      border-radius: 12px; border-left: 5px solid var(--dg-accent);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: #e0e0e0;
+    }
+    .compra-exitosa h3 { color: #fff; }
+    .solicitud-container { background: rgba(255,255,255,0.06); border-radius: 10px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); }
+    .solicitud-info { display: flex; align-items: center; justify-content: center; margin-bottom: 15px; padding: 10px; background: rgba(167,139,250,0.1); border-radius: 8px; }
+    .solicitud-label { font-weight: 600; color: var(--dg-accent); margin-right: 10px; margin-bottom: 0; }
+    .solicitud-estado { background: linear-gradient(135deg, var(--dg-accent), #7c3aed); color: white; padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; margin-bottom: 0; }
+    .detalles-info { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; }
+    .detalles-info p { margin: 8px 0; color: #c0c8d4; }
+    .entrega-info { background: rgba(255,255,255,0.04); padding: 0.8rem; border-radius: 6px; border-left: 4px solid #4ade80; color: #c0c8d4; }
+    .entrega-info p { margin: 4px 0; color: #c0c8d4; }
+    .juego-descripcion { font-size: 0.95rem; background: rgba(255,255,255,0.05); padding: 1.25rem; border-radius: 12px; color: #c0c8d4; margin: 0 30px 1.5rem; border-left: 4px solid var(--dg-accent); border: 1px solid rgba(255,255,255,0.08); }
+    .volver-container { text-align: center; margin: 1.5rem 0; }
+    .volver-btn { color: var(--dg-accent); text-decoration: none; font-weight: 600; transition: color 0.2s; }
+    .volver-btn:hover { color: #c4b5fd; }
+    .srv-select { width: 100%; padding: 12px 15px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; font-size: 16px; margin-bottom: 18px; background: rgba(255,255,255,0.08); color: #e0e0e0; }
+    .srv-select option { background: #0b1220; color: #e0e0e0; }
+  </style>
+</head>
+<body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for category, message in messages %}
+          <div class="flash-message flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <header class="header">
+    <div class="hamburger" onclick="toggleMenu()">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div id="menu-juegos" class="menu-juegos">
+        <p class="menu-title">🎮 Juegos</p>
+        <ul>
+          {% if games_active.freefire or session.get('is_admin') %}
+          <li><a href="/juego/freefire_latam">Free Fire Latam</a></li>
+          {% endif %}
+          {% if games_active.freefire_global or session.get('is_admin') %}
+          <li><a href="/juego/freefire">Free Fire</a></li>
+          {% endif %}
+          {% if games_active.bloodstriker or session.get('is_admin') %}
+          <li><a href="/juego/bloodstriker">Blood Striker</a></li>
+          {% endif %}
+          {% if games_active.freefire_id or session.get('is_admin') %}
+          <li><a href="/juego/freefire_id">Free Fire ID</a></li>
+          {% endif %}
+          {% for dg in dynamic_games_menu %}
+          <li><a href="/juego/d/{{ dg.slug }}">{{ dg.icono }} {{ dg.nombre }}</a></li>
+          {% endfor %}
+          <li style="border-top:1px solid #000000; margin:6px 0;"></li>
+          <li><a href="/billetera">Recargar Usuario</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="icon-container">
+      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="Mi Dashboard">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      </div>
+      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+      <div class="user-icon" onclick="toggleUserBox()">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <div id="user-box" class="user-box">
+          <p><strong>Correo:</strong> {{ session.get('usuario', '---') }}</p>
+          {% if session.get('is_admin') %}
+          <a href="/admin" class="admin-btn">🛠️ Panel Admin</a>
+          {% endif %}
+          {% if not session.get('is_admin') %}
+          <a href="https://wa.me/584125712917?text=Hola%2C%20quiero%20recargar%20saldo.%20Mi%20ID%20es%20{{ user_id }}" target="_blank" rel="noopener noreferrer" class="admin-btn">📞 Contactar al admin</a>
+          {% endif %}
+          <a href="/logout" class="logout-btn">Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="user-panel">
+    <p>
+      <span class="user-chip"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>ID <span class="chip-value">{{ user_id }}</span></span>
+      <span class="user-chip chip-saldo"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg>Saldo <span class="chip-value" id="saldo-display" data-saldo="{{ balance }}">${{ "%.2f"|format(balance) }}</span></span>
+    </p>
+  </section>
+
+  <section class="juego-container">
+    <h1 class="juego-titulo">{{ game.icono }} {{ game.nombre }}</h1>
+
+    <form method="POST" action="/validar/dinamico/{{ game.slug }}" class="juego-form" id="dg-form">
+      {% if game.modo == 'id' %}
+        {# Primary ID field #}
+        <label for="player_id">{{ campos.get('campo_id', {}).get('label', 'ID de Jugador') }}:</label>
+        <input type="text" id="player_id" name="player_id" class="form-control"
+               placeholder="{{ campos.get('campo_id', {}).get('placeholder', 'Ingresa tu ID') }}"
+               {% if campos.get('campo_id', {}).get('pattern') %}pattern="{{ campos['campo_id']['pattern'] }}" title="{{ campos['campo_id'].get('pattern_msg', '') }}"{% endif %}
+               required>
+
+        {# Dual ID (e.g. Zone ID for Mobile Legends) #}
+        {% if campos.get('campo_id2', {}).get('enabled') %}
+        <label for="player_id2">{{ campos['campo_id2'].get('label', 'Zone ID') }}:</label>
+        <input type="text" id="player_id2" name="player_id2" class="form-control"
+               placeholder="{{ campos['campo_id2'].get('placeholder', 'Ingresa tu Zone ID') }}"
+               {% if campos['campo_id2'].get('pattern') %}pattern="{{ campos['campo_id2']['pattern'] }}" title="{{ campos['campo_id2'].get('pattern_msg', '') }}"{% endif %}
+               required>
+        {% endif %}
+
+        {# Server selector #}
+        {% if campos.get('servidor', {}).get('enabled') %}
+        <label for="servidor">{{ campos['servidor'].get('label', 'Servidor') }}:</label>
+        <select id="servidor" name="servidor" class="srv-select" required>
+          <option value="">Selecciona {{ campos['servidor'].get('label', 'servidor') }}</option>
+          {% for opt in campos['servidor'].get('opciones', []) %}
+          <option value="{{ opt }}">{{ opt }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+      {% endif %}
+
+      <label for="monto">Selecciona tu paquete:</label>
+      <div class="dg-select" id="dg-select">
+        <button type="button" class="dg-select-trigger" id="dg-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span id="dg-select-label">Seleccione paquete</span>
+          <span class="dg-select-caret" aria-hidden="true"></span>
+        </button>
+        <div class="dg-select-menu" id="dg-select-menu" role="listbox">
+          {% for pkg in packages %}
+          <div class="dg-select-option" role="option" data-value="{{ pkg.id }}">
+            {{ pkg.nombre }} / ${{ "%.2f"|format(pkg.precio) }}
+          </div>
+          {% endfor %}
+        </div>
+        <select id="monto" name="monto" class="dg-hidden-select" required>
+          <option value="">Seleccione paquete</option>
+          {% for pkg in packages %}
+          <option value="{{ pkg.id }}">{{ pkg.nombre }} / ${{ "%.2f"|format(pkg.precio) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit" id="btn-recargar">Recargar Ahora</button>
+    </form>
+
+    <script>
+    (function() {
+      var form = document.getElementById('dg-form');
+      var btn = document.getElementById('btn-recargar');
+      var submitted = false;
+      var selWrap = document.getElementById('dg-select');
+      var selTrigger = document.getElementById('dg-select-trigger');
+      var selMenu = document.getElementById('dg-select-menu');
+      var selLabel = document.getElementById('dg-select-label');
+      var nativeSelect = document.getElementById('monto');
+
+      function closeSelect() { if(selWrap) { selWrap.classList.remove('open'); if(selTrigger) selTrigger.setAttribute('aria-expanded','false'); } }
+      function openSelect() { if(selWrap) { selWrap.classList.add('open'); if(selTrigger) selTrigger.setAttribute('aria-expanded','true'); } }
+      function setValue(val, text) {
+        if(nativeSelect) nativeSelect.value = val;
+        if(selLabel) selLabel.textContent = text || 'Seleccione paquete';
+        if(selMenu) selMenu.querySelectorAll('.dg-select-option').forEach(function(o) {
+          o.classList.toggle('active', String(o.getAttribute('data-value')) === String(val));
+        });
+      }
+      if(selTrigger) selTrigger.addEventListener('click', function() { selWrap.classList.contains('open') ? closeSelect() : openSelect(); });
+      if(selMenu) selMenu.addEventListener('click', function(e) {
+        var opt = e.target.closest('.dg-select-option'); if(!opt) return;
+        setValue(opt.getAttribute('data-value'), (opt.textContent||'').trim()); closeSelect();
+      });
+      document.addEventListener('click', function(e) { if(selWrap && !selWrap.contains(e.target)) closeSelect(); });
+      form.addEventListener('submit', function(e) {
+        if(submitted) { e.preventDefault(); return false; }
+        if(nativeSelect && !nativeSelect.value) { e.preventDefault(); return false; }
+        submitted = true; btn.disabled = true; btn.style.background = '#28a745'; btn.style.opacity = '1';
+        var seconds = 0; btn.textContent = 'Procesando... 0s';
+        setInterval(function() { seconds++; btn.textContent = 'Procesando... ' + seconds + 's'; }, 1000);
+      });
+    })();
+    </script>
+
+    {% if compra_exitosa %}
+    <div class="compra-exitosa" id="compra-exitosa">
+      {% if estado == 'completado' %}
+      <h3>¡Recarga Realizada con Éxito!</h3>
+      <div class="solicitud-container">
+        <div class="solicitud-info">
+          <p class="solicitud-label">Estado:</p>
+          <p class="solicitud-estado" style="color: #28a745;">✅ COMPLETADO</p>
+        </div>
+        <div class="detalles-info">
+          <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
+          <p><strong>Paquete:</strong> {{ paquete_nombre }}</p>
+          <p><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>
+          {% if servidor %}<p><strong>Servidor:</strong> {{ servidor }}</p>{% endif %}
+          {% if player_name %}<p><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
+          <p><strong>Número de Control:</strong> {{ numero_control }}</p>
+          {% if gamepoint_ref %}<p><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
+          <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#8896a6;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+        </div>
+      </div>
+      {% elif estado == 'procesando' %}
+      <h3>🎯 ¡Recarga Enviada!</h3>
+      <div class="solicitud-container">
+        <div class="solicitud-info">
+          <p class="solicitud-label">Estado:</p>
+          <p class="solicitud-estado" style="color: #f59e0b;">⏳ PROCESANDO</p>
+        </div>
+        <div class="detalles-info">
+          <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
+          <p><strong>Paquete:</strong> {{ paquete_nombre }}</p>
+          <p><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>
+          {% if servidor %}<p><strong>Servidor:</strong> {{ servidor }}</p>{% endif %}
+          {% if player_name %}<p><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
+          <p><strong>Número de Control:</strong> {{ numero_control }}</p>
+          {% if gamepoint_ref %}<p><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
+          <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#8896a6;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+        </div>
+      </div>
+      <div class="entrega-info">
+        <p>⏳ Tu recarga fue enviada al proveedor y está siendo procesada.</p>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="juego-descripcion">
+      {% if game.descripcion %}
+        <p>{{ game.descripcion }}</p>
+      {% else %}
+        <p>{{ game.icono }} <strong>{{ game.nombre }}</strong> — Recarga directa vía GamePoint.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="volver-container">
+      <a href="/" class="volver-btn">← Volver al inicio</a>
+    </div>
+  </section>
+
+  <script>
+    function toggleUserBox() { document.getElementById("user-box").classList.toggle("visible"); }
+    function toggleMenu() { document.getElementById("menu-juegos").classList.toggle("visible"); }
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.getElementById('compra-exitosa');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      {% if compra_exitosa %}
+      var saldoDisplay = document.getElementById('saldo-display');
+      if (saldoDisplay) {
+        var saldoActual = parseFloat(saldoDisplay.getAttribute('data-saldo'));
+        var montoCompra = {{ monto_compra }};
+        var saldoAnterior = saldoActual + montoCompra;
+        saldoDisplay.style.color = '#dc3545';
+        var currentValue = saldoAnterior, step = 0, steps = 30;
+        var decrement = (saldoAnterior - saldoActual) / steps;
+        var timer = setInterval(function() {
+          step++; currentValue -= decrement;
+          if (step >= steps) { currentValue = saldoActual; clearInterval(timer); setTimeout(function(){ saldoDisplay.style.color = '#28a745'; }, 100); }
+          saldoDisplay.textContent = '$' + currentValue.toFixed(2);
+        }, 800/steps);
+      }
+      {% endif %}
+    });
+    document.addEventListener('click', function(event) {
+      var userBox = document.getElementById('user-box'), userIcon = document.querySelector('.user-icon');
+      var menuJuegos = document.getElementById('menu-juegos'), hamburger = document.querySelector('.hamburger');
+      if (userBox && userIcon && !userIcon.contains(event.target)) userBox.classList.remove('visible');
+      if (menuJuegos && hamburger && !hamburger.contains(event.target)) menuJuegos.classList.remove('visible');
+    });
+    setTimeout(function() { var fm = document.querySelector('.flash-messages'); if(fm) { fm.style.opacity='0'; setTimeout(function(){fm.remove();},300); } }, 3000);
+  </script>
+</body>
+</html>

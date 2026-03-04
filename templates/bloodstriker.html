@@ -232,6 +232,9 @@
           {% if games_active.freefire_id or session.get('is_admin') %}
           <li><a href="/juego/freefire_id">Free Fire ID</a></li>
           {% endif %}
+          {% for dg in dynamic_games_menu %}
+          <li><a href="/juego/d/{{ dg.slug }}">{{ dg.icono }} {{ dg.nombre }}</a></li>
+          {% endfor %}
           <li style="border-top:1px solid #000000; margin:6px 0;"></li>
           <li><a href="/billetera">Recargar Usuario</a></li>
         </ul>
