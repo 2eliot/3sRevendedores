@@ -8061,25 +8061,40 @@ def dashboard():
     except:
         dias_analizados = 1
     
+    # Cargar nombres de juegos dinámicos para clasificación
+    try:
+        from dynamic_games import get_all_dynamic_games
+        _dyn_game_names = [g['nombre'] for g in get_all_dynamic_games()]
+    except Exception:
+        _dyn_game_names = []
+
     # Estadísticas por juego
     stats_por_juego = {}
     for transaction in transacciones_procesadas:
         # Determinar el juego basado en el paquete o si es Blood Striker
+        paq = transaction.get('paquete', '')
+        juego = None
         if transaction.get('is_bloodstriker'):
             juego = 'Blood Striker'
-        elif '💎' in transaction['paquete']:
-            if 'Tarjeta' in transaction['paquete']:
-                juego = 'Free Fire LATAM'
-            else:
-                # Distinguir entre Free Fire LATAM y Global por el formato del nombre
-                if any(x in transaction['paquete'] for x in ['110 💎', '341 💎', '572 💎', '1.166 💎', '2.376 💎', '6.138 💎']):
+        else:
+            # Verificar si es un juego dinámico ("GameName - PackageName")
+            for dg_name in _dyn_game_names:
+                if paq.startswith(dg_name + ' - ') or paq == dg_name:
+                    juego = dg_name
+                    break
+        if not juego:
+            if '💎' in paq:
+                if 'Tarjeta' in paq:
                     juego = 'Free Fire LATAM'
                 else:
-                    juego = 'Free Fire Global'
-        elif '🪙' in transaction['paquete']:
-            juego = 'Blood Striker'
-        else:
-            juego = 'Otros'
+                    if any(x in paq for x in ['110 💎', '341 💎', '572 💎', '1.166 💎', '2.376 💎', '6.138 💎']):
+                        juego = 'Free Fire LATAM'
+                    else:
+                        juego = 'Free Fire Global'
+            elif '🪙' in paq:
+                juego = 'Blood Striker'
+            else:
+                juego = 'Otros'
         
         if juego not in stats_por_juego:
             stats_por_juego[juego] = {'cantidad': 0, 'monto': 0}
