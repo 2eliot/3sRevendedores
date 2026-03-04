@@ -1919,6 +1919,30 @@ def _binance_verification_loop():
 _binance_verify_thread = threading.Thread(target=_binance_verification_loop, daemon=True)
 _binance_verify_thread.start()
 
+# === Blood Strike: Sincronización automática de precios cada 6 horas ===
+_BS_SYNC_INTERVAL_HOURS = float(os.environ.get('BS_SYNC_INTERVAL_HOURS', '6'))
+
+def _bloodstrike_price_sync_loop():
+    """Hilo en background que sincroniza precios de Blood Strike cada N horas."""
+    time_module.sleep(30)  # Esperar 30s al iniciar para que la app esté lista
+    while True:
+        try:
+            logger.info("[BloodStrike AutoSync] Iniciando sincronización automática de precios...")
+            result = _bloodstrike_sync_prices_internal()
+            if result.get('error'):
+                logger.warning(f"[BloodStrike AutoSync] Error: {result['error']}")
+            else:
+                updated = result.get('packages_updated', 0)
+                total = result.get('total_gamepoint_packages', 0)
+                logger.info(f"[BloodStrike AutoSync] OK: {updated}/{total} paquetes actualizados (ganancia ${result.get('profit_usd', 0)}, tasa {result.get('myr_to_usd_rate', 0)})")
+        except Exception as e:
+            logger.error(f"[BloodStrike AutoSync] Excepción: {e}")
+        time_module.sleep(_BS_SYNC_INTERVAL_HOURS * 3600)
+
+_bs_sync_thread = threading.Thread(target=_bloodstrike_price_sync_loop, daemon=True)
+_bs_sync_thread.start()
+logger.info(f"[BloodStrike AutoSync] Thread iniciado — sincronización cada {_BS_SYNC_INTERVAL_HOURS}h")
+
 # Funciones para sistema de noticias
 def create_news_table():
     """Crea la tabla de noticias si no existe"""
@@ -5022,18 +5046,9 @@ def admin_update_bloodstriker_name():
     
     return redirect('/admin')
 
-@app.route('/admin/bloodstrike/sync_prices', methods=['POST'])
-def admin_bloodstrike_sync_prices():
-    """Sincroniza precios de Blood Strike desde GamePoint Club y actualiza precios locales manteniendo ganancia fija en USD."""
-    if not session.get('is_admin'):
-        return jsonify({'error': 'Acceso denegado'}), 403
-
-    # Opciones:
-    # - deactivate_missing=1: desactiva paquetes locales cuyo gamepoint_package_id ya no existe en GameClub
-    # - deactivate_unmapped=1: desactiva paquetes locales sin gamepoint_package_id
-    deactivate_missing = str(request.args.get('deactivate_missing', '')).strip() == '1'
-    deactivate_unmapped = str(request.args.get('deactivate_unmapped', '')).strip() == '1'
-    
+def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmapped=False):
+    """Sincroniza precios de Blood Strike desde GamePoint Club (función interna, sin request context).
+    Retorna dict con resultado o error."""
     profit_usd = float(os.environ.get('BLOODSTRIKE_PROFIT_USD', '0.11'))
     myr_to_usd = float(os.environ.get('BLOODSTRIKE_MYR_TO_USD_RATE', '0.2357'))
     product_id = int(os.environ.get('BLOODSTRIKE_PRODUCT_ID', '155'))
@@ -5041,16 +5056,16 @@ def admin_bloodstrike_sync_prices():
     # 1. Obtener token
     gc_token, gc_err = _gameclub_get_token()
     if not gc_token:
-        return jsonify({'error': (gc_err or {}).get('message', 'No se pudo obtener token de GamePoint')}), 500
+        return {'error': (gc_err or {}).get('message', 'No se pudo obtener token de GamePoint')}
     
     # 2. Obtener detalle del producto
     _, detail_data = _gameclub_post('product/detail', {'token': gc_token, 'productid': product_id})
     if (detail_data or {}).get('code') != 200:
-        return jsonify({'error': (detail_data or {}).get('message', 'Error obteniendo detalle del producto')}), 500
+        return {'error': (detail_data or {}).get('message', 'Error obteniendo detalle del producto')}
     
     gp_packages = (detail_data or {}).get('package', [])
     if not gp_packages:
-        return jsonify({'error': 'No se encontraron paquetes en GamePoint para este producto'}), 500
+        return {'error': 'No se encontraron paquetes en GamePoint para este producto'}
 
     gp_ids = set()
     for gp_pkg in gp_packages:
@@ -5074,7 +5089,6 @@ def admin_bloodstrike_sync_prices():
         conn.execute('UPDATE precios_bloodstriker SET activo = FALSE, fecha_actualizacion = CURRENT_TIMESTAMP WHERE gamepoint_package_id IS NULL')
 
     if deactivate_missing:
-        # Desactivar si tiene mapeo pero ese ID no está en el catálogo actual
         for lp in local_packages:
             try:
                 gp_id = lp['gamepoint_package_id']
@@ -5111,12 +5125,10 @@ def admin_bloodstrike_sync_prices():
             entry['precio_anterior'] = local['precio']
             entry['cambio'] = round(nuevo_precio_venta - local['precio'], 4)
             
-            # Actualizar precio de venta
             conn.execute(
                 'UPDATE precios_bloodstriker SET precio = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?',
                 (nuevo_precio_venta, local['id'])
             )
-            # Actualizar costo en precios_compra
             conn.execute(
                 'UPDATE precios_compra SET precio_compra = ? WHERE juego = ? AND paquete_id = ?',
                 (costo_usd, 'bloodstriker', local['id'])
@@ -5137,7 +5149,7 @@ def admin_bloodstrike_sync_prices():
     except Exception:
         pass
     
-    return jsonify({
+    return {
         'success': True,
         'product_id': product_id,
         'profit_usd': profit_usd,
@@ -5145,7 +5157,23 @@ def admin_bloodstrike_sync_prices():
         'packages_updated': updated,
         'total_gamepoint_packages': len(gp_packages),
         'report': report
-    })
+    }
+
+
+@app.route('/admin/bloodstrike/sync_prices', methods=['POST'])
+def admin_bloodstrike_sync_prices():
+    """Sincroniza precios de Blood Strike desde GamePoint Club (endpoint admin)."""
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Acceso denegado'}), 403
+
+    deactivate_missing = str(request.args.get('deactivate_missing', '')).strip() == '1'
+    deactivate_unmapped = str(request.args.get('deactivate_unmapped', '')).strip() == '1'
+    
+    result = _bloodstrike_sync_prices_internal(deactivate_missing=deactivate_missing, deactivate_unmapped=deactivate_unmapped)
+    
+    if result.get('error'):
+        return jsonify(result), 500
+    return jsonify(result)
 
 
 @app.route('/admin/bloodstrike/set_gamepoint_id', methods=['POST'])
