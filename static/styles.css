@@ -1214,24 +1214,18 @@ body {
 
 /* ==== ESTILOS PARA TRANSACCIONES DE BLOOD STRIKER ==== */
 .bloodstriker-transaction {
-  border: 1px solid #dee2e6;
-  background: #fff;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.05);
 }
 
-.bloodstriker-transaction .control-num {
-  color: #495057;
-  font-weight: 600;
-  font-size: 0.85rem;
+.bloodstriker-transaction .ffid-voucher {
+  margin-left: -0.75rem;
+  margin-right: -0.75rem;
+  padding-bottom: 28px;
 }
 
-.bloodstriker-transaction .package {
-  color: #667eea;
-  font-weight: 600;
-}
-
-.bloodstriker-transaction .cost {
-  color: #28a745;
-  font-weight: 700;
+.bloodstriker-transaction .ffid-voucher-status {
+  justify-content: center;
 }
 
 /* Contenedor de acciones para los botones */
