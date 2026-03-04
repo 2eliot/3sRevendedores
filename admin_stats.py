@@ -712,6 +712,15 @@ def profit_packages_config():
                         """
                     ).fetchall()
                     rows.extend(fi)
+                if table_exists(conn, 'paquetes_dinamicos') and table_exists(conn, 'juegos_dinamicos'):
+                    dyn = conn.execute(
+                        """
+                        SELECT pd.id AS package_id, 'dyn_' || jd.slug AS source, pd.id AS category_id, pd.nombre AS package_name, pd.precio AS base_price, (
+                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego = 'dyn_' || jd.slug AND pc.paquete_id = pd.id AND pc.activo = 1 LIMIT 1
+                         ) AS cost FROM paquetes_dinamicos pd JOIN juegos_dinamicos jd ON jd.id = pd.juego_id
+                        """
+                    ).fetchall()
+                    rows.extend(dyn)
             conn.close()
             return jsonify({'profit_packages_config': [dict(r) for r in rows]})
         except sqlite3.Error as e:

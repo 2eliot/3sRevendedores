@@ -4,78 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ game.nombre }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='freefire.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='freefire_id_extra.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
   <style>
     :root { --dg-accent: {{ game.color_tema }}; }
-    .juego-container {
-      max-width: 600px; margin: 30px auto;
-      background: rgba(255,255,255,0.05); border-radius: 15px;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08);
-      overflow: hidden;
-    }
-    .juego-titulo {
-      background: transparent; color: var(--dg-accent); text-align: center;
-      padding: 25px; font-size: 28px; font-weight: 700; margin: 0;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-    .juego-form { padding: 30px; }
-    .juego-form label { display: block; margin-bottom: 8px; font-weight: 600; color: #c0c8d4; font-size: 16px; }
-    .form-control {
+    .juego-titulo { color: var(--dg-accent) !important; }
+    .juego-form select.form-control,
+    .srv-select {
       width: 100%; padding: 12px 15px; border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px; font-size: 16px; margin-bottom: 18px;
-      transition: all 0.3s ease; background: rgba(255,255,255,0.08); color: #e0e0e0;
+      border-radius: 10px; font-size: 1rem; margin-bottom: 1.25rem;
+      background: rgba(255,255,255,0.08); color: #e0e0e0;
     }
-    .form-control:focus { outline: none; border-color: var(--dg-accent); box-shadow: 0 0 0 3px rgba(167,139,250,0.15); }
-    .form-control::placeholder { color: #6b7280; }
-    .dg-select { position: relative; width: 100%; margin-bottom: 18px; }
-    .dg-select-trigger {
-      width: 100%; padding: 12px 15px; border: 1px solid rgba(255,255,255,0.16);
-      border-radius: 12px; background: rgba(255,255,255,0.08); color: #e5e7eb;
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      cursor: pointer; user-select: none; transition: all 0.2s ease;
-    }
-    .dg-select-trigger:focus { outline: none; border-color: rgba(255,255,255,0.26); box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
-    .dg-select-caret { width: 10px; height: 10px; border-right: 2px solid rgba(229,231,235,0.9); border-bottom: 2px solid rgba(229,231,235,0.9); transform: rotate(45deg); margin-top: -2px; flex: 0 0 auto; }
-    .dg-select-menu {
-      position: absolute; left: 0; right: 0; top: calc(100% + 8px);
-      background: #0b1220; border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 12px; box-shadow: 0 14px 38px rgba(0,0,0,0.45);
-      max-height: 320px; overflow: auto; z-index: 50; display: none;
-    }
-    .dg-select.open .dg-select-menu { display: block; }
-    .dg-select-option { padding: 10px 12px; color: #e5e7eb; cursor: pointer; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .dg-select-option:last-child { border-bottom: 0; }
-    .dg-select-option:hover { background: rgba(255,255,255,0.08); }
-    .dg-select-option.active { background: rgba(59,130,246,0.22); color: #fff; font-weight: 700; }
-    .dg-hidden-select { position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0; }
-    .juego-form button[type=submit] {
-      width: 100%; background: linear-gradient(90deg, var(--dg-accent), #7c3aed);
-      color: white; border: none; padding: 15px; border-radius: 8px;
-      font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
-      text-transform: uppercase; letter-spacing: 1px;
-    }
-    .juego-form button[type=submit]:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(167,139,250,0.4); }
-    .compra-exitosa {
-      background: rgba(255,255,255,0.05); margin: 20px 30px; padding: 25px;
-      border-radius: 12px; border-left: 5px solid var(--dg-accent);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); color: #e0e0e0;
-    }
-    .compra-exitosa h3 { color: #fff; }
-    .solicitud-container { background: rgba(255,255,255,0.06); border-radius: 10px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); }
-    .solicitud-info { display: flex; align-items: center; justify-content: center; margin-bottom: 15px; padding: 10px; background: rgba(167,139,250,0.1); border-radius: 8px; }
-    .solicitud-label { font-weight: 600; color: var(--dg-accent); margin-right: 10px; margin-bottom: 0; }
-    .solicitud-estado { background: linear-gradient(135deg, var(--dg-accent), #7c3aed); color: white; padding: 5px 15px; border-radius: 20px; font-weight: 600; font-size: 14px; margin-bottom: 0; }
-    .detalles-info { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; }
-    .detalles-info p { margin: 8px 0; color: #c0c8d4; }
-    .entrega-info { background: rgba(255,255,255,0.04); padding: 0.8rem; border-radius: 6px; border-left: 4px solid #4ade80; color: #c0c8d4; }
-    .entrega-info p { margin: 4px 0; color: #c0c8d4; }
-    .juego-descripcion { font-size: 0.95rem; background: rgba(255,255,255,0.05); padding: 1.25rem; border-radius: 12px; color: #c0c8d4; margin: 0 30px 1.5rem; border-left: 4px solid var(--dg-accent); border: 1px solid rgba(255,255,255,0.08); }
-    .volver-container { text-align: center; margin: 1.5rem 0; }
-    .volver-btn { color: var(--dg-accent); text-decoration: none; font-weight: 600; transition: color 0.2s; }
-    .volver-btn:hover { color: #c4b5fd; }
-    .srv-select { width: 100%; padding: 12px 15px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; font-size: 16px; margin-bottom: 18px; background: rgba(255,255,255,0.08); color: #e0e0e0; }
-    .srv-select option { background: #0b1220; color: #e0e0e0; }
+    .srv-select option, .form-control option { background: #1a1a2e; color: #e0e0e0; }
+    .juego-descripcion { border-left: 4px solid var(--dg-accent); }
   </style>
 </head>
 <body>
@@ -180,25 +122,12 @@
       {% endif %}
 
       <label for="monto">Selecciona tu paquete:</label>
-      <div class="dg-select" id="dg-select">
-        <button type="button" class="dg-select-trigger" id="dg-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-          <span id="dg-select-label">Seleccione paquete</span>
-          <span class="dg-select-caret" aria-hidden="true"></span>
-        </button>
-        <div class="dg-select-menu" id="dg-select-menu" role="listbox">
-          {% for pkg in packages %}
-          <div class="dg-select-option" role="option" data-value="{{ pkg.id }}">
-            {{ pkg.nombre }} / ${{ "%.2f"|format(pkg.precio) }}
-          </div>
-          {% endfor %}
-        </div>
-        <select id="monto" name="monto" class="dg-hidden-select" required>
-          <option value="">Seleccione paquete</option>
-          {% for pkg in packages %}
-          <option value="{{ pkg.id }}">{{ pkg.nombre }} / ${{ "%.2f"|format(pkg.precio) }}</option>
-          {% endfor %}
-        </select>
-      </div>
+      <select id="monto" name="monto" class="form-control" required>
+        <option value="">Seleccione paquete</option>
+        {% for pkg in packages %}
+        <option value="{{ pkg.id }}">{{ pkg.nombre }} / ${{ "%.2f"|format(pkg.precio) }}</option>
+        {% endfor %}
+      </select>
 
       <button type="submit" id="btn-recargar">Recargar Ahora</button>
     </form>
@@ -208,32 +137,14 @@
       var form = document.getElementById('dg-form');
       var btn = document.getElementById('btn-recargar');
       var submitted = false;
-      var selWrap = document.getElementById('dg-select');
-      var selTrigger = document.getElementById('dg-select-trigger');
-      var selMenu = document.getElementById('dg-select-menu');
-      var selLabel = document.getElementById('dg-select-label');
-      var nativeSelect = document.getElementById('monto');
-
-      function closeSelect() { if(selWrap) { selWrap.classList.remove('open'); if(selTrigger) selTrigger.setAttribute('aria-expanded','false'); } }
-      function openSelect() { if(selWrap) { selWrap.classList.add('open'); if(selTrigger) selTrigger.setAttribute('aria-expanded','true'); } }
-      function setValue(val, text) {
-        if(nativeSelect) nativeSelect.value = val;
-        if(selLabel) selLabel.textContent = text || 'Seleccione paquete';
-        if(selMenu) selMenu.querySelectorAll('.dg-select-option').forEach(function(o) {
-          o.classList.toggle('active', String(o.getAttribute('data-value')) === String(val));
-        });
-      }
-      if(selTrigger) selTrigger.addEventListener('click', function() { selWrap.classList.contains('open') ? closeSelect() : openSelect(); });
-      if(selMenu) selMenu.addEventListener('click', function(e) {
-        var opt = e.target.closest('.dg-select-option'); if(!opt) return;
-        setValue(opt.getAttribute('data-value'), (opt.textContent||'').trim()); closeSelect();
-      });
-      document.addEventListener('click', function(e) { if(selWrap && !selWrap.contains(e.target)) closeSelect(); });
       form.addEventListener('submit', function(e) {
-        if(submitted) { e.preventDefault(); return false; }
-        if(nativeSelect && !nativeSelect.value) { e.preventDefault(); return false; }
-        submitted = true; btn.disabled = true; btn.style.background = '#28a745'; btn.style.opacity = '1';
-        var seconds = 0; btn.textContent = 'Procesando... 0s';
+        if (submitted) { e.preventDefault(); return false; }
+        submitted = true;
+        btn.disabled = true;
+        btn.style.background = '#28a745';
+        btn.style.opacity = '1';
+        var seconds = 0;
+        btn.textContent = 'Procesando... 0s';
         setInterval(function() { seconds++; btn.textContent = 'Procesando... ' + seconds + 's'; }, 1000);
       });
     })();

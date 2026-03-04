@@ -823,10 +823,11 @@ def validar_dinamico(slug):
             if player_id2:
                 pin_info = f"ID: {player_id} / {player_id2} - " + pin_info.split(' - ', 1)[1]
 
+            paquete_display = f"{game['nombre']} - {pkg['nombre']}"
             conn.execute('''
                 INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto, duracion_segundos)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, numero_control, pin_info, transaccion_id, pkg['nombre'], -precio, _duration))
+            ''', (user_id, numero_control, pin_info, transaccion_id, paquete_display, -precio, _duration))
 
             # Record in historial_compras
             _saldo_row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
@@ -834,7 +835,7 @@ def validar_dinamico(slug):
             conn.execute('''
                 INSERT INTO historial_compras (usuario_id, monto, paquete_nombre, pin, tipo_evento, duracion_segundos, saldo_antes, saldo_despues)
                 VALUES (?, ?, ?, ?, 'compra', ?, ?, ?)
-            ''', (user_id, precio, pkg['nombre'], pin_info, _duration, _saldo + precio, _saldo))
+            ''', (user_id, precio, paquete_display, pin_info, _duration, _saldo + precio, _saldo))
 
             # Record profit
             try:
