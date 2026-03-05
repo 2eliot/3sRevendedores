@@ -5739,6 +5739,31 @@ def validar_freefire_id():
     if precio == 0:
         flash('Paquete no encontrado o inactivo', 'error')
         return redirect('/juego/freefire_id')
+
+    # Evitar doble envío: si ya existe una transacción muy reciente para el mismo usuario/ID/paquete,
+    # no volver a cobrar ni a tomar otro PIN.
+    try:
+        conn_dup = get_db_connection()
+        dup = conn_dup.execute(
+            '''
+            SELECT id, estado, fecha
+            FROM transacciones_freefire_id
+            WHERE usuario_id = ?
+              AND player_id = ?
+              AND paquete_id = ?
+              AND datetime(fecha) >= datetime('now', '-20 seconds')
+              AND estado IN ('pendiente', 'aprobado')
+            ORDER BY id DESC
+            LIMIT 1
+            ''',
+            (user_id, player_id, package_id)
+        ).fetchone()
+        conn_dup.close()
+        if dup:
+            flash('Ya se está procesando tu recarga. Espera unos segundos y revisa tu dashboard.', 'error')
+            return redirect('/juego/freefire_id')
+    except Exception:
+        pass
     
     # === PROTECCIÓN 1: Verificar saldo desde DB (no session) ===
     if not is_admin:
