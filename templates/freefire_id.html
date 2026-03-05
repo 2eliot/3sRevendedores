@@ -70,22 +70,38 @@
       <svg class="icon" viewBox="0 0 24 24">
         <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
       </svg>
-      <div id="menu-juegos" class="menu-juegos">
-        <p class="menu-title">🎮 Juegos</p>
+      <div id="menu-juegos" class="menu-juegos" style="text-align:left;">
+        <p class="menu-title">Juegos ID</p>
         <ul>
-          {% if games_active.freefire_global or session.get('is_admin') %}
-          <li><a href="/juego/freefire">Free Fire</a></li>
+          {% if games_active.freefire_id or session.get('is_admin') %}
+          <li><a href="/juego/freefire_id">Free Fire ID</a></li>
           {% endif %}
           {% if games_active.bloodstriker or session.get('is_admin') %}
           <li><a href="/juego/bloodstriker">Blood Striker</a></li>
           {% endif %}
-          {% if games_active.freefire_id or session.get('is_admin') %}
-          <li><a href="/juego/freefire_id">Free Fire ID</a></li>
-          {% endif %}
-          {% for dg in dynamic_games_menu %}
+          {% for dg in dynamic_games_id_menu %}
           <li><a href="/juego/d/{{ dg.slug }}">{{ dg.nombre }}</a></li>
           {% endfor %}
-          <li style="border-top:1px solid #000000; margin:6px 0;"></li>
+        </ul>
+
+        <li style="border-top:1px solid rgba(255,255,255,0.12); margin:6px 0; list-style:none;"></li>
+        <p class="menu-title">Juegos PIN</p>
+        <ul>
+          {% if games_active.freefire_global or session.get('is_admin') %}
+          <li><a href="/juego/freefire">Free Fire</a></li>
+          {% endif %}
+        </ul>
+
+        <li style="border-top:1px solid rgba(255,255,255,0.12); margin:6px 0; list-style:none;"></li>
+        <p class="menu-title">Gift Cards</p>
+        <ul>
+          {% for dg in dynamic_games_pin_menu %}
+          <li><a href="/juego/d/{{ dg.slug }}">{{ dg.nombre }}</a></li>
+          {% endfor %}
+        </ul>
+
+        <li style="border-top:1px solid #000000; margin:6px 0; list-style:none;"></li>
+        <ul>
           <li><a href="/billetera">Recargar Usuario</a></li>
         </ul>
       </div>

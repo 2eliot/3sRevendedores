@@ -279,9 +279,16 @@ app.register_blueprint(dynamic_games_bp)
 def inject_dynamic_games_menu():
     """Inyecta la lista de juegos dinámicos activos en todas las plantillas."""
     try:
-        return {'dynamic_games_menu': get_dynamic_games_list(only_active=True)}
+        games = get_dynamic_games_list(only_active=True)
+        id_games = [g for g in games if (g.get('modo') or 'id') == 'id']
+        pin_games = [g for g in games if (g.get('modo') or 'id') != 'id']
+        return {
+            'dynamic_games_menu': games,
+            'dynamic_games_id_menu': id_games,
+            'dynamic_games_pin_menu': pin_games,
+        }
     except Exception:
-        return {'dynamic_games_menu': []}
+        return {'dynamic_games_menu': [], 'dynamic_games_id_menu': [], 'dynamic_games_pin_menu': []}
 
 # Configuración de la base de datos con optimizaciones y compatibilidad con Render
 def get_render_compatible_db_path():
