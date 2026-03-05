@@ -5748,8 +5748,8 @@ def validar_freefire_id():
         flash('Paquete no encontrado o inactivo', 'error')
         return redirect('/juego/freefire_id')
 
-    # Evitar doble envío: si ya existe una transacción reciente para el mismo usuario/ID/paquete,
-    # no volver a cobrar ni a tomar otro PIN.
+    # Evitar doble envío: solo bloquear si hay una transacción PENDIENTE reciente
+    # (no bloquear si la anterior ya fue completada o rechazada)
     try:
         conn_dup = get_db_connection()
         dup = conn_dup.execute(
@@ -5759,7 +5759,8 @@ def validar_freefire_id():
             WHERE usuario_id = ?
               AND player_id = ?
               AND paquete_id = ?
-              AND datetime(fecha) >= datetime('now', '-5 minutes')
+              AND estado = 'pendiente'
+              AND datetime(fecha) >= datetime('now', '-2 minutes')
             ORDER BY id DESC
             LIMIT 1
             ''',
