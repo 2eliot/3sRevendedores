@@ -147,6 +147,7 @@
     <h1 class="juego-titulo">🔥 Free Fire ID</h1>
 
     <form method="POST" action="/validar/freefire_id" class="juego-form" id="ffid-form">
+      <input type="hidden" name="ffid_form_nonce" value="{{ ffid_form_nonce }}">
       <div class="form-row">
         <div class="form-col">
           <label for="player_id">ID de Jugador:</label>

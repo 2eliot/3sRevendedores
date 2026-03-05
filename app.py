@@ -5652,11 +5652,6 @@ def reject_bloodstriker_transaction(transaction_id):
         flash('Transacción rechazada y saldo devuelto al usuario', 'success')
     except Exception as e:
         flash(f'Error al rechazar transacción: {str(e)}', 'error')
-    
-    return redirect('/')
-
-# ===== Rutas para Free Fire ID =====
-@app.route('/juego/freefire_id')
 def freefire_id():
     if 'usuario' not in session:
         return redirect('/auth')
@@ -5697,6 +5692,9 @@ def freefire_id():
         compra_exitosa = True
         compra_data = session.pop('compra_freefire_id_exitosa')
     
+    # Nonce de un solo uso para evitar doble submit/reintentos del navegador
+    session['ffid_form_nonce'] = secrets.token_urlsafe(16)
+
     return render_template('freefire_id.html', 
                          user_id=session.get('id', '00000'),
                          balance=session.get('saldo', 0),
@@ -5704,6 +5702,7 @@ def freefire_id():
                          compra_exitosa=compra_exitosa,
                          is_admin=is_admin,
                          games_active=get_games_active(),
+                         ffid_form_nonce=session.get('ffid_form_nonce'),
                          **compra_data)
 
 @app.route('/validar/freefire_id', methods=['POST'])
@@ -5720,6 +5719,13 @@ def validar_freefire_id():
     
     package_id = request.form.get('monto')
     player_id = request.form.get('player_id')
+
+    # Validar nonce (un solo uso) para prevenir reintentos/doble submit en caídas
+    nonce_form = request.form.get('ffid_form_nonce')
+    nonce_session = session.pop('ffid_form_nonce', None)
+    if not nonce_form or not nonce_session or nonce_form != nonce_session:
+        flash('Solicitud duplicada o expirada. Recarga la página e intenta nuevamente.', 'error')
+        return redirect('/juego/freefire_id')
     
     if not package_id or not player_id:
         flash('Por favor complete todos los campos', 'error')
@@ -5740,7 +5746,7 @@ def validar_freefire_id():
         flash('Paquete no encontrado o inactivo', 'error')
         return redirect('/juego/freefire_id')
 
-    # Evitar doble envío: si ya existe una transacción muy reciente para el mismo usuario/ID/paquete,
+    # Evitar doble envío: si ya existe una transacción reciente para el mismo usuario/ID/paquete,
     # no volver a cobrar ni a tomar otro PIN.
     try:
         conn_dup = get_db_connection()
@@ -5751,8 +5757,7 @@ def validar_freefire_id():
             WHERE usuario_id = ?
               AND player_id = ?
               AND paquete_id = ?
-              AND datetime(fecha) >= datetime('now', '-20 seconds')
-              AND estado IN ('pendiente', 'aprobado')
+              AND datetime(fecha) >= datetime('now', '-5 minutes')
             ORDER BY id DESC
             LIMIT 1
             ''',
