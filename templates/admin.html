@@ -193,6 +193,7 @@
               <p style="color:#aaa;font-size:13px;margin-bottom:12px;">Mapea tus paquetes con los IDs de GamePoint y sincroniza precios.</p>
               <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
                 <button type="button" class="btn btn-secondary" onclick="loadDynMapping({{ dg.id }})">Cargar Mapeo</button>
+                <button type="button" class="btn btn-primary" onclick="autoImportDynPackages({{ dg.id }})" style="background:#22c55e;">Auto-Importar Paquetes</button>
                 <button type="button" class="btn btn-primary" onclick="syncDynPrices({{ dg.id }})" style="background:#a78bfa;">Sincronizar Precios</button>
                 <div id="dyn-mapping-status-{{ dg.id }}" style="color:#aaa;font-size:13px;display:flex;align-items:center;"></div>
               </div>
@@ -1635,6 +1636,19 @@
           }
         });
       } catch(e) { st.textContent = 'Error inesperado'; }
+    }
+
+    async function autoImportDynPackages(gameId) {
+      const st = document.getElementById('dyn-mapping-status-'+gameId);
+      if (!st) return;
+      st.textContent = 'Importando paquetes desde GamePoint...';
+      try {
+        const res = await fetch(`/admin/dynamic-games/${gameId}/auto-import-packages`, {method:'POST',headers:{'Accept':'application/json'}});
+        const data = await res.json();
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">'+(data.error||'Error')+'</span>'; return; }
+        st.innerHTML = `<span style="color:#4ade80;">✅ ${data.created} paquetes creados, ${data.skipped} ya existían (${data.total_gp} en GP)</span>`;
+        loadDynMapping(gameId);
+      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error inesperado</span>'; }
     }
 
     async function saveDynMapping(gameId, localId) {

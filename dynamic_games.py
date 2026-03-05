@@ -393,6 +393,66 @@ def admin_delete_package(pkg_id):
 
 
 # ---------------------------------------------------------------------------
+# ADMIN: Auto-import packages from GamePoint catalog
+# ---------------------------------------------------------------------------
+
+@bp.route('/admin/dynamic-games/<int:game_id>/auto-import-packages', methods=['POST'])
+def admin_auto_import_packages(game_id):
+    """Fetch GP catalog and auto-create local packages (name + gp_id mapped, price $0)."""
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Acceso denegado'}), 403
+    game = get_dynamic_game_by_id(game_id)
+    if not game:
+        return jsonify({'error': 'Juego no encontrado'}), 404
+
+    get_token, gp_post, *_ = _gp_helpers()
+    gc_token, gc_err = get_token()
+    if not gc_token:
+        return jsonify({'error': (gc_err or {}).get('message', 'No se pudo obtener token')}), 500
+
+    _, detail = gp_post('product/detail', {'token': gc_token, 'productid': game['gamepoint_product_id']})
+    if (detail or {}).get('code') != 200:
+        return jsonify({'error': (detail or {}).get('message', 'Error obteniendo catálogo')}), 500
+
+    gp_packages = (detail or {}).get('package', [])
+    if not gp_packages:
+        return jsonify({'error': 'No se encontraron paquetes en GamePoint'}), 404
+
+    conn = _get_conn()
+    # Get existing GP IDs already mapped locally
+    existing_gp_ids = set()
+    for row in conn.execute('SELECT gamepoint_package_id FROM paquetes_dinamicos WHERE juego_id = ? AND gamepoint_package_id IS NOT NULL', (game_id,)):
+        existing_gp_ids.add(int(row['gamepoint_package_id']))
+
+    created = 0
+    skipped = 0
+    for idx, gp_pkg in enumerate(gp_packages):
+        gp_id = int(gp_pkg['id'])
+        if gp_id in existing_gp_ids:
+            skipped += 1
+            continue
+        gp_name = gp_pkg.get('name', f'Paquete {gp_id}')
+        # Clean HTML from name
+        clean_name = re.sub(r'<[^>]+>', ' ', gp_name).strip()
+        clean_name = ' '.join(clean_name.split())
+        conn.execute('''
+            INSERT INTO paquetes_dinamicos (juego_id, nombre, precio, descripcion, gamepoint_package_id, activo, orden)
+            VALUES (?, ?, 0, '', ?, 0, ?)
+        ''', (game_id, clean_name, gp_id, idx))
+        created += 1
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'success': True,
+        'created': created,
+        'skipped': skipped,
+        'total_gp': len(gp_packages),
+    })
+
+
+# ---------------------------------------------------------------------------
 # ADMIN: Fetch GamePoint catalog for a product (to help mapping)
 # ---------------------------------------------------------------------------
 
