@@ -3850,6 +3850,15 @@ def admin_save_prices_batch():
 
     conn = get_db_connection()
     try:
+        dyn_game_id = None
+        if game.startswith('dyn_'):
+            try:
+                slug = game.replace('dyn_', '', 1)
+                row = conn.execute('SELECT id FROM juegos_dinamicos WHERE slug = ?', (slug,)).fetchone()
+                dyn_game_id = int(row['id']) if row and row.get('id') is not None else None
+            except Exception:
+                dyn_game_id = None
+
         updated = 0
         for it in items:
             try:
@@ -3858,7 +3867,25 @@ def admin_save_prices_batch():
                 price = float(it.get('precio'))
             except Exception:
                 continue
-            conn.execute(f"UPDATE {table} SET nombre = ?, precio = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?", (name, price, pid))
+
+            if game.startswith('dyn_'):
+                # Activate priced packages so they are visible to users (public pages filter activo=1)
+                activo = 1 if price > 0 else 0
+                if dyn_game_id is not None:
+                    conn.execute(
+                        "UPDATE paquetes_dinamicos SET nombre = ?, precio = ?, activo = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ? AND juego_id = ?",
+                        (name, price, activo, pid, dyn_game_id)
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE paquetes_dinamicos SET nombre = ?, precio = ?, activo = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?",
+                        (name, price, activo, pid)
+                    )
+            else:
+                conn.execute(
+                    f"UPDATE {table} SET nombre = ?, precio = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?",
+                    (name, price, pid)
+                )
             updated += 1
         conn.commit()
         flash(f'Se guardaron {updated} cambios correctamente.', 'success')
