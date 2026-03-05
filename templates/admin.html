@@ -851,12 +851,58 @@
     const dynGamesData = JSON.parse(document.getElementById('dyn-games-data').textContent);
     let _currentDynGameId = null;
 
-    function renderPricePackageList(game) {
+    let _costBySource = null;
+    let _costLoadPromise = null;
+
+    function loadCostBySource() {
+      if (_costLoadPromise) return _costLoadPromise;
+      _costLoadPromise = (async () => {
+        try {
+          const res = await fetch(`/admin/stats/profit-packages-config`);
+          const conf = await res.json();
+          const items = conf?.profit_packages_config || [];
+          const map = {};
+          items.forEach(it => {
+            const source = String(it.source || '');
+            const pkgId = Number(it.package_id);
+            const cost = it.cost;
+            if (!source || !isFinite(pkgId)) return;
+            if (!map[source]) map[source] = {};
+            map[source][pkgId] = cost;
+          });
+          _costBySource = map;
+        } catch (e) {
+          _costBySource = {};
+        }
+      })();
+      return _costLoadPromise;
+    }
+
+    function updateProfitText(priceInput) {
+      const wrap = priceInput?.closest('.package-form');
+      if (!wrap) return;
+      const info = wrap.querySelector('.profit-info');
+      if (!info) return;
+      const costRaw = priceInput.getAttribute('data-cost');
+      const cost = costRaw === null || costRaw === '' ? NaN : Number(costRaw);
+      const price = Number(priceInput.value);
+      if (!isFinite(cost)) {
+        info.innerHTML = '<span style="color:#9aa5b1;">Costo: -</span> <span style="color:#9aa5b1;">Ganancia: -</span>';
+        return;
+      }
+      const profit = (isFinite(price) ? price : 0) - cost;
+      const profitColor = profit >= 0 ? '#4ade80' : '#ff6b6b';
+      info.innerHTML = `<span style="color:#9aa5b1;">Costo: $${cost.toFixed(2)}</span> <span style="color:${profitColor};">Ganancia: $${profit.toFixed(2)}</span>`;
+    }
+
+    async function renderPricePackageList(game) {
       const container = document.getElementById('price-package-list');
       const batchGame = document.getElementById('batch_game');
       const addArea = document.getElementById('add-pkg-area');
       if (!container || !batchGame) return;
       batchGame.value = game;
+
+      await loadCostBySource();
 
       let data = [];
       const isDyn = game.startsWith('dyn_');
@@ -875,6 +921,8 @@
 
       container.innerHTML = '';
       data.forEach(pkg => {
+        const cost = _costBySource && _costBySource[game] ? _costBySource[game][Number(pkg.id)] : null;
+        const costAttr = cost === null || cost === undefined ? '' : String(cost);
         const card = document.createElement('div');
         card.className = 'package-card';
         card.innerHTML = `
@@ -890,7 +938,8 @@
             </div>
             <div class="package-form">
               <label>Precio</label>
-              <input type="number" class="pkg-price" data-id="${pkg.id}" value="${Number(pkg.precio).toFixed(2)}" step="0.01" min="0">
+              <input type="number" class="pkg-price" data-id="${pkg.id}" data-cost="${costAttr}" value="${Number(pkg.precio).toFixed(2)}" step="0.01" min="0">
+              <div class="profit-info" style="margin-top:6px;font-size:12px;line-height:1.2;"></div>
             </div>
           </div>
         `;
@@ -899,6 +948,12 @@
       if (isDyn && data.length === 0) {
         container.innerHTML = '<p style="color:#666;font-size:13px;padding:10px;">Sin paquetes. Usa el formulario de abajo para añadir.</p>';
       }
+
+      container.querySelectorAll('.pkg-price').forEach(inp => {
+        updateProfitText(inp);
+        inp.addEventListener('input', function() { updateProfitText(this); });
+        inp.addEventListener('change', function() { updateProfitText(this); });
+      });
     }
 
     window.saveAllPrices = function() {
