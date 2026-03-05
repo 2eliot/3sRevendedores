@@ -624,8 +624,9 @@ def sync_dynamic_game_prices(game_id):
                 'precio_anterior': local['precio'],
                 'cambio': round(nuevo_precio - local['precio'], 4),
             }
-            conn.execute('UPDATE paquetes_dinamicos SET precio=?, fecha_actualizacion=CURRENT_TIMESTAMP WHERE id=?',
-                         (nuevo_precio, local['id']))
+            activo = 1 if float(nuevo_precio) > 0 else 0
+            conn.execute('UPDATE paquetes_dinamicos SET precio=?, activo=?, fecha_actualizacion=CURRENT_TIMESTAMP WHERE id=?',
+                         (nuevo_precio, activo, local['id']))
             conn.execute('INSERT OR REPLACE INTO precios_compra (juego, paquete_id, precio_compra) VALUES (?, ?, ?)',
                          (juego_key, local['id'], nuevo_costo))
             updated += 1
