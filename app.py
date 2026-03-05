@@ -5839,7 +5839,7 @@ def validar_freefire_id():
         redeem_result = None
         _redeem_start = _time.time()
         try:
-            redeem_result = redeem_pin_vps(pin_codigo, player_id, redeemer_config)
+            redeem_result = redeem_pin_vps(pin_codigo, player_id, redeemer_config, request_id=transaction_data['transaccion_id'])
         except Exception as e:
             logger.error(f"[FreeFire ID] Error en redencion automatica (VPS): {str(e)}")
             redeem_result = None
@@ -6398,7 +6398,7 @@ def approve_freefire_id_transaction(transaction_id):
             
             # 2. Ejecutar la redención automática en redeempins.com
             try:
-                redeem_result = redeem_pin_vps(pin_codigo, player_id, redeemer_config)
+                redeem_result = redeem_pin_vps(pin_codigo, player_id, redeemer_config, request_id=fi_transaction.get('transaccion_id'))
             except Exception as e:
                 # Si falla la redención, devolver el pin al inventario
                 try:

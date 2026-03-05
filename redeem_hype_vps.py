@@ -16,7 +16,7 @@ VPS_DEFAULT_URL = "http://74.208.158.70:5000/redeem"
 VPS_TIMEOUT_S = 120
 
 
-def redeem_pin_vps(pin_code, player_id, config=None):
+def redeem_pin_vps(pin_code, player_id, config=None, request_id=None):
     """
     Envía PIN + Player ID al VPS y recoge el resultado.
     El VPS ejecuta Playwright + captcha y devuelve éxito/error.
@@ -43,6 +43,8 @@ def redeem_pin_vps(pin_code, player_id, config=None):
         "birth_date": born_at,
         "country": country,
     }
+    if request_id:
+        payload["request_id"] = str(request_id)
 
     logger.info(f"[VPS] Enviando PIN {pin_code[:8]}... + ID {player_id} a {vps_url}")
 
