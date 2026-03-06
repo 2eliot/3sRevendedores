@@ -871,8 +871,9 @@ def validar_dinamico(slug):
         create_code = (create_data or {}).get('code')
         reference_no = (create_data or {}).get('referenceno', '')
 
-        # 4.1 order/inquiry — extraer ingamename (docs: campo opcional, aparece cuando el pedido está procesado)
+        # 4.1 order/inquiry — extraer ingamename y serialkey (Gift Cards)
         item_name = ''
+        serial_key = ''
         try:
             if reference_no:
                 # Retry inquiry con delay para dar tiempo a que el pedido se procese
@@ -882,8 +883,16 @@ def validar_dinamico(slug):
                     inq_data = order_inquiry(gc_token, reference_no)
                     ingame_name = (inq_data or {}).get('ingamename') or ''
                     item_name = (inq_data or {}).get('item') or ''
-                    logger.info(f"[DynGame:{game['slug']}] inquiry attempt {_attempt+1}: ingamename='{ingame_name}' | item='{item_name}'")
-                    if ingame_name:
+                    serial_key = (
+                        (inq_data or {}).get('serialkey') or
+                        (inq_data or {}).get('serial_key') or
+                        (inq_data or {}).get('pincode') or
+                        (inq_data or {}).get('pin_code') or
+                        (inq_data or {}).get('voucher') or
+                        (inq_data or {}).get('code') or ''
+                    )
+                    logger.info(f"[DynGame:{game['slug']}] inquiry attempt {_attempt+1}: ingamename='{ingame_name}' | item='{item_name}' | serialkey='{serial_key}' | all_fields={list((inq_data or {}).keys())}")
+                    if ingame_name or serial_key:
                         break
                 # Limpiar HTML del item (ej: "Blood Strike<br />300 + 20 Gold")
                 if item_name:
@@ -903,17 +912,19 @@ def validar_dinamico(slug):
             conn.execute('''
                 INSERT INTO transacciones_dinamicas
                 (juego_id, usuario_id, player_id, player_id2, servidor, paquete_id,
-                 numero_control, transaccion_id, monto, estado, gamepoint_referenceno, ingame_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 numero_control, transaccion_id, monto, estado, gamepoint_referenceno, ingame_name, pin_entregado)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (game['id'], user_id, player_id, player_id2 or None, servidor or None,
-                  package_id, numero_control, transaccion_id, precio, 'aprobado', reference_no, ingame_name))
+                  package_id, numero_control, transaccion_id, precio, 'aprobado', reference_no, ingame_name, serial_key or None))
 
             # Also insert into general transacciones table for unified history
-            if ingame_name:
+            if serial_key:
+                pin_info = f"Código: {serial_key} - Ref: {reference_no}"
+            elif ingame_name:
                 pin_info = f"ID: {player_id} - Jugador: {ingame_name} - Ref: {reference_no}"
             else:
                 pin_info = f"ID: {player_id} - Ref: {reference_no}"
-            if player_id2:
+            if player_id and player_id2 and not serial_key:
                 pin_info = f"ID: {player_id} / {player_id2} - " + pin_info.split(' - ', 1)[1]
 
             paquete_display = f"{game['nombre']} - {pkg['nombre']}"
@@ -979,6 +990,7 @@ def validar_dinamico(slug):
                 'player_name': ingame_name,
                 'estado': estado_txt,
                 'gamepoint_ref': reference_no,
+                'serial_key': serial_key,
             }
             return redirect(f'/juego/d/{slug}?compra=exitosa')
 

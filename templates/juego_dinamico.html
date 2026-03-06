@@ -263,7 +263,13 @@
         <div class="detalles-info">
           <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
           <p><strong>Paquete:</strong> {{ paquete_nombre }}</p>
-          <p><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>
+          {% if serial_key %}
+          <div style="margin:10px 0;padding:12px 14px;background:rgba(40,167,69,0.15);border:1px solid #28a745;border-radius:10px;">
+            <p style="color:#8896a6;font-size:0.85em;margin-bottom:4px;">Tu código / serial:</p>
+            <p style="font-size:1.15em;font-weight:700;letter-spacing:2px;color:#fff;word-break:break-all;">{{ serial_key }}</p>
+          </div>
+          {% endif %}
+          {% if player_id %}<p><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>{% endif %}
           {% if servidor %}<p><strong>Servidor:</strong> {{ servidor }}</p>{% endif %}
           {% if player_name %}<p><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
@@ -281,7 +287,13 @@
         <div class="detalles-info">
           <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
           <p><strong>Paquete:</strong> {{ paquete_nombre }}</p>
-          <p><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>
+          {% if serial_key %}
+          <div style="margin:10px 0;padding:12px 14px;background:rgba(40,167,69,0.15);border:1px solid #28a745;border-radius:10px;">
+            <p style="color:#8896a6;font-size:0.85em;margin-bottom:4px;">Tu código / serial:</p>
+            <p style="font-size:1.15em;font-weight:700;letter-spacing:2px;color:#fff;word-break:break-all;">{{ serial_key }}</p>
+          </div>
+          {% endif %}
+          {% if player_id %}<p><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>{% endif %}
           {% if servidor %}<p><strong>Servidor:</strong> {{ servidor }}</p>{% endif %}
           {% if player_name %}<p><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
@@ -290,7 +302,11 @@
         </div>
       </div>
       <div class="entrega-info">
+        {% if serial_key %}
+        <p>✅ Tu código fue generado exitosamente. Cópialo antes de salir.</p>
+        {% else %}
         <p>⏳ Tu recarga fue enviada al proveedor y está siendo procesada.</p>
+        {% endif %}
       </div>
       {% endif %}
     </div>
