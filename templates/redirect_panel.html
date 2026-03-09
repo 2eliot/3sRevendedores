@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel – Aviso de traslado</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #0d1117;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      color: #e6edf3;
+      padding: 24px;
+    }
+    .panel {
+      background: #161b22;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .panel-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+    .panel-sub {
+      font-size: 0.85rem;
+      color: #8b949e;
+      margin-bottom: 28px;
+    }
+    /* Status badge */
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+    .status-label { font-size: 0.9rem; font-weight: 600; }
+    .badge {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+    .badge-on  { background: rgba(40,167,69,0.2);  color: #28a745; border: 1px solid #28a745; }
+    .badge-off { background: rgba(220,53,69,0.2);  color: #dc3545; border: 1px solid #dc3545; }
+    /* URL input */
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #8b949e;
+      margin-bottom: 7px;
+    }
+    input[type="url"], input[type="text"] {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      color: #e6edf3;
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color .2s;
+      margin-bottom: 20px;
+    }
+    input:focus { border-color: rgba(88,166,255,0.6); }
+    /* Buttons */
+    .btn-row { display: flex; gap: 12px; }
+    .btn {
+      flex: 1;
+      padding: 11px 0;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-on  { background: #28a745; color: #fff; }
+    .btn-off { background: #dc3545; color: #fff; }
+    .btn-save { background: #1f6feb; color: #fff; flex: 2; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    /* Preview */
+    .preview-box {
+      margin-top: 28px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding-top: 20px;
+    }
+    .preview-label { font-size: 0.75rem; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    .banner-preview {
+      background: linear-gradient(135deg, #1a2332, #0d1b2a);
+      border: 1px solid rgba(88,166,255,0.35);
+      border-radius: 10px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .banner-preview p { font-size: 0.9rem; color: #c9d1d9; }
+    .banner-preview a {
+      display: inline-block;
+      background: #1f6feb;
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 18px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      align-self: flex-start;
+    }
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #238636;
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity .3s, transform .3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error { background: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div class="panel" data-activo="{{ '1' if aviso.activo else '0' }}">
+    <div class="panel-title">🔔 Aviso de traslado</div>
+    <div class="panel-sub">Controla el banner que aparece en la página de login.</div>
+
+    <div class="status-row">
+      <span class="status-label">Estado del aviso</span>
+      <span class="badge {% if aviso.activo %}badge-on{% else %}badge-off{% endif %}" id="status-badge">
+        {% if aviso.activo %}ACTIVO{% else %}INACTIVO{% endif %}
+      </span>
+    </div>
+
+    <label for="nueva-url">Nueva dirección (URL)</label>
+    <input type="url" id="nueva-url" placeholder="https://nueva-web.com" value="{{ aviso.url }}">
+
+    <div class="btn-row">
+      <button class="btn btn-on"  onclick="guardar('1')" id="btn-on">✅ Activar</button>
+      <button class="btn btn-off" onclick="guardar('0')" id="btn-off">🚫 Desactivar</button>
+      <button class="btn btn-save" onclick="guardar(null)" id="btn-save">💾 Guardar URL</button>
+    </div>
+
+    <div class="preview-box">
+      <div class="preview-label">Vista previa del banner</div>
+      <div class="banner-preview">
+        <p>📢 <strong>Hemos cambiado de dirección.</strong><br>Por favor dirígete a nuestra nueva página.</p>
+        <a id="preview-link" href="{{ aviso.url or '#' }}" target="_blank" rel="noopener">
+          Ir a la nueva dirección →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast">Guardado correctamente</div>
+
+  <script>
+    var currentActivo = document.querySelector('.panel').getAttribute('data-activo') === '1';
+
+    function guardar(nuevoEstado) {
+      var url = document.getElementById('nueva-url').value.trim();
+      var activo = nuevoEstado !== null ? nuevoEstado : (currentActivo ? '1' : '0');
+
+      var btn = document.getElementById(
+        nuevoEstado === '1' ? 'btn-on' : nuevoEstado === '0' ? 'btn-off' : 'btn-save'
+      );
+      btn.disabled = true;
+
+      var formData = new FormData();
+      formData.append('activo', activo);
+      formData.append('url', url);
+
+      fetch('/control-aviso/guardar', { method: 'POST', body: formData })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          btn.disabled = false;
+          if (data.ok) {
+            currentActivo = data.activo;
+            var badge = document.getElementById('status-badge');
+            badge.textContent = data.activo ? 'ACTIVO' : 'INACTIVO';
+            badge.className = 'badge ' + (data.activo ? 'badge-on' : 'badge-off');
+            var link = document.getElementById('preview-link');
+            link.href = data.url || '#';
+            showToast('Guardado correctamente', false);
+          } else {
+            showToast('Error: ' + data.error, true);
+          }
+        })
+        .catch(function(e) { btn.disabled = false; showToast('Error de red', true); });
+    }
+
+    function showToast(msg, isError) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'show' + (isError ? ' error' : '');
+      setTimeout(function() { t.className = ''; }, 2800);
+    }
+
+    document.getElementById('nueva-url').addEventListener('input', function() {
+      var link = document.getElementById('preview-link');
+      link.href = this.value || '#';
+    });
+  </script>
+</body>
+</html>

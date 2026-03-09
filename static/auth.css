@@ -3,10 +3,63 @@ body {
   background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   margin: 0;
   padding: 1rem;
+  gap: 16px;
+}
+
+/* Banner de aviso de traslado */
+.aviso-banner {
+  width: 100%;
+  max-width: 480px;
+  background: linear-gradient(135deg, rgba(30,58,138,0.9), rgba(17,24,39,0.95));
+  border: 1px solid rgba(88,166,255,0.45);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+  animation: slideDown .35s ease;
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.aviso-icon { font-size: 1.6rem; flex-shrink: 0; }
+.aviso-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.aviso-body strong {
+  color: #e2e8f0;
+  font-size: 0.95rem;
+}
+.aviso-body span {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+.aviso-btn {
+  flex-shrink: 0;
+  background: #1d4ed8;
+  color: #fff;
+  text-decoration: none;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 0.83rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.aviso-btn:hover { background: #2563eb; }
+@media (max-width: 520px) {
+  .aviso-banner { flex-direction: column; align-items: flex-start; }
+  .aviso-btn { align-self: stretch; text-align: center; }
 }
 
 .auth-panel {

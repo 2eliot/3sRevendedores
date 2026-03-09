@@ -2509,9 +2509,52 @@ def index():
                          total_notification_count=total_notification_count,
                          games_active=get_games_active())
 
+def _get_aviso_config():
+    """Lee config del banner de redirección desde la BD."""
+    try:
+        conn = get_db_connection()
+        rows = conn.execute(
+            "SELECT clave, valor FROM configuracion_redeemer WHERE clave IN ('aviso_activo', 'aviso_url')"
+        ).fetchall()
+        conn.close()
+        cfg = {r['clave']: r['valor'] for r in rows}
+        return {
+            'activo': cfg.get('aviso_activo', '0') == '1',
+            'url': cfg.get('aviso_url', ''),
+        }
+    except Exception:
+        return {'activo': False, 'url': ''}
+
+
 @app.route('/auth')
 def auth():
-    return render_template('auth.html')
+    aviso = _get_aviso_config()
+    return render_template('auth.html', aviso=aviso)
+
+
+@app.route('/control-aviso')
+def control_aviso():
+    aviso = _get_aviso_config()
+    return render_template('redirect_panel.html', aviso=aviso)
+
+
+@app.route('/control-aviso/guardar', methods=['POST'])
+def control_aviso_guardar():
+    activo = '1' if request.form.get('activo') == '1' else '0'
+    url = request.form.get('url', '').strip()
+    try:
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT OR REPLACE INTO configuracion_redeemer (clave, valor, fecha_actualizacion) VALUES ('aviso_activo', ?, datetime('now'))",
+            (activo,))
+        conn.execute(
+            "INSERT OR REPLACE INTO configuracion_redeemer (clave, valor, fecha_actualizacion) VALUES ('aviso_url', ?, datetime('now'))",
+            (url,))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    return jsonify({'ok': True, 'activo': activo == '1', 'url': url})
 
 @app.route('/login', methods=['POST'])
 def login():

@@ -8,6 +8,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  {% if aviso and aviso.activo %}
+  <div class="aviso-banner">
+    <div class="aviso-icon">📢</div>
+    <div class="aviso-body">
+      <strong>Hemos cambiado de dirección.</strong>
+      <span>Por favor dirígete a nuestra nueva página para continuar.</span>
+    </div>
+    <a class="aviso-btn" href="{{ aviso.url }}" target="_blank" rel="noopener noreferrer">
+      Ir a la nueva dirección →
+    </a>
+  </div>
+  {% endif %}
+
   <main class="auth-panel">
     <!-- Header -->
     <div class="auth-header">
@@ -26,6 +39,7 @@
       {% endif %}
     {% endwith %}
 
+    {% if not aviso or not aviso.activo %}
     <div class="tab-buttons">
       <button onclick="showTab('login')" id="login-tab" class="active-tab">Iniciar Sesión</button>
       <button onclick="showTab('register')" id="register-tab">Registrarse</button>
@@ -74,6 +88,7 @@
         <button type="submit" class="submit-btn">Crear Cuenta</button>
       </form>
     </div>
+    {% endif %}
   </main>
 
   <script>
