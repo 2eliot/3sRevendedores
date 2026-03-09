@@ -252,7 +252,7 @@
     </script>
 
     {% if compra_exitosa %}
-    <div class="compra-exitosa" id="compra-exitosa">
+    <div class="compra-exitosa" id="compra-exitosa" data-monto="{{ monto_compra }}">
       {% if estado == 'completado' %}
       <h3>¡Recarga Realizada con Éxito!</h3>
       <div class="solicitud-container">
@@ -352,22 +352,23 @@
     document.addEventListener('DOMContentLoaded', function() {
       var el = document.getElementById('compra-exitosa');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      {% if compra_exitosa %}
-      var saldoDisplay = document.getElementById('saldo-display');
-      if (saldoDisplay) {
-        var saldoActual = parseFloat(saldoDisplay.getAttribute('data-saldo'));
-        var montoCompra = {{ monto_compra }};
-        var saldoAnterior = saldoActual + montoCompra;
-        saldoDisplay.style.color = '#dc3545';
-        var currentValue = saldoAnterior, step = 0, steps = 30;
-        var decrement = (saldoAnterior - saldoActual) / steps;
-        var timer = setInterval(function() {
-          step++; currentValue -= decrement;
-          if (step >= steps) { currentValue = saldoActual; clearInterval(timer); setTimeout(function(){ saldoDisplay.style.color = '#28a745'; }, 100); }
-          saldoDisplay.textContent = '$' + currentValue.toFixed(2);
-        }, 800/steps);
+      var compraEl = document.getElementById('compra-exitosa');
+      if (compraEl) {
+        var saldoDisplay = document.getElementById('saldo-display');
+        if (saldoDisplay) {
+          var saldoActual = parseFloat(saldoDisplay.getAttribute('data-saldo'));
+          var montoCompra = parseFloat(compraEl.getAttribute('data-monto') || '0');
+          var saldoAnterior = saldoActual + montoCompra;
+          saldoDisplay.style.color = '#dc3545';
+          var currentValue = saldoAnterior, step = 0, steps = 30;
+          var decrement = (saldoAnterior - saldoActual) / steps;
+          var timer = setInterval(function() {
+            step++; currentValue -= decrement;
+            if (step >= steps) { currentValue = saldoActual; clearInterval(timer); setTimeout(function(){ saldoDisplay.style.color = '#28a745'; }, 100); }
+            saldoDisplay.textContent = '$' + currentValue.toFixed(2);
+          }, 800/steps);
+        }
       }
-      {% endif %}
     });
     document.addEventListener('click', function(event) {
       var userBox = document.getElementById('user-box'), userIcon = document.querySelector('.user-icon');
