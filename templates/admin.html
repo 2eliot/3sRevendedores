@@ -368,7 +368,16 @@
 
         <div id="package-list" class="package-list"></div>
       </div>
-      
+
+      <!-- Restaurar backup de pines -->
+      <div style="margin-top:20px;padding:14px 18px;background:rgba(88,166,255,0.06);border:1px solid rgba(88,166,255,0.2);border-radius:10px;">
+        <h4 style="color:#58a6ff;margin:0 0 8px;font-size:14px;">🗂️ Restaurar Backup de Pines</h4>
+        <p style="color:#8b949e;font-size:12px;margin:0 0 10px;">Importa un archivo <strong style="color:#c9d1d9;">backup_YYYY-MM-DD.zip</strong> recibido por correo para restablecer el stock de pines Free Fire Global sin duplicados.</p>
+        <form method="POST" action="/admin/restore_backup" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <input type="file" name="backup_zip" accept=".zip" required style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e6edf3;padding:6px 10px;font-size:13px;flex:1;min-width:200px;">
+          <button type="submit" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap;">📥 Importar Backup</button>
+        </form>
+      </div>
         
         </section>
       </div>

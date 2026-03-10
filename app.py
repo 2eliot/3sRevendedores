@@ -44,6 +44,8 @@ from redeem_hype_vps import redeem_pin_vps
 from functools import lru_cache
 import random
 import string
+import zipfile
+import io
 from admin_stats import bp as admin_stats_bp
 from dynamic_games import bp as dynamic_games_bp, get_all_dynamic_games as get_dynamic_games_list, sync_all_dynamic_games_prices
 from update_monthly_spending import update_monthly_spending
@@ -9179,6 +9181,165 @@ def admin_get_user_costos_detail(day, user_id):
         print(f"Error en admin_get_user_costos_detail: {e}")
         import traceback; traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Daily Backup — clientes + pines Free Fire Global
+# ---------------------------------------------------------------------------
+
+def _build_backup_zip():
+    """Genera un ZIP en memoria con clientes.csv y pines por paquete."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        conn = get_db_connection()
+
+        # --- clientes.csv ---
+        users = conn.execute(
+            'SELECT correo, nombre, apellido, saldo FROM usuarios ORDER BY id'
+        ).fetchall()
+        csv_buf = io.StringIO()
+        w = csv.writer(csv_buf)
+        w.writerow(['correo', 'nombre', 'apellido', 'saldo'])
+        for u in users:
+            w.writerow([u['correo'], u['nombre'], u['apellido'], u['saldo']])
+        zf.writestr('clientes.csv', csv_buf.getvalue())
+
+        # --- pines_freefire_global_<monto_id>.csv (solo no usados) ---
+        monto_ids = conn.execute(
+            'SELECT DISTINCT monto_id FROM pines_freefire_global WHERE usado = 0 ORDER BY monto_id'
+        ).fetchall()
+        for row in monto_ids:
+            mid = row['monto_id']
+            pins = conn.execute(
+                'SELECT pin_codigo, batch_id FROM pines_freefire_global WHERE monto_id = ? AND usado = 0',
+                (mid,)
+            ).fetchall()
+            pin_buf = io.StringIO()
+            pw = csv.writer(pin_buf)
+            pw.writerow(['monto_id', 'pin_codigo', 'batch_id'])
+            for p in pins:
+                pw.writerow([mid, p['pin_codigo'], p['batch_id'] or ''])
+            zf.writestr(f'pines_freefire_global_{mid}.csv', pin_buf.getvalue())
+
+        conn.close()
+    buf.seek(0)
+    return buf
+
+
+def _send_daily_backup():
+    """Envía el backup por correo al MAIL_USERNAME configurado."""
+    dest = app.config.get('MAIL_USERNAME')
+    if not dest:
+        logger.warning('[Backup] MAIL_USERNAME no configurado, omitiendo envío.')
+        return
+    try:
+        with app.app_context():
+            fecha = datetime.now(pytz.timezone('America/Caracas')).strftime('%Y-%m-%d')
+            zip_buf = _build_backup_zip()
+            msg = Message(
+                subject=f'[Inefable Store] Backup diario {fecha}',
+                recipients=[dest],
+                body=(
+                    f'Backup automático generado el {fecha}.\n\n'
+                    'Adjunto:\n'
+                    '  • clientes.csv — correo, nombre, apellido y saldo de todos los clientes\n'
+                    '  • pines_freefire_global_X.csv — pines no usados por paquete\n\n'
+                    'Para restaurar pines, usa el botón "Importar Backup" en el panel de Pines del admin.'
+                )
+            )
+            msg.attach(
+                filename=f'backup_{fecha}.zip',
+                content_type='application/zip',
+                data=zip_buf.read()
+            )
+            mail.send(msg)
+            logger.info(f'[Backup] Backup diario enviado a {dest}')
+    except Exception as e:
+        logger.error(f'[Backup] Error enviando backup: {e}')
+
+
+def _backup_scheduler_thread():
+    """Espera hasta medianoche y envía backup cada 24 h."""
+    logger.info('[Backup] Thread de backup diario iniciado.')
+    while True:
+        now = datetime.now(pytz.timezone('America/Caracas'))
+        # Próxima medianoche
+        next_midnight = (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        sleep_secs = (next_midnight - now).total_seconds()
+        logger.info(f'[Backup] Próximo backup en {sleep_secs/3600:.1f} h')
+        time_module.sleep(sleep_secs)
+        _send_daily_backup()
+
+
+# Iniciar thread de backup (evita doble arranque en modo debug)
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+    _bt = threading.Thread(target=_backup_scheduler_thread, daemon=True)
+    _bt.start()
+
+
+@app.route('/admin/restore_backup', methods=['POST'])
+def admin_restore_backup():
+    if not session.get('is_admin'):
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    f = request.files.get('backup_zip')
+    if not f or not f.filename.endswith('.zip'):
+        flash('Sube un archivo .zip de backup válido.', 'error')
+        return redirect('/admin')
+
+    try:
+        raw = f.read()
+        buf = io.BytesIO(raw)
+        restored_pins = 0
+        restored_packages = []
+
+        with zipfile.ZipFile(buf, 'r') as zf:
+            for name in zf.namelist():
+                # Restaurar pines Free Fire Global
+                if name.startswith('pines_freefire_global_') and name.endswith('.csv'):
+                    try:
+                        mid = int(name.replace('pines_freefire_global_', '').replace('.csv', ''))
+                    except ValueError:
+                        continue
+                    content = zf.read(name).decode('utf-8', errors='ignore')
+                    reader = csv.DictReader(io.StringIO(content))
+                    pins_list = [row['pin_codigo'].strip() for row in reader
+                                 if row.get('pin_codigo', '').strip()]
+                    if pins_list:
+                        conn = get_db_connection()
+                        batch_id = _generate_batch_id()
+                        added = 0
+                        for pin in pins_list:
+                            try:
+                                conn.execute(
+                                    'INSERT OR IGNORE INTO pines_freefire_global (monto_id, pin_codigo, batch_id) VALUES (?,?,?)',
+                                    (mid, pin, batch_id)
+                                )
+                                added += conn.execute(
+                                    'SELECT changes()'
+                                ).fetchone()[0]
+                            except Exception:
+                                pass
+                        conn.commit()
+                        conn.close()
+                        restored_pins += added
+                        if added:
+                            restored_packages.append(f'monto #{mid}: {added} pines')
+
+        if restored_pins:
+            flash(f'Backup restaurado: {restored_pins} pines importados ({", ".join(restored_packages)})', 'success')
+        else:
+            flash('No se encontraron pines nuevos en el backup (puede que ya estén en stock).', 'warning')
+
+    except zipfile.BadZipFile:
+        flash('El archivo no es un ZIP válido.', 'error')
+    except Exception as e:
+        logger.error(f'[Restore] Error restaurando backup: {e}')
+        flash(f'Error al restaurar backup: {e}', 'error')
+
+    return redirect('/admin')
 
 
 if __name__ == '__main__':
