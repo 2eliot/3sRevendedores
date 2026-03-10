@@ -9266,7 +9266,7 @@ def api_recharge_freefire_id():
             _c.close()
         except Exception:
             pass
-        err_msg = (redeem_result.error_message if redeem_result else None) or 'Redención fallida'
+        err_msg = (redeem_result.message if redeem_result else None) or 'Redención fallida'
         _log_api_recharge(False, error_msg=err_msg)
         logger.warning(f'[API FF-ID] Redención fallida player={player_id} pkg={package_id}: {err_msg}')
         return jsonify({'ok': False, 'error': err_msg}), 422
