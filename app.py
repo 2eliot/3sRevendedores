@@ -945,6 +945,21 @@ def init_db():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tx_din_usuario ON transacciones_dinamicas(usuario_id, fecha DESC)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tx_din_juego ON transacciones_dinamicas(juego_id, fecha DESC)')
 
+        # Tabla de log de recargas via API (Inefable Store)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS api_recharges_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_id TEXT NOT NULL,
+                package_id INTEGER NOT NULL,
+                success BOOLEAN NOT NULL,
+                player_name TEXT DEFAULT '',
+                error_msg TEXT DEFAULT '',
+                duration_seconds REAL DEFAULT 0,
+                fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_api_log_fecha ON api_recharges_log(fecha DESC)')
+
         # Crear índices optimizados para mejor rendimiento
         create_optimized_indexes(cursor)
         
@@ -9225,19 +9240,34 @@ def api_recharge_freefire_id():
         return jsonify({'ok': False, 'error': f'Error interno: {e}'}), 500
     _dur = round(_t.time() - _start, 1)
 
+    def _log_api_recharge(success, player_name='', error_msg=''):
+        try:
+            _lc = get_db_connection()
+            _lc.execute(
+                'INSERT INTO api_recharges_log (player_id, package_id, success, player_name, error_msg, duration_seconds) VALUES (?,?,?,?,?,?)',
+                (player_id, package_id, 1 if success else 0, player_name, error_msg, _dur)
+            )
+            _lc.commit()
+            _lc.close()
+        except Exception as _le:
+            logger.warning(f'[API FF-ID] No se pudo guardar log: {_le}')
+
     if redeem_result and redeem_result.success:
+        pname = redeem_result.player_name or ''
+        _log_api_recharge(True, player_name=pname)
         logger.info(f'[API FF-ID] Recarga exitosa player={player_id} pkg={package_id} dur={_dur}s')
-        return jsonify({'ok': True, 'player_name': redeem_result.player_name or '', 'duration': _dur})
+        return jsonify({'ok': True, 'player_name': pname, 'duration': _dur})
     else:
         # Devolver el PIN al stock
         try:
             _c = get_db_connection()
-            _c.execute('UPDATE pines_freefire_global SET usado = 0, usuario_id = NULL, fecha_usado = NULL WHERE pin_codigo = ?', (pin_codigo,))
+            _c.execute('INSERT OR IGNORE INTO pines_freefire_global (monto_id, pin_codigo) VALUES (?,?)', (package_id, pin_codigo))
             _c.commit()
             _c.close()
         except Exception:
             pass
         err_msg = (redeem_result.error_message if redeem_result else None) or 'Redención fallida'
+        _log_api_recharge(False, error_msg=err_msg)
         logger.warning(f'[API FF-ID] Redención fallida player={player_id} pkg={package_id}: {err_msg}')
         return jsonify({'ok': False, 'error': err_msg}), 422
 
@@ -9336,6 +9366,21 @@ def _backup_scheduler_thread():
 if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
     _bt = threading.Thread(target=_backup_scheduler_thread, daemon=True)
     _bt.start()
+
+
+@app.route('/admin/api_recharges_log')
+def admin_api_recharges_log():
+    if not session.get('is_admin'):
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    try:
+        conn = get_db_connection()
+        rows = conn.execute(
+            'SELECT id, player_id, package_id, success, player_name, error_msg, duration_seconds, fecha FROM api_recharges_log ORDER BY fecha DESC LIMIT 100'
+        ).fetchall()
+        conn.close()
+        return jsonify({'ok': True, 'logs': [dict(r) for r in rows]})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
 
 
 @app.route('/admin/restore_backup', methods=['POST'])

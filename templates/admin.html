@@ -61,6 +61,9 @@
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10H7z"/><path d="M4 4h4"/><path d="M16 4h4"/><path d="M4 20h4"/><path d="M16 20h4"/></svg></span><span class="label">GameClub</span>
         </button>
         <!-- Redeemer oculto - se usa VPS externo -->
+        <button class="side-tab-button" data-tab="apilog" onclick="showTab('apilog', event)" aria-label="Recargas API">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span><span class="label">Recargas</span>
+        </button>
         <a class="side-tab-button" href="/" aria-label="Volver al Inicio" style="text-decoration:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7"/><path d="M9 22V12h6v10"/></svg></span><span class="label">Inicio</span>
         </a>
@@ -379,6 +382,19 @@
         </form>
       </div>
         
+        </section>
+      </div>
+
+      <!-- Pestaña de Recargas API (Inefable Store) -->
+      <div id="tab-apilog" class="tab-content">
+        <section class="prices-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+            <h2 style="margin:0;">🔁 Recargas vía Inefable Store</h2>
+            <button type="button" class="btn btn-secondary" style="padding:7px 14px;font-size:13px;" onclick="loadApiLog()">🔄 Actualizar</button>
+          </div>
+          <div id="apilog-table-wrap" style="overflow-x:auto;">
+            <div style="text-align:center;padding:30px;color:#888;">Haz clic en Actualizar para cargar el log.</div>
+          </div>
         </section>
       </div>
 
@@ -760,8 +776,49 @@
         flashMessages.style.opacity = '0';
         setTimeout(() => flashMessages.remove(), 300);
       }
-
     }, 2000);
+
+    // Log de recargas API (Inefable Store)
+    async function loadApiLog() {
+      const wrap = document.getElementById('apilog-table-wrap');
+      wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Cargando...</div>';
+      try {
+        const res = await fetch('/admin/api_recharges_log');
+        const data = await res.json();
+        if (!data.ok) { wrap.innerHTML = '<div style="color:#f87171;padding:16px;">Error: ' + (data.error||'?') + '</div>'; return; }
+        if (!data.logs.length) { wrap.innerHTML = '<div style="text-align:center;padding:30px;color:#888;">Sin recargas registradas aún.</div>'; return; }
+        const pkgMap = {1:'100+10💎',2:'310+31💎',3:'520+52💎',4:'1.060+106💎',5:'2.180+218💎',6:'5.600+560💎'};
+        let html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+        html += '<thead><tr style="background:rgba(255,255,255,0.05);color:#8b949e;">'
+              + '<th style="padding:8px 10px;text-align:left;">#</th>'
+              + '<th style="padding:8px 10px;text-align:left;">Fecha</th>'
+              + '<th style="padding:8px 10px;text-align:left;">Player ID</th>'
+              + '<th style="padding:8px 10px;text-align:left;">Paquete</th>'
+              + '<th style="padding:8px 10px;text-align:left;">Jugador</th>'
+              + '<th style="padding:8px 10px;text-align:left;">Estado</th>'
+              + '<th style="padding:8px 10px;text-align:left;">Duración</th>'
+              + '</tr></thead><tbody>';
+        for (const r of data.logs) {
+          const ok = r.success == 1;
+          const estado = ok
+            ? '<span style="color:#4ade80;font-weight:600;">✅ Exitosa</span>'
+            : '<span style="color:#f87171;" title="' + (r.error_msg||'') + '">❌ ' + (r.error_msg||'Error').substring(0,40) + '</span>';
+          html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">'
+                + '<td style="padding:7px 10px;color:#555;">' + r.id + '</td>'
+                + '<td style="padding:7px 10px;color:#aaa;white-space:nowrap;">' + (r.fecha||'').replace('T',' ').substring(0,19) + '</td>'
+                + '<td style="padding:7px 10px;color:#e0e0e0;font-family:monospace;">' + r.player_id + '</td>'
+                + '<td style="padding:7px 10px;color:#a78bfa;">' + (pkgMap[r.package_id]||'Pkg '+r.package_id) + '</td>'
+                + '<td style="padding:7px 10px;color:#58a6ff;">' + (r.player_name||'-') + '</td>'
+                + '<td style="padding:7px 10px;">' + estado + '</td>'
+                + '<td style="padding:7px 10px;color:#888;">' + (r.duration_seconds||0) + 's</td>'
+                + '</tr>';
+        }
+        html += '</tbody></table>';
+        wrap.innerHTML = html;
+      } catch(e) {
+        wrap.innerHTML = '<div style="color:#f87171;padding:16px;">Error de red: ' + e + '</div>';
+      }
+    }
 
     // AJAX submit para pines (sin recargar página)
     async function submitPinAjax(evt, form, url) {
