@@ -9199,6 +9199,200 @@ def admin_get_user_costos_detail(day, user_id):
 
 
 # ---------------------------------------------------------------------------
+# API catálogo activo para Inefable Store (sync de paquetes)
+# ---------------------------------------------------------------------------
+
+@app.route('/api/catalog/active', methods=['GET'])
+def api_catalog_active():
+    """Devuelve todos los paquetes activos (Free Fire ID + juegos dinámicos modo ID)
+    para que Inefable Store pueda sincronizar su catálogo de mapeo."""
+    env_key = os.environ.get('WEBB_API_KEY', '').strip()
+    req_key = (request.args.get('api_key') or request.headers.get('X-API-Key') or '').strip()
+    if not env_key or req_key != env_key:
+        return jsonify({'ok': False, 'error': 'API key inválida'}), 401
+
+    items = []
+
+    # 1. Free Fire ID packages
+    try:
+        conn = get_db_connection()
+        ff_rows = conn.execute(
+            'SELECT id, nombre, precio FROM precios_freefire_id WHERE activo = TRUE ORDER BY id'
+        ).fetchall()
+        conn.close()
+        for r in ff_rows:
+            items.append({
+                'package_id': r['id'],
+                'name': r['nombre'],
+                'product_id': None,
+                'product_name': 'Free Fire ID',
+                'active': True,
+            })
+    except Exception as e:
+        logger.warning(f'[API Catalog] Error leyendo precios_freefire_id: {e}')
+
+    # 2. Dynamic games (modo ID) packages
+    try:
+        from dynamic_games import get_all_dynamic_games, get_dynamic_packages
+        dyn_games = get_all_dynamic_games(only_active=True)
+        for game in dyn_games:
+            if (game.get('modo') or 'id') != 'id':
+                continue
+            pkgs = get_dynamic_packages(game['id'], only_active=True)
+            for pkg in pkgs:
+                items.append({
+                    'package_id': pkg['id'],
+                    'name': pkg['nombre'],
+                    'product_id': game['id'],
+                    'product_name': game['nombre'],
+                    'game_id': game['id'],
+                    'active': True,
+                })
+    except Exception as e:
+        logger.warning(f'[API Catalog] Error leyendo juegos dinámicos: {e}')
+
+    return jsonify({'ok': True, 'items': items, 'total': len(items)})
+
+
+# ---------------------------------------------------------------------------
+# API endpoint para Inefable Store → recarga juegos dinámicos (GamePoint)
+# ---------------------------------------------------------------------------
+
+@app.route('/api/recharge/dynamic', methods=['POST'])
+def api_recharge_dynamic():
+    """Endpoint unificado para Inefable Store. Maneja recargas de juegos dinámicos
+    vía GamePoint API, y delega Free Fire ID al endpoint existente."""
+    env_key = os.environ.get('WEBB_API_KEY', '').strip()
+    req_key = (request.form.get('api_key') or '').strip()
+    if not env_key or req_key != env_key:
+        return jsonify({'ok': False, 'error': 'API key inválida'}), 401
+
+    player_id  = (request.form.get('player_id') or '').strip()
+    pkg_id_str = (request.form.get('package_id') or '').strip()
+    if not player_id or not pkg_id_str:
+        return jsonify({'ok': False, 'error': 'player_id y package_id son requeridos'}), 400
+
+    try:
+        package_id = int(pkg_id_str)
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'package_id debe ser un número'}), 400
+
+    player_id2 = (request.form.get('player_id2') or '').strip()
+    product_id_str = (request.form.get('product_id') or '').strip()
+
+    # --- Intentar como juego dinámico primero ---
+    from dynamic_games import get_dynamic_package_by_id, get_dynamic_game_by_id
+
+    dyn_pkg = get_dynamic_package_by_id(package_id)
+    if dyn_pkg and dyn_pkg.get('gamepoint_package_id'):
+        game = get_dynamic_game_by_id(dyn_pkg['juego_id'])
+        if not game:
+            return jsonify({'ok': False, 'error': 'Juego dinámico no encontrado'}), 404
+        if not game.get('activo'):
+            return jsonify({'ok': False, 'error': 'Juego dinámico desactivado'}), 400
+        if not dyn_pkg.get('activo'):
+            return jsonify({'ok': False, 'error': 'Paquete dinámico desactivado'}), 400
+
+        import time as _t
+        _start = _t.time()
+
+        try:
+            # 1. Get GamePoint token
+            gc_token, gc_err = _gameclub_get_token()
+            if not gc_token:
+                err = (gc_err or {}).get('message', 'No se pudo obtener token de GamePoint')
+                logger.error(f'[API DynRecharge] Token error: {err}')
+                return jsonify({'ok': False, 'error': f'Error proveedor: {err}'}), 502
+
+            # 2. Validate order
+            input_fields = {'input1': str(player_id)}
+            if player_id2:
+                input_fields['input2'] = str(player_id2)
+
+            validate_data = _gameclub_order_validate(gc_token, game['gamepoint_product_id'], input_fields)
+            validate_code = (validate_data or {}).get('code')
+            if validate_code != 200 or not (validate_data or {}).get('validation_token'):
+                err_msg = (validate_data or {}).get('message', 'Error validando orden')
+                logger.error(f'[API DynRecharge] Validate failed: code={validate_code} msg={err_msg}')
+                return jsonify({'ok': False, 'error': f'Validación falló: {err_msg}'}), 422
+
+            validation_token = validate_data['validation_token']
+
+            # 3. Create order
+            merchant_code = f"API-DG{game['id']}-" + secrets.token_hex(6).upper()
+            gp_package_id = dyn_pkg['gamepoint_package_id']
+            create_data = _gameclub_order_create(gc_token, validation_token, gp_package_id, merchant_code)
+            create_code = (create_data or {}).get('code')
+            reference_no = (create_data or {}).get('referenceno', '')
+
+            _dur = round(_t.time() - _start, 1)
+
+            if create_code in (100, 101):
+                # 4. Inquiry para obtener ingamename
+                ingame_name = ''
+                try:
+                    if reference_no:
+                        for _attempt in range(3):
+                            if _attempt > 0:
+                                _t.sleep(1.5)
+                            inq_data = _gameclub_order_inquiry(gc_token, reference_no)
+                            ingame_name = (inq_data or {}).get('ingamename') or ''
+                            if ingame_name:
+                                break
+                except Exception as e:
+                    logger.warning(f'[API DynRecharge] Inquiry error: {e}')
+
+                # Log
+                try:
+                    _lc = get_db_connection()
+                    _lc.execute(
+                        'INSERT INTO api_recharges_log (player_id, package_id, success, player_name, error_msg, duration_seconds) VALUES (?,?,?,?,?,?)',
+                        (player_id, package_id, 1, ingame_name, '', _dur)
+                    )
+                    _lc.commit()
+                    _lc.close()
+                except Exception:
+                    pass
+
+                logger.info(f'[API DynRecharge] OK game={game["nombre"]} player={player_id} pkg={package_id} gp_pkg={gp_package_id} dur={_dur}s')
+                return jsonify({
+                    'ok': True,
+                    'player_name': ingame_name,
+                    'duration': _dur,
+                    'reference_no': reference_no,
+                    'game': game['nombre'],
+                })
+            else:
+                err_msg = (create_data or {}).get('message', 'Error creando orden en GamePoint')
+                logger.error(f'[API DynRecharge] Create failed: code={create_code} msg={err_msg}')
+
+                try:
+                    _lc = get_db_connection()
+                    _lc.execute(
+                        'INSERT INTO api_recharges_log (player_id, package_id, success, player_name, error_msg, duration_seconds) VALUES (?,?,?,?,?,?)',
+                        (player_id, package_id, 0, '', err_msg, _dur)
+                    )
+                    _lc.commit()
+                    _lc.close()
+                except Exception:
+                    pass
+
+                return jsonify({'ok': False, 'error': err_msg}), 422
+
+        except Exception as e:
+            logger.error(f'[API DynRecharge] Error general: {e}')
+            return jsonify({'ok': False, 'error': f'Error interno: {str(e)}'}), 500
+
+    # --- Fallback: intentar como Free Fire ID ---
+    precio = get_freefire_id_price_by_id(package_id)
+    if precio > 0:
+        # Delegar al endpoint de Free Fire ID reutilizando la lógica
+        return api_recharge_freefire_id()
+
+    return jsonify({'ok': False, 'error': f'Paquete {package_id} no encontrado en juegos dinámicos ni Free Fire ID'}), 404
+
+
+# ---------------------------------------------------------------------------
 # API endpoint para Inefable Store → recarga Free Fire ID sin sesión
 # ---------------------------------------------------------------------------
 
