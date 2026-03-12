@@ -18,7 +18,11 @@ import os
 import subprocess
 import shutil
 from datetime import datetime
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
+try:
+    from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
+except ImportError:
+    async_playwright = None
+    PlaywrightTimeout = None
 
 logger = logging.getLogger(__name__)
 
