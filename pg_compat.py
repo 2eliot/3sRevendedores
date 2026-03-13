@@ -33,6 +33,40 @@ _DATETIME_RE = re.compile(r'\bDATETIME\b', re.IGNORECASE)
 _TEXT_DT_RE  = re.compile(r"TEXT\s+DEFAULT\s+\(datetime\('now'\)\)", re.IGNORECASE)
 _SQLITE_MASTER_RE = re.compile(r'\bsqlite_master\b', re.IGNORECASE)
 _STRFTIME_RE = re.compile(r"strftime\(\s*'([^']+)'\s*,\s*([^)]+)\)", re.IGNORECASE)
+# DATE(expr, '-N hours/minutes/days') → DATE(expr - INTERVAL 'N hours/minutes/days')
+_DATE_MODIFIER_RE = re.compile(
+    r"DATE\((.+?),\s*'([+-]?\s*\d+)\s+(hours?|minutes?|days?|seconds?)'\s*\)",
+    re.IGNORECASE
+)
+# datetime('now', '-N hours/minutes') → (NOW() - INTERVAL 'N hours/minutes')
+_DT_NOW_MOD_RE = re.compile(
+    r"datetime\(\s*'now'\s*,\s*'([+-]?\s*\d+)\s+(hours?|minutes?|days?|seconds?)'\s*\)",
+    re.IGNORECASE
+)
+
+
+def _replace_date_modifier(match):
+    expr = match.group(1).strip()
+    offset = match.group(2).strip()
+    unit = match.group(3).strip()
+    # Normalize sign: SQLite uses '-48 hours'; PG needs INTERVAL subtraction
+    if offset.startswith('-'):
+        return f"DATE({expr} - INTERVAL '{offset.lstrip('-').strip()} {unit}')"
+    elif offset.startswith('+'):
+        return f"DATE({expr} + INTERVAL '{offset.lstrip('+').strip()} {unit}')"
+    else:
+        return f"DATE({expr} + INTERVAL '{offset} {unit}')"
+
+
+def _replace_dt_now_modifier(match):
+    offset = match.group(1).strip()
+    unit = match.group(2).strip()
+    if offset.startswith('-'):
+        return f"(NOW() - INTERVAL '{offset.lstrip('-').strip()} {unit}')"
+    elif offset.startswith('+'):
+        return f"(NOW() + INTERVAL '{offset.lstrip('+').strip()} {unit}')"
+    else:
+        return f"(NOW() + INTERVAL '{offset} {unit}')"
 
 
 def _replace_strftime(match):
@@ -73,8 +107,17 @@ def _convert_sql(sql: str):
     # SQLite strftime(...) -> PostgreSQL to_char(...)
     sql = _STRFTIME_RE.sub(_replace_strftime, sql)
 
+    # DATE(expr, '-N hours') → DATE(expr - INTERVAL 'N hours')
+    sql = _DATE_MODIFIER_RE.sub(_replace_date_modifier, sql)
+
+    # datetime('now', '-N hours') → (NOW() - INTERVAL 'N hours')  — must come BEFORE plain datetime('now')
+    sql = _DT_NOW_MOD_RE.sub(_replace_dt_now_modifier, sql)
+
     # datetime('now') → NOW()
     sql = _DT_NOW_RE.sub("NOW()", sql)
+
+    # Remaining datetime(expr) → (expr)::timestamp  (SQLite cast; PG columns are already timestamps)
+    sql = re.sub(r"datetime\(([^)]+)\)", r"(\1)::timestamp", sql, flags=re.IGNORECASE)
 
     # Escape literal % so psycopg doesn't parse e.g. %Y as placeholders.
     # Preserve valid placeholders: %s, %b, %t and %%.
