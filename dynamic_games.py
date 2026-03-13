@@ -53,8 +53,9 @@ def set_gp_myr_rate(rate: float):
     """Guarda la tasa MYR→USD en la BD."""
     conn = _get_conn()
     conn.execute(
-        "INSERT OR REPLACE INTO configuracion_redeemer (clave, valor, fecha_actualizacion) "
-        "VALUES (?, ?, datetime('now'))",
+        "INSERT INTO configuracion_redeemer (clave, valor, fecha_actualizacion) "
+        "VALUES (?, ?, datetime('now')) "
+        "ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, fecha_actualizacion = EXCLUDED.fecha_actualizacion",
         (GP_MYR_RATE_KEY, str(rate))
     )
     conn.commit()
@@ -64,7 +65,7 @@ def set_gp_myr_rate(rate: float):
 def get_all_dynamic_games(only_active=False):
     conn = _get_conn()
     if only_active:
-        rows = conn.execute('SELECT * FROM juegos_dinamicos WHERE activo = 1 ORDER BY nombre').fetchall()
+        rows = conn.execute('SELECT * FROM juegos_dinamicos WHERE activo = TRUE ORDER BY nombre').fetchall()
     else:
         rows = conn.execute('SELECT * FROM juegos_dinamicos ORDER BY nombre').fetchall()
     conn.close()
@@ -89,7 +90,7 @@ def get_dynamic_packages(game_id, only_active=False):
     conn = _get_conn()
     if only_active:
         rows = conn.execute(
-            'SELECT * FROM paquetes_dinamicos WHERE juego_id = ? AND activo = 1 ORDER BY orden, id',
+            'SELECT * FROM paquetes_dinamicos WHERE juego_id = ? AND activo = TRUE ORDER BY orden, id',
             (game_id,)
         ).fetchall()
     else:
@@ -417,7 +418,7 @@ def admin_add_package(game_id):
         costo_estimado = max(0, precio - game.get('ganancia_default', 0.10))
         try:
             conn.execute(
-                'INSERT OR REPLACE INTO precios_compra (juego, paquete_id, precio_compra) VALUES (?, ?, ?)',
+                'INSERT INTO precios_compra (juego, paquete_id, precio_compra) VALUES (?, ?, ?) ON CONFLICT (juego, paquete_id) DO UPDATE SET precio_compra = EXCLUDED.precio_compra',
                 (juego_key, pkg_id, costo_estimado)
             )
             conn.commit()
@@ -682,10 +683,10 @@ def sync_dynamic_game_prices(game_id):
                 'precio_anterior': local['precio'],
                 'cambio': round(nuevo_precio - local['precio'], 4),
             }
-            activo = 1 if float(nuevo_precio) > 0 else 0
+            activo = True if float(nuevo_precio) > 0 else False
             conn.execute('UPDATE paquetes_dinamicos SET precio=?, activo=?, fecha_actualizacion=CURRENT_TIMESTAMP WHERE id=?',
                          (nuevo_precio, activo, local['id']))
-            conn.execute('INSERT OR REPLACE INTO precios_compra (juego, paquete_id, precio_compra) VALUES (?, ?, ?)',
+            conn.execute('INSERT INTO precios_compra (juego, paquete_id, precio_compra) VALUES (?, ?, ?) ON CONFLICT (juego, paquete_id) DO UPDATE SET precio_compra = EXCLUDED.precio_compra',
                          (juego_key, local['id'], nuevo_costo))
             updated += 1
         else:
@@ -1194,15 +1195,14 @@ def poll_pending_dynamic_transactions():
             JOIN juegos_dinamicos jd ON td.juego_id = jd.id
             WHERE td.gamepoint_referenceno IS NOT NULL
               AND td.gamepoint_referenceno != ''
-              AND datetime(td.fecha) >= datetime('now', '-48 hours')
+              AND td.fecha >= (NOW() - INTERVAL '48 hours')
               AND (
                 td.estado = 'pendiente'
                 OR (
                   td.estado = 'aprobado'
                   AND td.pin_entregado IS NOT NULL
                   AND LENGTH(td.pin_entregado) <= 6
-                  AND CAST(td.pin_entregado AS TEXT) = td.pin_entregado
-                  AND td.pin_entregado GLOB '[0-9]*'
+                  AND td.pin_entregado ~ '^[0-9]+$'
                 )
               )
         ''').fetchall()

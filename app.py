@@ -2438,6 +2438,12 @@ def index():
     user_id = session.get('id', '00000')
     transactions_data = {}
     is_admin = session.get('is_admin', False)
+
+    def _tx_fecha_sort_key(tx):
+        v = (tx or {}).get('fecha', '')
+        if isinstance(v, datetime):
+            return v.isoformat(sep=' ')
+        return str(v or '')
     
     if is_admin:
         # Admin ve todas las transacciones de todos los usuarios con paginación
@@ -2450,7 +2456,7 @@ def index():
             # Combinar transacciones normales con las de Blood Striker y Free Fire ID
             all_transactions = list(transactions_data['transactions']) + list(bloodstriker_transactions) + list(freefire_id_transactions)
             # Ordenar por fecha
-            all_transactions.sort(key=lambda x: x.get('fecha', ''), reverse=True)
+            all_transactions.sort(key=_tx_fecha_sort_key, reverse=True)
             # Tomar solo las primeras per_page transacciones
             transactions_data['transactions'] = all_transactions[:per_page]
         
@@ -2478,7 +2484,7 @@ def index():
                 # Combinar transacciones normales con las de Blood Striker y Free Fire ID del usuario
                 all_user_transactions = list(transactions_data['transactions']) + list(user_bloodstriker_transactions) + list(user_freefire_id_transactions)
                 # Ordenar por fecha
-                all_user_transactions.sort(key=lambda x: x.get('fecha', ''), reverse=True)
+                all_user_transactions.sort(key=_tx_fecha_sort_key, reverse=True)
                 # Tomar solo las primeras per_page transacciones
                 transactions_data['transactions'] = all_user_transactions[:per_page]
         else:
