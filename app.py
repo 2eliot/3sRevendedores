@@ -5924,6 +5924,10 @@ def validar_freefire_id():
         flash(f'Saldo insuficiente. Necesitas ${precio:.2f} pero tienes ${saldo_actual:.2f}', 'error')
         return redirect('/juego/freefire_id')
     
+    transaction_data = None
+    pin_codigo = None
+    saldo_cobrado = False
+
     try:
         # 1. Verificar si hay PIN disponible en stock de FF Global ANTES de cobrar
         pin_disponible = get_available_pin_freefire_global(package_id)
@@ -5952,6 +5956,7 @@ def validar_freefire_id():
                 flash(f'Saldo insuficiente al momento de procesar. Recarga tu saldo e intenta de nuevo.', 'error')
                 return redirect('/juego/freefire_id')
             conn.commit()
+            saldo_cobrado = True
             # Leer saldo actualizado desde DB
             new_saldo = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
             conn.close()
@@ -6060,6 +6065,7 @@ def validar_freefire_id():
                 conn.execute('UPDATE usuarios SET saldo = saldo + ? WHERE id = ?', (precio, user_id))
                 conn.commit()
                 conn.close()
+                saldo_cobrado = False
                 session['saldo'] = session.get('saldo', 0) + precio
                 logger.info(f"[FreeFire ID] Saldo ${precio} reembolsado al usuario {user_id}")
             
@@ -6071,6 +6077,55 @@ def validar_freefire_id():
         
     except Exception as e:
         logger.error(f"[FreeFire ID] Error general: {str(e)}")
+
+        # Fallback anti-transacciones atascadas en "pendiente"
+        # Si ya se creó la transacción y sigue pendiente, cerrarla como rechazada
+        # y compensar saldo/pin cuando aplique.
+        if transaction_data and transaction_data.get('id'):
+            try:
+                conn_fix = get_db_connection()
+                row_fix = conn_fix.execute(
+                    'SELECT estado FROM transacciones_freefire_id WHERE id = ? LIMIT 1',
+                    (transaction_data['id'],)
+                ).fetchone()
+                estado_actual = row_fix['estado'] if row_fix else None
+
+                if estado_actual == 'pendiente':
+                    if pin_codigo:
+                        try:
+                            conn_fix.execute(
+                                '''
+                                INSERT INTO pines_freefire_global (monto_id, pin_codigo, usado)
+                                VALUES (?, ?, FALSE)
+                                ''',
+                                (package_id, pin_codigo)
+                            )
+                        except Exception:
+                            pass
+
+                    if saldo_cobrado and not is_admin:
+                        conn_fix.execute('UPDATE usuarios SET saldo = saldo + ? WHERE id = ?', (precio, user_id))
+                        try:
+                            saldo_row = conn_fix.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
+                            session['saldo'] = saldo_row['saldo'] if saldo_row else session.get('saldo', 0)
+                        except Exception:
+                            pass
+
+                    conn_fix.commit()
+                    update_freefire_id_transaction_status(
+                        transaction_data['id'],
+                        'rechazado',
+                        user_id,
+                        f'Auto-rechazo por excepción: {str(e)[:200]}'
+                    )
+            except Exception as fix_err:
+                logger.error(f"[FreeFire ID] Error en fallback anti-pendiente: {str(fix_err)}")
+            finally:
+                try:
+                    conn_fix.close()
+                except Exception:
+                    pass
+
         flash('Error al procesar la compra. Intente nuevamente.', 'error')
         return redirect('/juego/freefire_id')
 
