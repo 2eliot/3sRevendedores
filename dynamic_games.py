@@ -7,7 +7,7 @@ import json
 import os
 import re
 import secrets
-import sqlite3
+from pg_compat import get_db_connection as _pg_get_conn
 import time as time_module
 import logging
 
@@ -23,10 +23,7 @@ bp = Blueprint('dynamic_games', __name__)
 # ---------------------------------------------------------------------------
 
 def _get_conn():
-    db_path = os.environ.get('DATABASE_PATH', 'usuarios.db')
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return _pg_get_conn()
 
 
 # ---------------------------------------------------------------------------

@@ -22,7 +22,9 @@ from flask import Flask, render_template, render_template_string, request, redir
 import json
 import csv
 import re
-import sqlite3
+from pg_compat import get_db_connection, get_db_connection_optimized, PgRow, table_exists as pg_table_exists
+import psycopg2
+import psycopg2.errors
 import pytz
 from datetime import datetime
 import hashlib
@@ -292,42 +294,8 @@ def inject_dynamic_games_menu():
     except Exception:
         return {'dynamic_games_menu': [], 'dynamic_games_id_menu': [], 'dynamic_games_pin_menu': []}
 
-# Configuración de la base de datos con optimizaciones y compatibilidad con Render
-def get_render_compatible_db_path():
-    """Obtiene la ruta de la base de datos compatible con Render"""
-    # Priorizar DATABASE_PATH si está configurado (para disco persistente)
-    if os.environ.get('DATABASE_PATH'):
-        return os.environ.get('DATABASE_PATH')
-    elif os.environ.get('RENDER'):
-        # En Render sin disco persistente, usar directorio raíz
-        return 'usuarios.db'
-    else:
-        # En desarrollo local
-        return 'usuarios.db'
-
-DATABASE = get_render_compatible_db_path()
-
-# Crear directorio para la base de datos si no existe (tanto local como Render con disco)
-db_dir = os.path.dirname(DATABASE)
-if db_dir and not os.path.exists(db_dir):
-    try:
-        os.makedirs(db_dir, exist_ok=True)
-        print(f"Directorio creado para base de datos: {db_dir}")
-    except Exception as e:
-        print(f"Error creando directorio de base de datos: {e}")
-        # Si no se puede crear el directorio, usar ruta por defecto
-        DATABASE = 'usuarios.db'
-
-def get_db_connection_optimized():
-    """Obtiene una conexión optimizada con configuraciones SQLite mejoradas"""
-    conn = sqlite3.connect(DATABASE, timeout=20.0)
-    conn.row_factory = sqlite3.Row
-    # Optimizaciones SQLite para mejor rendimiento
-    conn.execute('PRAGMA journal_mode=WAL')
-    conn.execute('PRAGMA synchronous=NORMAL')
-    conn.execute('PRAGMA cache_size=10000')
-    conn.execute('PRAGMA temp_store=MEMORY')
-    return conn
+# PostgreSQL: la URL se lee de DATABASE_URL en .env
+# get_db_connection y get_db_connection_optimized vienen de pg_compat
 
 # ===== Helpers de persistencia de profit (legacy) =====
 def record_profit_for_transaction(conn, usuario_id, is_admin, juego, paquete_id, cantidad, precio_unitario, transaccion_id=None):
@@ -1150,11 +1118,6 @@ def verify_password(password, hashed):
     return hashed == sha256_hash
 
 
-def get_db_connection():
-    """Obtiene una conexión a la base de datos"""
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def registrar_historial_compra(conn_existente, usuario_id, monto, paquete_nombre, pin='', tipo_evento='compra', duracion_segundos=None, saldo_antes=0, saldo_despues=0):
     """Registra una compra en el historial permanente (no se borra con transacciones). Usa la conexión existente para evitar bloqueo."""
@@ -1166,24 +1129,22 @@ def registrar_historial_compra(conn_existente, usuario_id, monto, paquete_nombre
     except Exception as e:
         logger.error(f"Error registrando historial_compra: {e}")
 
-def convert_to_venezuela_time(utc_datetime_str):
-    """Convierte una fecha UTC a la zona horaria de Venezuela (UTC-4)"""
+def convert_to_venezuela_time(utc_datetime_val):
+    """Convierte una fecha UTC a la zona horaria de Venezuela (UTC-4).
+    Acepta tanto objetos datetime (PostgreSQL) como strings (legacy)."""
     try:
-        # Parsear la fecha UTC desde la base de datos
-        utc_dt = datetime.strptime(utc_datetime_str, '%Y-%m-%d %H:%M:%S')
-        
-        # Establecer como UTC
-        utc_dt = pytz.utc.localize(utc_dt)
-        
-        # Convertir a zona horaria de Venezuela (UTC-4)
         venezuela_tz = pytz.timezone('America/Caracas')
-        venezuela_dt = utc_dt.astimezone(venezuela_tz)
-        
-        # Retornar en formato legible
-        return venezuela_dt.strftime('%Y-%m-%d %H:%M:%S')
+        if isinstance(utc_datetime_val, datetime):
+            utc_dt = utc_datetime_val
+            if utc_dt.tzinfo is None:
+                utc_dt = pytz.utc.localize(utc_dt)
+            return utc_dt.astimezone(venezuela_tz).strftime('%Y-%m-%d %H:%M:%S')
+        # Fallback: string
+        utc_dt = datetime.strptime(str(utc_datetime_val), '%Y-%m-%d %H:%M:%S')
+        utc_dt = pytz.utc.localize(utc_dt)
+        return utc_dt.astimezone(venezuela_tz).strftime('%Y-%m-%d %H:%M:%S')
     except:
-        # Si hay error, retornar la fecha original
-        return utc_datetime_str
+        return str(utc_datetime_val) if utc_datetime_val else ''
 
 def get_user_by_email(email):
     """Obtiene un usuario por su email"""
@@ -1199,15 +1160,18 @@ def create_user(nombre, apellido, telefono, correo, contraseña):
     try:
         cursor = conn.execute('''
             INSERT INTO usuarios (nombre, apellido, telefono, correo, contraseña, saldo)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?) RETURNING id
         ''', (nombre, apellido, telefono, correo, hashed_password, 0.0))
-        user_id = cursor.lastrowid
+        row = cursor.fetchone()
+        user_id = row['id'] if row else None
         conn.commit()
         conn.close()
         return user_id
-    except sqlite3.IntegrityError:
-        conn.close()
-        return None
+    except Exception as _ie:
+        if 'unique' in str(_ie).lower() or 'duplicate' in str(_ie).lower():
+            conn.close()
+            return None
+        raise
 
 def get_user_transactions(user_id, is_admin=False, page=1, per_page=10):
     """Obtiene las transacciones de un usuario con información del paquete y paginación"""
@@ -1355,13 +1319,13 @@ def get_user_transactions(user_id, is_admin=False, page=1, per_page=10):
                 finally:
                     c2.close()
                 if row_latam:
-                    mid = int(row_latam['monto_id']) if isinstance(row_latam, sqlite3.Row) else int(row_latam[0])
+                    mid = int(row_latam['monto_id'])
                     nombre = packages_info.get(mid, {}).get('nombre')
                     if nombre:
                         transaction_dict['paquete'] = f"{nombre}{'' if cantidad_pines <= 1 else f' x{cantidad_pines}'}"
                         paquete_encontrado = True
                 elif row_global:
-                    mid = int(row_global['monto_id']) if isinstance(row_global, sqlite3.Row) else int(row_global[0])
+                    mid = int(row_global['monto_id'])
                     nombre = freefire_global_packages_info.get(mid, {}).get('nombre')
                     if nombre:
                         transaction_dict['paquete'] = f"{nombre}{'' if cantidad_pines <= 1 else f' x{cantidad_pines}'}"
@@ -1379,7 +1343,7 @@ def get_user_transactions(user_id, is_admin=False, page=1, per_page=10):
                 finally:
                     c3.close()
                 if row_bs:
-                    pid = int(row_bs['paquete_id']) if isinstance(row_bs, sqlite3.Row) else int(row_bs[0])
+                    pid = int(row_bs['paquete_id'])
                     nombre_bs = bloodstriker_packages_info.get(pid, {}).get('nombre')
                     if nombre_bs:
                         transaction_dict['paquete'] = nombre_bs
@@ -1646,8 +1610,8 @@ def api_dismiss_news(noticia_id):
     conn = get_db_connection()
     try:
         conn.execute('''
-            INSERT OR IGNORE INTO noticias_vistas (usuario_id, noticia_id)
-            VALUES (?, ?)
+            INSERT INTO noticias_vistas (usuario_id, noticia_id)
+            VALUES (%s, %s) ON CONFLICT DO NOTHING
         ''', (user_id, noticia_id))
         conn.commit()
     finally:
@@ -2226,8 +2190,8 @@ def mark_news_as_read(user_id):
     # Marcar como vistas
     for news in unread_news:
         conn.execute('''
-            INSERT OR IGNORE INTO noticias_vistas (usuario_id, noticia_id)
-            VALUES (?, ?)
+            INSERT INTO noticias_vistas (usuario_id, noticia_id)
+            VALUES (%s, %s) ON CONFLICT DO NOTHING
         ''', (user_id, news['id']))
     
     conn.commit()
@@ -2573,10 +2537,10 @@ def control_aviso_guardar():
     try:
         conn = get_db_connection()
         conn.execute(
-            "INSERT OR REPLACE INTO configuracion_redeemer (clave, valor, fecha_actualizacion) VALUES ('aviso_activo', ?, datetime('now'))",
+            "INSERT INTO configuracion_redeemer (clave, valor, fecha_actualizacion) VALUES ('aviso_activo', %s, NOW()) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, fecha_actualizacion = EXCLUDED.fecha_actualizacion",
             (activo,))
         conn.execute(
-            "INSERT OR REPLACE INTO configuracion_redeemer (clave, valor, fecha_actualizacion) VALUES ('aviso_url', ?, datetime('now'))",
+            "INSERT INTO configuracion_redeemer (clave, valor, fecha_actualizacion) VALUES ('aviso_url', %s, NOW()) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, fecha_actualizacion = EXCLUDED.fecha_actualizacion",
             (url,))
         conn.commit()
         conn.close()
@@ -3655,8 +3619,9 @@ def update_pin_source_config(monto_id, fuente):
     """Actualiza la configuración de fuente para un monto específico"""
     conn = get_db_connection()
     conn.execute('''
-        INSERT OR REPLACE INTO configuracion_fuentes_pines (monto_id, fuente, activo, fecha_actualizacion)
-        VALUES (?, ?, TRUE, CURRENT_TIMESTAMP)
+        INSERT INTO configuracion_fuentes_pines (monto_id, fuente, activo, fecha_actualizacion)
+        VALUES (%s, %s, TRUE, CURRENT_TIMESTAMP)
+        ON CONFLICT (monto_id) DO UPDATE SET fuente = EXCLUDED.fuente, activo = EXCLUDED.activo, fecha_actualizacion = EXCLUDED.fecha_actualizacion
     ''', (monto_id, fuente))
     conn.commit()
     conn.close()
@@ -3918,11 +3883,11 @@ def admin_import_pins_csv():
             return_db_connection(conn2)
 
         flash(f'Se importaron {added_count} pines desde CSV para {juego_nombre} - {paquete_nombre}', 'success')
-    except sqlite3.IntegrityError:
-        # Unique constraint: ya existe
-        flash(f'Este archivo ya fue importado antes: {original_name}', 'warning')
     except Exception as e:
-        flash(f'Error al importar CSV: {str(e)}', 'error')
+        if 'unique' in str(e).lower() or 'duplicate' in str(e).lower():
+            flash(f'Este archivo ya fue importado antes: {original_name}', 'warning')
+        else:
+            flash(f'Error al importar CSV: {str(e)}', 'error')
 
     return redirect('/admin')
 
@@ -6747,8 +6712,8 @@ def admin_redeemer_config():
             valor = request.form.get(campo, '').strip()
             if valor:
                 conn.execute('''
-                    INSERT OR REPLACE INTO configuracion_redeemer (clave, valor, fecha_actualizacion)
-                    VALUES (?, ?, datetime('now'))
+                    INSERT INTO configuracion_redeemer (clave, valor, fecha_actualizacion)
+                    VALUES (%s, %s, NOW()) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, fecha_actualizacion = EXCLUDED.fecha_actualizacion
                 ''', (campo, valor))
         conn.commit()
         conn.close()
@@ -7260,16 +7225,14 @@ def update_purchase_price(juego, paquete_id, nuevo_precio):
     try:
         conn = get_db_connection_optimized()
         
-        # Usar transacción para asegurar consistencia
-        conn.execute('BEGIN TRANSACTION')
-        
         query = '''
-            INSERT OR REPLACE INTO precios_compra (juego, paquete_id, precio_compra, fecha_actualizacion, activo)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP, TRUE)
+            INSERT INTO precios_compra (juego, paquete_id, precio_compra, fecha_actualizacion, activo)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP, TRUE)
+            ON CONFLICT (juego, paquete_id) DO UPDATE SET precio_compra = EXCLUDED.precio_compra, fecha_actualizacion = EXCLUDED.fecha_actualizacion, activo = EXCLUDED.activo
         '''
         
         conn.execute(query, (str(juego), int(paquete_id), float(nuevo_precio)))
-        conn.execute('COMMIT')
+        conn.commit()
         
         return True
         
@@ -8197,13 +8160,13 @@ def dashboard():
                 finally:
                     c2.close()
                 if row_latam:
-                    mid = int(row_latam['monto_id']) if isinstance(row_latam, sqlite3.Row) else int(row_latam[0])
+                    mid = int(row_latam['monto_id'])
                     nombre = packages_info.get(mid, {}).get('nombre')
                     if nombre:
                         transaction_dict['paquete'] = nombre
                         paquete_encontrado = True
                 elif row_global:
-                    mid = int(row_global['monto_id']) if isinstance(row_global, sqlite3.Row) else int(row_global[0])
+                    mid = int(row_global['monto_id'])
                     nombre = freefire_global_packages_info.get(mid, {}).get('nombre')
                     if nombre:
                         transaction_dict['paquete'] = nombre

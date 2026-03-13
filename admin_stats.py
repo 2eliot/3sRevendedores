@@ -1,25 +1,18 @@
 from flask import Blueprint, jsonify, request
-import sqlite3
 import os
 from datetime import datetime, timedelta
 import pytz
+from pg_compat import get_db_connection, table_exists as pg_table_exists
 
 bp = Blueprint('admin_stats', __name__)
 
 
 def get_conn():
-    db_path = os.environ.get('DATABASE_PATH', 'usuarios.db')
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return get_db_connection()
 
 
-def table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
-    try:
-        cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
-        return cur.fetchone() is not None
-    except Exception:
-        return False
+def table_exists(conn, table_name: str) -> bool:
+    return pg_table_exists(conn, table_name)
 
 
 def get_admin_exclusions():
@@ -44,7 +37,7 @@ def get_admin_exclusions():
     return ids, emails
 
 
-def compute_legacy_profit_by_day(conn: sqlite3.Connection, start_utc: str, end_utc: str):
+def compute_legacy_profit_by_day(conn, start_utc: str, end_utc: str):
     admin_ids, admin_emails = get_admin_exclusions()
     params = [start_utc, end_utc]
     filters = []
@@ -301,7 +294,7 @@ def top_clients():
                 'tz': tz_name
             }
         })
-    except sqlite3.Error as e:
+    except Exception as e:
         return jsonify({'error': 'query_failed', 'message': str(e)}), 500
 
 
@@ -322,7 +315,7 @@ def summary():
         else:
             row = conn.execute("SELECT COALESCE(SUM(CASE WHEN monto < 0 THEN -monto ELSE monto END),0) AS total_spent_all_time FROM transacciones").fetchone()
         parts['total_spent_all_time'] = row['total_spent_all_time'] if row else 0
-    except sqlite3.Error as e:
+    except Exception as e:
         parts['total_spent_all_time_error'] = str(e)
     try:
         conn = get_conn()
@@ -333,7 +326,7 @@ def summary():
         else:
             row = conn.execute("SELECT COALESCE(SUM(saldo),0) AS active_balance_total FROM usuarios WHERE COALESCE(sin_ganancia,0)=0").fetchone()
         parts['active_balance_total'] = row['active_balance_total'] if row else 0
-    except sqlite3.Error as e:
+    except Exception as e:
         parts['active_balance_total_error'] = str(e)
     try:
         conn = get_conn()
@@ -384,7 +377,7 @@ def summary():
                 ).fetchone()
             parts['pins_available_total'] = pins_available_total
             parts['pins_balance_total'] = (sum_latam['s'] if sum_latam else 0) + (sum_global['s'] if sum_global else 0)
-    except sqlite3.Error as e:
+    except Exception as e:
         parts['pins_error'] = str(e)
     # Total de usuarios (canónico o legacy)
     try:
@@ -396,7 +389,7 @@ def summary():
             r = conn.execute("SELECT COUNT(*) AS c FROM usuarios").fetchone()
             parts['users_total'] = r['c'] if r else 0
         conn.close()
-    except sqlite3.Error as e:
+    except Exception as e:
         parts['users_total_error'] = str(e)
     # Profit total del mes (excluyendo admin)
     try:
@@ -427,7 +420,7 @@ def summary():
                     parts['profit_month_total'] = round(sum(item.get('profit', 0) for item in lst), 6)
                 else:
                     parts['profit_month_total'] = 0
-    except sqlite3.Error as e:
+    except Exception as e:
         parts['profit_month_total_error'] = str(e)
     return jsonify({'summary': parts})
 
@@ -471,7 +464,7 @@ def pins_daily():
                 'pins_added': pins_added,
                 'pins_used': pins_used
             })
-        except sqlite3.Error as e2:
+        except Exception as e2:
             out.append({'date': start.date().isoformat(), 'error': str(e2)})
     return jsonify({'pins_daily': out, 'tz': tz_name})
 
@@ -504,7 +497,7 @@ def timeseries():
                 (ms, me)
             ).fetchall()
         res['daily_spent_month'] = [dict(r) for r in q1]
-    except sqlite3.Error as e:
+    except Exception as e:
         res['daily_spent_month_error'] = str(e)
     try:
         conn = get_conn()
@@ -519,7 +512,7 @@ def timeseries():
                 (ws, we)
             ).fetchall()
         res['daily_spent_week'] = [dict(r) for r in q2]
-    except sqlite3.Error as e:
+    except Exception as e:
         res['daily_spent_week_error'] = str(e)
     try:
         conn = get_conn()
@@ -545,7 +538,7 @@ def timeseries():
         else:
             q3 = []
         res['profit_daily_month'] = [dict(r) for r in q3] if isinstance(q3, list) else [dict(r) for r in q3]
-    except sqlite3.Error as e:
+    except Exception as e:
         res['profit_daily_month_error'] = str(e)
     try:
         conn = get_conn()
@@ -571,7 +564,7 @@ def timeseries():
         else:
             q4 = []
         res['profit_daily_prev_month'] = [dict(r) for r in q4] if isinstance(q4, list) else [dict(r) for r in q4]
-    except sqlite3.Error as e:
+    except Exception as e:
         res['profit_daily_prev_month_error'] = str(e)
     return jsonify({'timeseries': res, 'tz': tz_name})
 
@@ -617,7 +610,7 @@ def backfill_legacy_profit():
         conn.commit()
         conn.close()
         return jsonify({'ok': True, 'days_processed': count})
-    except sqlite3.Error as e:
+    except Exception as e:
         try:
             conn.rollback()
         except Exception:
@@ -658,7 +651,7 @@ def packages_history():
             rows = []
         conn.close()
         return jsonify({f'packages_history_{period}': [dict(r) for r in rows], 'period': {'from': s, 'to': e, 'tz': tz_name}})
-    except sqlite3.Error as e:
+    except Exception as e:
         return jsonify({'error': 'query_failed', 'message': str(e)}), 500
 
 
@@ -723,7 +716,7 @@ def profit_packages_config():
                     rows.extend(dyn)
             conn.close()
             return jsonify({'profit_packages_config': [dict(r) for r in rows]})
-        except sqlite3.Error as e:
+        except Exception as e:
             return jsonify({'error': 'query_failed', 'message': str(e)}), 500
     else:
         # POST: upsert costs
@@ -762,7 +755,7 @@ def profit_packages_config():
             conn.commit()
             conn.close()
             return jsonify({'ok': True})
-        except sqlite3.Error as e:
+        except Exception as e:
             try:
                 conn.rollback()
             except Exception:

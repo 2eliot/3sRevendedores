@@ -1,0 +1,317 @@
+"""
+PostgreSQL compatibility layer for Revendedores51.
+Wraps psycopg2 to expose a sqlite3-compatible interface so minimal
+changes are needed in the rest of the codebase.
+
+Handles automatically:
+  - ? -> %s placeholder conversion
+  - datetime('now') -> NOW()
+  - PRAGMA -> no-op (silently ignored)
+  - CREATE TABLE schema fixes: AUTOINCREMENT->SERIAL, DATETIME->TIMESTAMP
+  - Row objects that support both dict-key and positional (row[0]) access
+  - row_factory assignment (no-op, always uses RealDictCursor)
+"""
+
+import os
+import re
+import logging
+
+import psycopg2
+import psycopg2.extras
+import psycopg2.extensions
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# SQL conversion helpers
+# ---------------------------------------------------------------------------
+
+_PRAGMA_RE   = re.compile(r'^\s*PRAGMA\s+', re.IGNORECASE)
+_QM_RE       = re.compile(r'\?')
+_DT_NOW_RE   = re.compile(r"datetime\('now'\)", re.IGNORECASE)
+_AUTOINCR_RE = re.compile(r'\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b', re.IGNORECASE)
+_DATETIME_RE = re.compile(r'\bDATETIME\b', re.IGNORECASE)
+_TEXT_DT_RE  = re.compile(r"TEXT\s+DEFAULT\s+\(datetime\('now'\)\)", re.IGNORECASE)
+_SQLITE_MASTER_RE = re.compile(r'\bsqlite_master\b', re.IGNORECASE)
+
+
+def _convert_sql(sql: str):
+    """
+    Convert SQLite SQL to PostgreSQL SQL.
+    Returns None for PRAGMA (no-op).
+    Returns (converted_sql, is_returning) tuple otherwise.
+    """
+    stripped = sql.strip()
+
+    # PRAGMA → no-op
+    if _PRAGMA_RE.match(stripped):
+        return None
+
+    # ? → %s  (only outside string literals — simple replacement is fine
+    # because we never use ? inside string values)
+    sql = sql.replace('?', '%s')
+
+    # datetime('now') → NOW()
+    sql = _DT_NOW_RE.sub("NOW()", sql)
+
+    # sqlite_master → information_schema.tables  (used in table_exists checks)
+    sql = _SQLITE_MASTER_RE.sub("sqlite_master", sql)  # handled at call site
+
+    upper = sql.upper()
+
+    # Schema-level fixes (only needed in CREATE TABLE statements)
+    if 'CREATE TABLE' in upper:
+        sql = _AUTOINCR_RE.sub('SERIAL PRIMARY KEY', sql)
+        sql = _TEXT_DT_RE.sub("TIMESTAMP DEFAULT NOW()", sql)
+        sql = _DATETIME_RE.sub('TIMESTAMP', sql)
+
+    return sql
+
+
+# ---------------------------------------------------------------------------
+# PgRow: dict + positional access (mimics sqlite3.Row)
+# ---------------------------------------------------------------------------
+
+class PgRow:
+    """
+    Wraps a psycopg2 RealDictRow.
+    Supports row['key']  (dict access)
+    AND      row[0]      (positional access like sqlite3.Row)
+    """
+    __slots__ = ('_data', '_keys')
+
+    def __init__(self, source):
+        if source is None:
+            self._data = {}
+            self._keys = []
+        else:
+            self._data = dict(source)
+            self._keys = list(self._data.keys())
+
+    # --- dict-like access ---
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._data[self._keys[key]]
+        return self._data[key]
+
+    def __contains__(self, key):
+        return key in self._data
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
+
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
+    def __repr__(self):
+        return f'PgRow({self._data!r})'
+
+
+# ---------------------------------------------------------------------------
+# PgCursor wrapper
+# ---------------------------------------------------------------------------
+
+class PgCursor:
+    """Wraps a psycopg2 RealDictCursor to return PgRow objects."""
+
+    def __init__(self, cur):
+        self._cur = cur
+
+    def execute(self, sql: str, params=None):
+        sql_pg = _convert_sql(sql)
+        if sql_pg is None:
+            return self  # PRAGMA no-op
+        try:
+            self._cur.execute(sql_pg, params)
+        except Exception:
+            raise
+        return self
+
+    def executemany(self, sql: str, params_list):
+        sql_pg = _convert_sql(sql)
+        if sql_pg is None:
+            return self
+        psycopg2.extras.execute_batch(self._cur, sql_pg, params_list)
+        return self
+
+    def fetchone(self):
+        row = self._cur.fetchone()
+        return PgRow(row) if row is not None else None
+
+    def fetchall(self):
+        return [PgRow(r) for r in (self._cur.fetchall() or [])]
+
+    def __iter__(self):
+        for row in self._cur:
+            yield PgRow(row)
+
+    @property
+    def rowcount(self):
+        return self._cur.rowcount
+
+    @property
+    def lastrowid(self):
+        return getattr(self._cur, 'lastrowid', None)
+
+    def close(self):
+        self._cur.close()
+
+
+# ---------------------------------------------------------------------------
+# _NoOpCursor — returned for PRAGMA and other ignored statements
+# ---------------------------------------------------------------------------
+
+class _NoOpCursor:
+    rowcount = 0
+    lastrowid = None
+
+    def fetchone(self):
+        return None
+
+    def fetchall(self):
+        return []
+
+    def __iter__(self):
+        return iter([])
+
+    def close(self):
+        pass
+
+
+# ---------------------------------------------------------------------------
+# PgConnection wrapper
+# ---------------------------------------------------------------------------
+
+class PgConnection:
+    """
+    Wraps a psycopg2 connection to expose sqlite3-compatible interface.
+
+    Usage is identical to sqlite3:
+        conn = get_db_connection()
+        row  = conn.execute('SELECT * FROM usuarios WHERE id = ?', (uid,)).fetchone()
+        conn.commit()
+        conn.close()
+    """
+
+    def __init__(self, dsn: str):
+        self._conn = psycopg2.connect(dsn, cursor_factory=psycopg2.extras.RealDictCursor)
+        self._conn.autocommit = False
+
+    # row_factory is set in many places — make it a no-op
+    @property
+    def row_factory(self):
+        return None
+
+    @row_factory.setter
+    def row_factory(self, value):
+        pass  # always use RealDictCursor
+
+    # ------------------------------------------------------------------
+    def _raw_cursor(self) -> PgCursor:
+        return PgCursor(self._conn.cursor())
+
+    def execute(self, sql: str, params=None):
+        sql_pg = _convert_sql(sql)
+        if sql_pg is None:
+            return _NoOpCursor()
+        cur = self._raw_cursor()
+        try:
+            cur._cur.execute(sql_pg, params)
+        except Exception:
+            raise
+        return cur
+
+    def executemany(self, sql: str, params_list):
+        sql_pg = _convert_sql(sql)
+        if sql_pg is None:
+            return _NoOpCursor()
+        cur = self._raw_cursor()
+        psycopg2.extras.execute_batch(cur._cur, sql_pg, params_list)
+        return cur
+
+    def cursor(self) -> PgCursor:
+        return self._raw_cursor()
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            try:
+                self.rollback()
+            except Exception:
+                pass
+        else:
+            self.commit()
+        self.close()
+
+
+# ---------------------------------------------------------------------------
+# table_exists helper (replaces sqlite_master checks)
+# ---------------------------------------------------------------------------
+
+def table_exists(conn: PgConnection, table_name: str) -> bool:
+    """Check if a table exists in the current PostgreSQL database."""
+    try:
+        cur = conn.execute(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = %s",
+            (table_name,)
+        )
+        return cur.fetchone() is not None
+    except Exception:
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Connection factory
+# ---------------------------------------------------------------------------
+
+_DATABASE_URL: str = None  # type: ignore[assignment]
+
+
+def _get_database_url() -> str:
+    global _DATABASE_URL
+    if _DATABASE_URL is None:
+        url = os.environ.get('DATABASE_URL', '').strip()
+        if not url:
+            raise RuntimeError(
+                "DATABASE_URL is not set. "
+                "Example: postgresql://user:password@localhost:5432/revendedores"
+            )
+        # Heroku-style postgres:// → postgresql://
+        if url.startswith('postgres://'):
+            url = 'postgresql://' + url[len('postgres://'):]
+        _DATABASE_URL = url
+    return _DATABASE_URL
+
+
+def get_db_connection() -> PgConnection:
+    """Return a new PostgreSQL connection (sqlite3-compatible interface)."""
+    return PgConnection(_get_database_url())
+
+
+def get_db_connection_optimized() -> PgConnection:
+    """Same as get_db_connection() — PostgreSQL doesn't need PRAGMA tuning."""
+    return get_db_connection()
