@@ -6,10 +6,10 @@ def get_games_active():
     flags = {'freefire': False, 'freefire_global': False, 'bloodstriker': False, 'freefire_id': False}
     try:
         conn = get_db_connection()
-        flags['freefire'] = conn.execute("SELECT COUNT(1) FROM precios_paquetes WHERE activo = 1").fetchone()[0] > 0
-        flags['freefire_global'] = conn.execute("SELECT COUNT(1) FROM precios_freefire_global WHERE activo = 1").fetchone()[0] > 0
-        flags['bloodstriker'] = conn.execute("SELECT COUNT(1) FROM precios_bloodstriker WHERE activo = 1").fetchone()[0] > 0
-        flags['freefire_id'] = conn.execute("SELECT COUNT(1) FROM precios_freefire_id WHERE activo = 1").fetchone()[0] > 0
+        flags['freefire'] = conn.execute("SELECT COUNT(1) FROM precios_paquetes WHERE activo = TRUE").fetchone()[0] > 0
+        flags['freefire_global'] = conn.execute("SELECT COUNT(1) FROM precios_freefire_global WHERE activo = TRUE").fetchone()[0] > 0
+        flags['bloodstriker'] = conn.execute("SELECT COUNT(1) FROM precios_bloodstriker WHERE activo = TRUE").fetchone()[0] > 0
+        flags['freefire_id'] = conn.execute("SELECT COUNT(1) FROM precios_freefire_id WHERE activo = TRUE").fetchone()[0] > 0
         conn.close()
     except:
         pass
@@ -8744,7 +8744,7 @@ def api_v1_ejecutar_recarga():
         else:
             tabla_precios = 'precios_freefire_id'
         row = conn_tmp.execute(
-            f'SELECT id, nombre, precio FROM {tabla_precios} WHERE id = ? AND activo = 1',
+            f'SELECT id, nombre, precio FROM {tabla_precios} WHERE id = ? AND activo = TRUE',
             (package_id,)
         ).fetchone()
         conn_tmp.close()
@@ -9625,12 +9625,12 @@ def _build_backup_zip():
 
         # --- pines_freefire_global_<monto_id>.csv (solo no usados) ---
         monto_ids = conn.execute(
-            'SELECT DISTINCT monto_id FROM pines_freefire_global WHERE usado = 0 ORDER BY monto_id'
+            'SELECT DISTINCT monto_id FROM pines_freefire_global WHERE usado = FALSE ORDER BY monto_id'
         ).fetchall()
         for row in monto_ids:
             mid = row['monto_id']
             pins = conn.execute(
-                'SELECT pin_codigo, batch_id FROM pines_freefire_global WHERE monto_id = ? AND usado = 0',
+                'SELECT pin_codigo, batch_id FROM pines_freefire_global WHERE monto_id = ? AND usado = FALSE',
                 (mid,)
             ).fetchall()
             pin_buf = io.StringIO()
