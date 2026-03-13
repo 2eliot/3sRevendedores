@@ -3591,6 +3591,33 @@ def update_freefire_id_transaction_status(transaction_id, new_status, admin_id, 
         WHERE id = ?
     ''', (new_status, admin_id, notas, transaction_id))
     conn.commit()
+
+    # Si se aprueba, asegurar que exista registro en transacciones generales (historial)
+    if new_status == 'aprobado':
+        try:
+            tx = conn.execute('''
+                SELECT fi.usuario_id, fi.numero_control, fi.transaccion_id, fi.player_id,
+                       fi.monto, p.nombre as paquete_nombre
+                FROM transacciones_freefire_id fi
+                JOIN precios_freefire_id p ON fi.paquete_id = p.id
+                WHERE fi.id = ?
+            ''', (transaction_id,)).fetchone()
+            if tx:
+                ya_existe = conn.execute(
+                    'SELECT 1 FROM transacciones WHERE transaccion_id = ?',
+                    (tx['transaccion_id'],)
+                ).fetchone()
+                if not ya_existe:
+                    pin_info = f"ID: {tx['player_id']}"
+                    conn.execute('''
+                        INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (tx['usuario_id'], tx['numero_control'], pin_info,
+                          tx['transaccion_id'], tx['paquete_nombre'], -abs(tx['monto'])))
+                    conn.commit()
+        except Exception as e:
+            logger.error(f"[FFID] Error registrando en historial general: {e}")
+
     conn.close()
 
 def update_freefire_id_price(package_id, new_price):
