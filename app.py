@@ -2498,12 +2498,12 @@ def index():
         # Admin ve todas las transacciones de todos los usuarios con paginación
         transactions_data = get_user_transactions(None, is_admin=True, page=page, per_page=per_page)
         
-        # Para admin, también agregar transacciones pendientes de Blood Striker y Free Fire ID solo en la primera página
+        # Para admin, también agregar transacciones pendientes de Blood Striker solo en la primera página
+        # (Free Fire ID es 100% automático, no requiere aprobación manual)
         if page == 1:
             bloodstriker_transactions = get_pending_bloodstriker_transactions()
-            freefire_id_transactions = get_pending_freefire_id_transactions()
-            # Combinar transacciones normales con las de Blood Striker y Free Fire ID
-            all_transactions = list(transactions_data['transactions']) + list(bloodstriker_transactions) + list(freefire_id_transactions)
+            # Combinar transacciones normales con las de Blood Striker
+            all_transactions = list(transactions_data['transactions']) + list(bloodstriker_transactions)
             # Ordenar por fecha
             all_transactions.sort(key=_tx_fecha_sort_key, reverse=True)
             # Tomar solo las primeras per_page transacciones
@@ -2526,12 +2526,12 @@ def index():
             # Obtener transacciones normales del usuario con paginación
             transactions_data = get_user_transactions(session['user_db_id'], is_admin=False, page=page, per_page=per_page)
             
-            # Para usuario normal, también agregar transacciones pendientes de Blood Striker y Free Fire ID solo en la primera página
+            # Para usuario normal, también agregar transacciones pendientes de Blood Striker solo en la primera página
+            # (Free Fire ID es 100% automático, no requiere aprobación manual)
             if page == 1:
                 user_bloodstriker_transactions = get_user_pending_bloodstriker_transactions(session['user_db_id'])
-                user_freefire_id_transactions = get_user_pending_freefire_id_transactions(session['user_db_id'])
-                # Combinar transacciones normales con las de Blood Striker y Free Fire ID del usuario
-                all_user_transactions = list(transactions_data['transactions']) + list(user_bloodstriker_transactions) + list(user_freefire_id_transactions)
+                # Combinar transacciones normales con las de Blood Striker del usuario
+                all_user_transactions = list(transactions_data['transactions']) + list(user_bloodstriker_transactions)
                 # Ordenar por fecha
                 all_user_transactions.sort(key=_tx_fecha_sort_key, reverse=True)
                 # Tomar solo las primeras per_page transacciones
