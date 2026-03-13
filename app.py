@@ -1658,7 +1658,7 @@ BINANCE_API_ENDPOINTS = [
     'https://api.binance.com',
 ]
 
-def binance_get_pay_transactions(start_time=None, end_time=None, limit=100):
+def binance_get_pay_transactions(start_time=None, end_time=None, limit=100, req_timeout=None, total_timeout_override=None):
     """Consulta historial de transacciones de Binance Pay via GET /sapi/v1/pay/transactions"""
     import requests as req_lib
     if not BINANCE_API_KEY or not BINANCE_API_SECRET:
@@ -1679,8 +1679,8 @@ def binance_get_pay_transactions(start_time=None, end_time=None, limit=100):
     
     headers = {'X-MBX-APIKEY': BINANCE_API_KEY}
     proxies = {'https': BINANCE_PROXY, 'http': BINANCE_PROXY} if BINANCE_PROXY else None
-    request_timeout = max(1.0, BINANCE_REQUEST_TIMEOUT_SECONDS)
-    total_timeout = max(request_timeout, BINANCE_TOTAL_TIMEOUT_SECONDS)
+    request_timeout = max(1.0, req_timeout or BINANCE_REQUEST_TIMEOUT_SECONDS)
+    total_timeout = max(request_timeout, total_timeout_override or BINANCE_TOTAL_TIMEOUT_SECONDS)
     started_at = time_module.monotonic()
     
     last_error = None
@@ -1767,8 +1767,10 @@ def crear_orden_recarga(user_id, monto):
     finally:
         conn.close()
 
-def verificar_recarga_binance(recarga_id):
+def verificar_recarga_binance(recarga_id, _binance_tx_kwargs=None):
     """Verifica si una recarga pendiente fue pagada consultando Binance Pay API"""
+    if _binance_tx_kwargs is None:
+        _binance_tx_kwargs = {}
     conn = get_db_connection()
     recarga = conn.execute('''
         SELECT * FROM recargas_binance WHERE id = ? AND estado = 'pendiente'
@@ -1815,7 +1817,7 @@ def verificar_recarga_binance(recarga_id):
     fecha_creacion = _to_datetime(recarga['fecha_creacion']) or ahora_utc
     start_ts = int(fecha_creacion.timestamp() * 1000) - 60000  # 1 min antes
     
-    transactions = binance_get_pay_transactions(start_time=start_ts)
+    transactions = binance_get_pay_transactions(start_time=start_ts, **_binance_tx_kwargs)
     if transactions is None:
         return {'status': 'error', 'message': 'Error al consultar Binance Pay API'}
     
@@ -2057,7 +2059,7 @@ def _binance_verification_loop():
             
             for rec in pendientes:
                 try:
-                    verificar_recarga_binance(rec['id'])
+                    verificar_recarga_binance(rec['id'], _binance_tx_kwargs={'req_timeout': 15, 'total_timeout_override': 30})
                     time_module.sleep(2)  # Rate limit
                 except Exception as e:
                     logger.error(f"Error verificando recarga {rec['id']}: {e}")
