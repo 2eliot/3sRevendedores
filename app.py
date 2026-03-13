@@ -8348,13 +8348,22 @@ def dashboard():
         dias = list(reversed(prepend)) + dias
 
     serie_map = OrderedDict((d, 0.0) for d in dias)
+
+    def normalize_package_display_name(nombre_paquete):
+        """Acorta nombre para UI: quita sufijos entre paréntesis y comillas decorativas."""
+        s = str(nombre_paquete or '').strip()
+        # Quitar textos tipo: "100+5 🪙 (Blood Strike 100 + 5 Gold)"
+        s = re.sub(r'\s*\([^)]*\)\s*$', '', s)
+        # Quitar comillas decorativas/literales comunes
+        s = s.replace('"', '').replace("'", '').replace('“', '').replace('”', '')
+        return s.strip()
     # Mapa de compras por día y por paquete para actualizar tabla desde el gráfico
     compras_por_dia_paquete = {d: {} for d in dias}
     for t in transacciones_procesadas:
         fecha_str = str(t['fecha']).split(' ')[0]
         if fecha_str in serie_map:
             serie_map[fecha_str] += float(t['monto'])
-            paquete_nombre = t.get('paquete', 'Desconocido')
+            paquete_nombre = normalize_package_display_name(t.get('paquete', 'Desconocido'))
             compras_por_dia_paquete[fecha_str][paquete_nombre] = compras_por_dia_paquete[fecha_str].get(paquete_nombre, 0) + 1
 
     series_labels = list(serie_map.keys())
@@ -8378,17 +8387,25 @@ def dashboard():
             return 'Freefire'
         return 'Otros'
 
+    def game_order_key(item_name):
+        name = (item_name or '').strip().lower()
+        if 'freefire' in name:
+            return 0
+        if 'blood' in name:
+            return 1
+        return 2
+
     # Conteo de compras por paquete en el día seleccionado
     compras_paquete_counter = {}
     for t in transacciones_procesadas:
         fecha_str = str(t['fecha']).split(' ')[0]
         if fecha_str == fecha_fin:
-            nombre = t.get('paquete', 'Desconocido')
+            nombre = normalize_package_display_name(t.get('paquete', 'Desconocido'))
             compras_paquete_counter[nombre] = compras_paquete_counter.get(nombre, 0) + 1
 
     # Construir filas para tabla: Categoria, Ítem (juego), Paquete, Cantidad
     compras_paquete = []
-    for nombre, cantidad in sorted(compras_paquete_counter.items(), key=lambda x: x[0]):
+    for nombre, cantidad in compras_paquete_counter.items():
         item = infer_item_from_package_name(nombre)
         compras_paquete.append({
             'categoria': 'Juegos',
@@ -8396,19 +8413,21 @@ def dashboard():
             'paquete': nombre,
             'cantidad': cantidad
         })
+    compras_paquete.sort(key=lambda r: (game_order_key(r.get('item')), str(r.get('item', '')).lower(), str(r.get('paquete', '')).lower()))
 
     # Mapa por día para refresco dinámico de tabla desde el gráfico
     compras_por_dia_detalle = {d: [] for d in dias}
     for d in dias:
         counts = compras_por_dia_paquete.get(d, {}) or {}
         rows = []
-        for nombre, cantidad in sorted(counts.items(), key=lambda x: x[0]):
+        for nombre, cantidad in counts.items():
             rows.append({
                 'categoria': 'Juegos',
                 'item': infer_item_from_package_name(nombre),
                 'paquete': nombre,
                 'cantidad': cantidad
             })
+        rows.sort(key=lambda r: (game_order_key(r.get('item')), str(r.get('item', '')).lower(), str(r.get('paquete', '')).lower()))
         compras_por_dia_detalle[d] = rows
 
     # Valores por defecto (si no existen tablas de stock/solicitudes)
