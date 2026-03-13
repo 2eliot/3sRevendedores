@@ -1755,9 +1755,30 @@ def verificar_recarga_binance(recarga_id):
         conn.close()
         return {'status': 'error', 'message': 'Recarga no encontrada o ya procesada'}
     
+    def _to_datetime(val):
+        if isinstance(val, datetime):
+            return val
+        if val is None:
+            return None
+        sval = str(val).strip()
+        if not sval:
+            return None
+        try:
+            # Formato legacy SQLite
+            return datetime.strptime(sval, '%Y-%m-%d %H:%M:%S')
+        except Exception:
+            try:
+                # ISO/otros formatos que psycopg pueda devolver serializados
+                return datetime.fromisoformat(sval.replace('Z', '+00:00')).replace(tzinfo=None)
+            except Exception:
+                return None
+
     # Verificar expiración (fechas almacenadas en UTC)
     ahora_utc = datetime.utcnow()
-    fecha_exp = datetime.strptime(recarga['fecha_expiracion'], '%Y-%m-%d %H:%M:%S')
+    fecha_exp = _to_datetime(recarga['fecha_expiracion'])
+    if not fecha_exp:
+        conn.close()
+        return {'status': 'error', 'message': 'fecha_expiracion inválida'}
     
     if ahora_utc > fecha_exp:
         conn.execute('UPDATE recargas_binance SET estado = ? WHERE id = ?', ('expirada', recarga_id))
@@ -1768,7 +1789,7 @@ def verificar_recarga_binance(recarga_id):
     conn.close()
     
     # Consultar transacciones de Binance Pay
-    fecha_creacion = datetime.strptime(recarga['fecha_creacion'], '%Y-%m-%d %H:%M:%S')
+    fecha_creacion = _to_datetime(recarga['fecha_creacion']) or ahora_utc
     start_ts = int(fecha_creacion.timestamp() * 1000) - 60000  # 1 min antes
     
     transactions = binance_get_pay_transactions(start_time=start_ts)
