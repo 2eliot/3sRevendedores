@@ -1942,17 +1942,20 @@ def expirar_recargas_vencidas():
         conn.close()
 
 def _utc_to_local(utc_str):
-    """Convierte fecha UTC string a fecha local string"""
+    """Convierte fecha UTC string o datetime a fecha local string"""
     if not utc_str:
         return utc_str
     try:
         tz = pytz.timezone(os.environ.get('DEFAULT_TZ', 'America/Caracas'))
-        utc_dt = datetime.strptime(utc_str.split('.')[0], '%Y-%m-%d %H:%M:%S')
-        utc_dt = pytz.utc.localize(utc_dt)
+        if isinstance(utc_str, datetime):
+            utc_dt = utc_str if utc_str.tzinfo else pytz.utc.localize(utc_str)
+        else:
+            utc_dt = datetime.strptime(str(utc_str).split('.')[0], '%Y-%m-%d %H:%M:%S')
+            utc_dt = pytz.utc.localize(utc_dt)
         local_dt = utc_dt.astimezone(tz)
         return local_dt.strftime('%Y-%m-%d %H:%M:%S')
     except:
-        return utc_str
+        return str(utc_str)
 
 def _recarga_to_dict(row):
     """Convierte una fila de recarga a dict con fechas en hora local"""
@@ -6321,7 +6324,7 @@ AUDIT_TEMPLATE = r'''
                 <td>{{ trans.player_id }}</td>
                 <td><span class="pin-code">{{ trans.pin_codigo[:12] }}...</span></td>
                 <td>${{ "%.2f"|format(trans.monto) }}</td>
-                <td>{{ trans.fecha.split('.')[0] if '.' in trans.fecha else trans.fecha }}</td>
+                <td>{{ trans.fecha|format_date }}</td>
                 <td>
                     {% if trans.was_refunded %}
                     <span class="status-refunded">REEMBOLSADO</span>
@@ -6452,7 +6455,7 @@ PIN_LOG_TEMPLATE = r'''
             {% for t in transactions %}
             <tr>
                 <td>{{ t.id }}</td>
-                <td>{{ t.fecha[:16] if t.fecha else '-' }}</td>
+                <td>{{ t.fecha|format_date('%Y-%m-%d %H:%M') if t.fecha else '-' }}</td>
                 <td>{{ t.usuario_nombre }}<br><small style="color:#666">{{ t.correo }}</small></td>
                 <td class="player-id">{{ t.player_id }}</td>
                 <td class="pin-code" onclick="copyPin(this)" title="Click para copiar">{{ t.pin_codigo or 'N/A' }}</td>
