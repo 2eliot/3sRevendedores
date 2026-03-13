@@ -206,7 +206,11 @@ class PgConnection:
 
     def __init__(self, dsn: str):
         self._conn = psycopg.connect(dsn, row_factory=dict_row)
-        self._conn.autocommit = False
+        # Importante: el código legacy usa muchos try/except para DDL (ALTER TABLE ...)
+        # asumiendo comportamiento SQLite. En PostgreSQL, un error deja abortada la
+        # transacción completa. Usamos autocommit para emular el flujo SQLite y evitar
+        # InFailedSqlTransaction cuando esos errores esperados se capturan y se ignoran.
+        self._conn.autocommit = True
 
     # row_factory is set in many places — make it a no-op
     @property
