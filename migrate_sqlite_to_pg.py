@@ -152,7 +152,10 @@ def migrate_table(sq_conn, pg_conn, table_name: str, dry_run=False):
             continue
         try:
             pg_cur.execute(insert_sql, values)
-            inserted += 1
+            if pg_cur.rowcount and pg_cur.rowcount > 0:
+                inserted += 1
+            else:
+                skipped += 1
         except Exception as e:
             log.debug(f"  {table_name} row skip: {e}")
             skipped += 1
@@ -162,6 +165,18 @@ def migrate_table(sq_conn, pg_conn, table_name: str, dry_run=False):
 
     log.info(f"  {table_name}: {inserted} inserted, {skipped} skipped")
     return inserted
+
+
+def truncate_tables(pg_conn, tables):
+    """Truncate selected tables in reverse dependency order."""
+    pg_cur = pg_conn.cursor()
+    for table in reversed(tables):
+        try:
+            pg_cur.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE')
+            log.info(f"  Truncated {table}")
+        except Exception as e:
+            log.warning(f"  Could not truncate {table}: {e}")
+    pg_conn.commit()
 
 
 def reset_sequences(pg_conn):
@@ -194,6 +209,7 @@ def main():
     parser.add_argument('--sqlite', required=True, help='Path to usuarios.db SQLite file')
     parser.add_argument('--dry-run', action='store_true', help='Count rows without inserting')
     parser.add_argument('--tables', nargs='*', help='Specific tables to migrate (default: all)')
+    parser.add_argument('--truncate', action='store_true', help='Truncate target tables before import')
     args = parser.parse_args()
 
     db_url = os.environ.get('DATABASE_URL', '').strip()
@@ -212,6 +228,11 @@ def main():
     pg_conn = get_pg_conn(db_url)
 
     tables = args.tables if args.tables else TABLES
+
+    if args.truncate and not args.dry_run:
+        log.info("Truncating target tables before import...")
+        truncate_tables(pg_conn, tables)
+
     total = 0
     for table in tables:
         log.info(f"Migrating: {table}")
