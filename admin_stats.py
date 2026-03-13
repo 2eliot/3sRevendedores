@@ -90,7 +90,7 @@ def compute_legacy_profit_by_day(conn, start_utc: str, end_utc: str):
     # Costos por juego/paquete
     cost_map = {}
     try:
-        for row in conn.execute("SELECT juego, paquete_id, precio_compra FROM precios_compra WHERE activo = TRUE"):
+        for row in conn.execute("SELECT juego, paquete_id, precio_compra FROM precios_compra WHERE activo = 1"):
             cost_map[(row['juego'], row['paquete_id'])] = float(row['precio_compra'])
     except Exception:
         pass
@@ -673,7 +673,7 @@ def profit_packages_config():
                 latam = conn.execute(
                     """
                     SELECT id AS package_id, 'freefire_latam' AS source, id AS category_id, nombre AS package_name, precio AS base_price, (
-                       SELECT precio_compra FROM precios_compra pc WHERE pc.juego='freefire_latam' AND pc.paquete_id = precios_paquetes.id AND pc.activo = TRUE LIMIT 1
+                       SELECT precio_compra FROM precios_compra pc WHERE pc.juego='freefire_latam' AND pc.paquete_id = precios_paquetes.id AND pc.activo = 1 LIMIT 1
                      ) AS cost FROM precios_paquetes
                     """
                 ).fetchall()
@@ -682,7 +682,7 @@ def profit_packages_config():
                     g = conn.execute(
                         """
                         SELECT id AS package_id, 'freefire_global' AS source, id AS category_id, nombre AS package_name, precio AS base_price, (
-                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego='freefire_global' AND pc.paquete_id = precios_freefire_global.id AND pc.activo = TRUE LIMIT 1
+                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego='freefire_global' AND pc.paquete_id = precios_freefire_global.id AND pc.activo = 1 LIMIT 1
                          ) AS cost FROM precios_freefire_global
                         """
                     ).fetchall()
@@ -691,7 +691,7 @@ def profit_packages_config():
                     b = conn.execute(
                         """
                         SELECT id AS package_id, 'bloodstriker' AS source, id AS category_id, nombre AS package_name, precio AS base_price, (
-                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego='bloodstriker' AND pc.paquete_id = precios_bloodstriker.id AND pc.activo = TRUE LIMIT 1
+                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego='bloodstriker' AND pc.paquete_id = precios_bloodstriker.id AND pc.activo = 1 LIMIT 1
                          ) AS cost FROM precios_bloodstriker
                         """
                     ).fetchall()
@@ -700,7 +700,7 @@ def profit_packages_config():
                     fi = conn.execute(
                         """
                         SELECT id AS package_id, 'freefire_id' AS source, id AS category_id, nombre AS package_name, precio AS base_price, (
-                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego='freefire_id' AND pc.paquete_id = precios_freefire_id.id AND pc.activo = TRUE LIMIT 1
+                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego='freefire_id' AND pc.paquete_id = precios_freefire_id.id AND pc.activo = 1 LIMIT 1
                          ) AS cost FROM precios_freefire_id
                         """
                     ).fetchall()
@@ -709,7 +709,7 @@ def profit_packages_config():
                     dyn = conn.execute(
                         """
                         SELECT pd.id AS package_id, 'dyn_' || jd.slug AS source, pd.id AS category_id, pd.nombre AS package_name, pd.precio AS base_price, (
-                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego = 'dyn_' || jd.slug AND pc.paquete_id = pd.id AND pc.activo = TRUE LIMIT 1
+                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego = 'dyn_' || jd.slug AND pc.paquete_id = pd.id AND pc.activo = 1 LIMIT 1
                          ) AS cost FROM paquetes_dinamicos pd JOIN juegos_dinamicos jd ON jd.id = pd.juego_id
                         """
                     ).fetchall()
@@ -747,8 +747,8 @@ def profit_packages_config():
                     cur.execute(
                         """
                         INSERT INTO precios_compra (juego, paquete_id, precio_compra, activo)
-                        VALUES (?, ?, ?, TRUE)
-                        ON CONFLICT(juego, paquete_id) DO UPDATE SET precio_compra=excluded.precio_compra, activo=TRUE
+                        VALUES (?, ?, ?, 1)
+                        ON CONFLICT(juego, paquete_id) DO UPDATE SET precio_compra=excluded.precio_compra, activo=1
                         """,
                         (juego, int(paquete_id), float(cost))
                     )

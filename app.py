@@ -324,7 +324,7 @@ def record_profit_for_transaction(conn, usuario_id, is_admin, juego, paquete_id,
         row = cur.execute(
             """
             SELECT precio_compra FROM precios_compra
-            WHERE juego = ? AND paquete_id = ? AND activo = TRUE
+            WHERE juego = ? AND paquete_id = ? AND activo = 1
             """,
             (juego, int(paquete_id))
         ).fetchone()
@@ -7240,7 +7240,7 @@ def get_purchase_prices():
     conn = get_db_connection()
     prices = conn.execute('''
         SELECT * FROM precios_compra 
-        WHERE activo = TRUE 
+        WHERE activo = 1 
         ORDER BY juego, paquete_id
     ''').fetchall()
     conn.close()
@@ -7255,7 +7255,7 @@ def get_purchase_price(juego, paquete_id):
         # Usar parámetros seguros y validados
         query = '''
             SELECT precio_compra FROM precios_compra 
-            WHERE juego = ? AND paquete_id = ? AND activo = TRUE
+            WHERE juego = ? AND paquete_id = ? AND activo = 1
         '''
         
         result = conn.execute(query, (str(juego), int(paquete_id))).fetchone()

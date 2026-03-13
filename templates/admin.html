@@ -1385,10 +1385,8 @@
           const values = dataset.map((item) => Number(item.value || 0));
 
           if (profitDailyChart) {
-            profitDailyChart.data.labels = labels;
-            profitDailyChart.data.datasets[0].data = values;
-            profitDailyChart.update();
-            return;
+            profitDailyChart.destroy();
+            profitDailyChart = null;
           }
 
           profitDailyChart = new Chart(ctx, {
