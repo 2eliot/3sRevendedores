@@ -32,6 +32,26 @@ _AUTOINCR_RE = re.compile(r'\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b', re.IGN
 _DATETIME_RE = re.compile(r'\bDATETIME\b', re.IGNORECASE)
 _TEXT_DT_RE  = re.compile(r"TEXT\s+DEFAULT\s+\(datetime\('now'\)\)", re.IGNORECASE)
 _SQLITE_MASTER_RE = re.compile(r'\bsqlite_master\b', re.IGNORECASE)
+_STRFTIME_RE = re.compile(r"strftime\(\s*'([^']+)'\s*,\s*([^)]+)\)", re.IGNORECASE)
+
+
+def _replace_strftime(match):
+    fmt = (match.group(1) or '').strip()
+    expr = (match.group(2) or '').strip()
+    fmt_map = {
+        '%Y-%m': 'YYYY-MM',
+        '%Y-%m-%d': 'YYYY-MM-DD',
+        '%d/%m/%Y': 'DD/MM/YYYY',
+        '%H:%M:%S': 'HH24:MI:SS',
+        '%Y': 'YYYY',
+        '%m': 'MM',
+        '%d': 'DD',
+    }
+    pg_fmt = fmt_map.get(fmt)
+    if not pg_fmt:
+        # fallback best-effort: drop % markers to avoid psycopg placeholder conflicts
+        pg_fmt = fmt.replace('%', '')
+    return f"to_char({expr}, '{pg_fmt}')"
 
 
 def _convert_sql(sql: str):
@@ -50,8 +70,15 @@ def _convert_sql(sql: str):
     # because we never use ? inside string values)
     sql = sql.replace('?', '%s')
 
+    # SQLite strftime(...) -> PostgreSQL to_char(...)
+    sql = _STRFTIME_RE.sub(_replace_strftime, sql)
+
     # datetime('now') → NOW()
     sql = _DT_NOW_RE.sub("NOW()", sql)
+
+    # Escape literal % so psycopg doesn't parse e.g. %Y as placeholders.
+    # Preserve valid placeholders: %s, %b, %t and %%.
+    sql = re.sub(r'%(?![%sbt])', '%%', sql)
 
     # sqlite_master → information_schema.tables  (used in table_exists checks)
     sql = _SQLITE_MASTER_RE.sub("sqlite_master", sql)  # handled at call site
