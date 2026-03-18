@@ -719,6 +719,46 @@ def api_v1_order_status(order_id):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/v1/order-status?external_order_id=XXX
+# ---------------------------------------------------------------------------
+
+@bp.route('/api/v1/order-status', methods=['GET'])
+@require_api_key
+def api_v1_order_status_by_external():
+    """Consulta el estado de una orden por external_order_id."""
+    account = request._ws_account
+    ext_id = (request.args.get('external_order_id') or '').strip()
+    if not ext_id:
+        return jsonify({'ok': False, 'error': 'external_order_id requerido'}), 400
+
+    conn = _get_conn()
+    row = conn.execute(
+        'SELECT * FROM api_orders WHERE external_order_id = ? AND account_id = ? ORDER BY id DESC LIMIT 1',
+        (ext_id, account['id'])
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({'ok': True, 'found': False, 'status': 'not_found'})
+
+    return jsonify({
+        'ok': True,
+        'found': True,
+        'status': row['estado'],
+        'order': {
+            'id': row['id'],
+            'status': row['estado'],
+            'player_name': row['player_name'] or '',
+            'reference_no': row['reference_no'] or '',
+            'error': row['error_msg'] or '',
+            'external_order_id': row['external_order_id'],
+            'created_at': str(row['fecha']),
+            'completed_at': str(row['fecha_completada']) if row['fecha_completada'] else None,
+        }
+    })
+
+
+# ---------------------------------------------------------------------------
 # GET /api/v1/balance
 # ---------------------------------------------------------------------------
 
