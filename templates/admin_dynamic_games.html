@@ -432,7 +432,11 @@
       const data = await res.json();
       if (data.ok) {
         window._gpMyrRate = rate;
-        st.innerHTML = '<div class="status-msg status-ok">✅ Tasa guardada: 1 MYR = ' + rate.toFixed(4) + ' USD. Se aplicará al sincronizar precios de Blood Strike y juegos dinámicos.</div>';
+        const dyn = data.dynamic_sync || {};
+        const synced = Number(dyn.games_synced || 0);
+        const updated = Number(dyn.packages_updated || 0);
+        const errCount = Array.isArray(dyn.errors) ? dyn.errors.length : 0;
+        st.innerHTML = '<div class="status-msg status-ok">✅ Tasa guardada: 1 MYR = ' + rate.toFixed(4) + ' USD. Sync dinámico inmediato: ' + synced + ' juegos, ' + updated + ' paquetes actualizados' + (errCount ? ' (' + errCount + ' con error)' : '') + '.</div>';
       } else {
         st.innerHTML = '<div class="status-msg status-err">❌ ' + (data.error || 'Error') + '</div>';
       }
