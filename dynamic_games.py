@@ -376,8 +376,9 @@ def admin_toggle_game(game_id):
     if not game:
         return jsonify({'error': 'Juego no encontrado'}), 404
     new_state = not game['activo']
+    new_state_sql = 'TRUE' if new_state else 'FALSE'
     conn = _get_conn()
-    conn.execute('UPDATE juegos_dinamicos SET activo=?, fecha_actualizacion=CURRENT_TIMESTAMP WHERE id=?', (new_state, game_id))
+    conn.execute(f'UPDATE juegos_dinamicos SET activo={new_state_sql}, fecha_actualizacion=CURRENT_TIMESTAMP WHERE id=?', (game_id,))
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'activo': new_state})
