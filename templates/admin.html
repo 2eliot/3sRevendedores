@@ -2046,7 +2046,15 @@
 
       try {
         const res = await fetch('/admin/gameclub/price_health', {headers:{'Accept':'application/json'}});
-        const data = await res.json();
+        const raw = await res.text();
+        let data = null;
+        try {
+          data = JSON.parse(raw || '{}');
+        } catch(parseErr) {
+          st.innerHTML = '<span style="color:#ff6b6b;">Error del servidor al responder estadísticas (formato inválido)</span>';
+          tableWrap.innerHTML = '';
+          return;
+        }
         if (!res.ok || !data.success) {
           st.innerHTML = '<span style="color:#ff6b6b;">' + (data.error || 'Error al calcular estadísticas') + '</span>';
           tableWrap.innerHTML = '';
@@ -2137,7 +2145,7 @@
           } catch(e) {}
         }
       } catch(e) {
-        st.innerHTML = '<span style="color:#ff6b6b;">Error de red</span>';
+        st.innerHTML = '<span style="color:#ff6b6b;">Error de conexión al cargar estadísticas</span>';
         tableWrap.innerHTML = '';
       }
     }

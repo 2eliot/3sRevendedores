@@ -4245,12 +4245,12 @@ def admin_toggle_game():
 
     try:
         conn = get_db_connection()
-        is_active = (active == '1')
+        active_sql = 'TRUE' if active == '1' else 'FALSE'
         if game in static_tables:
-            conn.execute(f"UPDATE {static_tables[game]} SET activo = ?", (is_active,))
+            conn.execute(f"UPDATE {static_tables[game]} SET activo = {active_sql}")
         elif game and game.startswith('dyn_'):
             slug = game[4:]
-            conn.execute("UPDATE juegos_dinamicos SET activo = ? WHERE slug = ?", (is_active, slug))
+            conn.execute(f"UPDATE juegos_dinamicos SET activo = {active_sql} WHERE slug = ?", (slug,))
         else:
             conn.close()
             flash('Juego no soportado.', 'error')
@@ -5890,127 +5890,136 @@ def admin_gameclub_price_health():
     """Estadísticas de salud de precios: GP actual vs precio local esperado."""
     if not session.get('is_admin'):
         return jsonify({'error': 'Acceso denegado'}), 403
+    try:
+        from dynamic_games import get_gp_myr_rate as _get_gp_myr_rate
+        myr_to_usd = float(_get_gp_myr_rate())
 
-    from dynamic_games import get_gp_myr_rate as _get_gp_myr_rate
-    myr_to_usd = float(_get_gp_myr_rate())
+        gc_token, gc_err = _gameclub_get_token()
+        if not gc_token:
+            return jsonify({'error': (gc_err or {}).get('message', 'No se pudo obtener token de GamePoint')}), 500
 
-    gc_token, gc_err = _gameclub_get_token()
-    if not gc_token:
-        return jsonify({'error': (gc_err or {}).get('message', 'No se pudo obtener token de GamePoint')}), 500
+        conn = get_db_connection()
+        items = []
+        api_errors = []
 
-    conn = get_db_connection()
-    items = []
-    api_errors = []
+        def _process_game(game_key, game_name, product_id, local_rows, cost_map):
+            try:
+                _, detail_data = _gameclub_post('product/detail', {'token': gc_token, 'productid': int(product_id)})
+                if (detail_data or {}).get('code') != 200:
+                    api_errors.append({'game': game_name, 'error': (detail_data or {}).get('message', 'Error obteniendo detalle')})
+                    return
 
-    def _process_game(game_key, game_name, product_id, local_rows, cost_map):
-        try:
-            _, detail_data = _gameclub_post('product/detail', {'token': gc_token, 'productid': int(product_id)})
-            if (detail_data or {}).get('code') != 200:
-                api_errors.append({'game': game_name, 'error': (detail_data or {}).get('message', 'Error obteniendo detalle')})
-                return
+                gp_map = {}
+                for p in (detail_data or {}).get('package', []) or []:
+                    try:
+                        gp_map[int(p.get('id'))] = float(p.get('price', 0))
+                    except Exception:
+                        continue
 
-            gp_map = {}
-            for p in (detail_data or {}).get('package', []) or []:
-                try:
-                    gp_map[int(p.get('id'))] = float(p.get('price', 0))
-                except Exception:
-                    continue
+                for lp in local_rows:
+                    gp_id = lp.get('gamepoint_package_id')
+                    if not gp_id:
+                        continue
+                    try:
+                        gp_id_int = int(gp_id)
+                    except Exception:
+                        continue
+                    if gp_id_int not in gp_map:
+                        continue
 
-            for lp in local_rows:
-                gp_id = lp.get('gamepoint_package_id')
-                if not gp_id:
-                    continue
-                try:
-                    gp_id_int = int(gp_id)
-                except Exception:
-                    continue
-                if gp_id_int not in gp_map:
-                    continue
+                    gp_myr_now = float(gp_map[gp_id_int])
+                    gp_usd_now = round(gp_myr_now * myr_to_usd, 4)
+                    my_price_now = float(lp.get('precio') or 0)
 
-                gp_myr_now = float(gp_map[gp_id_int])
-                gp_usd_now = round(gp_myr_now * myr_to_usd, 4)
-                my_price_now = float(lp.get('precio') or 0)
+                    cost_before = cost_map.get(int(lp['id']))
+                    my_updated_now = None
+                    diff = None
+                    ok = None
+                    if cost_before is not None:
+                        my_price_before = round(float(cost_before), 4)
+                        margin = my_price_now - my_price_before
+                        my_updated_now = round(gp_usd_now + margin, 2)
+                        diff = round(my_price_now - my_updated_now, 4)
+                        ok = abs(diff) <= 0.01
 
-                cost_before = cost_map.get(int(lp['id']))
-                my_updated_now = None
-                diff = None
-                ok = None
-                if cost_before is not None:
-                    my_price_before = round(float(cost_before), 4)
-                    margin = my_price_now - my_price_before
-                    my_updated_now = round(gp_usd_now + margin, 2)
-                    diff = round(my_price_now - my_updated_now, 4)
-                    ok = abs(diff) <= 0.01
+                    items.append({
+                        'row_key': f"{game_key}:{lp['id']}",
+                        'game_key': game_key,
+                        'game_name': game_name,
+                        'local_id': int(lp['id']),
+                        'local_name': lp.get('nombre'),
+                        'gp_package_id': gp_id_int,
+                        'gp_price_before_usd': round(float(cost_before), 4) if cost_before is not None else None,
+                        'gp_price_now_usd': gp_usd_now,
+                        'my_price_now': round(my_price_now, 2),
+                        'my_price_updated_now': my_updated_now,
+                        'diff': diff,
+                        'ok': ok,
+                    })
+            except Exception as e:
+                api_errors.append({'game': game_name, 'error': str(e)})
 
-                items.append({
-                    'row_key': f"{game_key}:{lp['id']}",
-                    'game_key': game_key,
-                    'game_name': game_name,
-                    'local_id': int(lp['id']),
-                    'local_name': lp.get('nombre'),
-                    'gp_package_id': gp_id_int,
-                    'gp_price_before_usd': round(float(cost_before), 4) if cost_before is not None else None,
-                    'gp_price_now_usd': gp_usd_now,
-                    'my_price_now': round(my_price_now, 2),
-                    'my_price_updated_now': my_updated_now,
-                    'diff': diff,
-                    'ok': ok,
-                })
-        except Exception as e:
-            api_errors.append({'game': game_name, 'error': str(e)})
-
-    # Blood Strike
-    bs_locals = conn.execute(
-        'SELECT id, nombre, precio, gamepoint_package_id FROM precios_bloodstriker WHERE gamepoint_package_id IS NOT NULL'
-    ).fetchall()
-    bs_costs = {
-        int(r['paquete_id']): float(r['precio_compra'])
-        for r in conn.execute("SELECT paquete_id, precio_compra FROM precios_compra WHERE juego = 'bloodstriker'").fetchall()
-    }
-    bs_product_id = int(os.environ.get('BLOODSTRIKE_PRODUCT_ID', '155'))
-    _process_game('bloodstriker', 'Blood Striker', bs_product_id, [dict(x) for x in bs_locals], bs_costs)
-
-    # Juegos dinámicos
-    dyn_games_rows = conn.execute(
-        'SELECT id, nombre, slug, gamepoint_product_id FROM juegos_dinamicos ORDER BY nombre'
-    ).fetchall()
-    for g in dyn_games_rows:
-        g = dict(g)
-        local_rows = conn.execute(
-            'SELECT id, nombre, precio, gamepoint_package_id FROM paquetes_dinamicos WHERE juego_id = ? AND gamepoint_package_id IS NOT NULL',
-            (g['id'],)
-        ).fetchall()
-        cost_map = {
-            int(r['paquete_id']): float(r['precio_compra'])
-            for r in conn.execute(
-                'SELECT paquete_id, precio_compra FROM precios_compra WHERE juego = ?',
-                (f"dyn_{g['slug']}",)
+        # Blood Strike
+        if pg_table_exists(conn, 'precios_bloodstriker') and pg_table_exists(conn, 'precios_compra'):
+            bs_locals = conn.execute(
+                'SELECT id, nombre, precio, gamepoint_package_id FROM precios_bloodstriker WHERE gamepoint_package_id IS NOT NULL'
             ).fetchall()
-        }
-        _process_game(f"dyn_{g['slug']}", g['nombre'], int(g['gamepoint_product_id']), [dict(x) for x in local_rows], cost_map)
+            bs_costs = {
+                int(r['paquete_id']): float(r['precio_compra'])
+                for r in conn.execute("SELECT paquete_id, precio_compra FROM precios_compra WHERE juego = 'bloodstriker'").fetchall()
+            }
+            bs_product_id = int(os.environ.get('BLOODSTRIKE_PRODUCT_ID', '155'))
+            _process_game('bloodstriker', 'Blood Striker', bs_product_id, [dict(x) for x in bs_locals], bs_costs)
+        else:
+            api_errors.append({'game': 'Blood Striker', 'error': 'Tablas de Blood Striker no disponibles'})
 
-    conn.close()
+        # Juegos dinámicos
+        if pg_table_exists(conn, 'juegos_dinamicos') and pg_table_exists(conn, 'paquetes_dinamicos') and pg_table_exists(conn, 'precios_compra'):
+            dyn_games_rows = conn.execute(
+                'SELECT id, nombre, slug, gamepoint_product_id FROM juegos_dinamicos ORDER BY nombre'
+            ).fetchall()
+            for g in dyn_games_rows:
+                g = dict(g)
+                local_rows = conn.execute(
+                    'SELECT id, nombre, precio, gamepoint_package_id FROM paquetes_dinamicos WHERE juego_id = ? AND gamepoint_package_id IS NOT NULL',
+                    (g['id'],)
+                ).fetchall()
+                cost_map = {
+                    int(r['paquete_id']): float(r['precio_compra'])
+                    for r in conn.execute(
+                        'SELECT paquete_id, precio_compra FROM precios_compra WHERE juego = ?',
+                        (f"dyn_{g['slug']}",)
+                    ).fetchall()
+                }
+                _process_game(f"dyn_{g['slug']}", g['nombre'], int(g['gamepoint_product_id']), [dict(x) for x in local_rows], cost_map)
+        else:
+            api_errors.append({'game': 'Juegos dinámicos', 'error': 'Tablas dinámicas no disponibles'})
 
-    comparable = [it for it in items if it.get('ok') is not None]
-    ok_count = sum(1 for it in comparable if it.get('ok'))
-    bad_count = sum(1 for it in comparable if it.get('ok') is False)
-    avg_abs_diff = round((sum(abs(float(it.get('diff') or 0)) for it in comparable) / len(comparable)), 4) if comparable else 0.0
+        conn.close()
 
-    return jsonify({
-        'success': True,
-        'myr_to_usd_rate': myr_to_usd,
-        'generated_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-        'summary': {
-            'total_rows': len(items),
-            'comparable_rows': len(comparable),
-            'ok_rows': ok_count,
-            'out_of_sync_rows': bad_count,
-            'avg_abs_diff': avg_abs_diff,
-            'api_errors': len(api_errors),
-        },
-        'items': items,
-        'errors': api_errors,
-    })
+        comparable = [it for it in items if it.get('ok') is not None]
+        ok_count = sum(1 for it in comparable if it.get('ok'))
+        bad_count = sum(1 for it in comparable if it.get('ok') is False)
+        avg_abs_diff = round((sum(abs(float(it.get('diff') or 0)) for it in comparable) / len(comparable)), 4) if comparable else 0.0
+
+        return jsonify({
+            'success': True,
+            'myr_to_usd_rate': myr_to_usd,
+            'generated_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+            'summary': {
+                'total_rows': len(items),
+                'comparable_rows': len(comparable),
+                'ok_rows': ok_count,
+                'out_of_sync_rows': bad_count,
+                'avg_abs_diff': avg_abs_diff,
+                'api_errors': len(api_errors),
+            },
+            'items': items,
+            'errors': api_errors,
+        })
+    except Exception as e:
+        logger.exception('[GameClub Price Health] Error no controlado')
+        return jsonify({'error': f'No se pudo calcular estadísticas: {str(e)}'}), 500
 
 
 @app.route('/admin/update_freefire_global_price', methods=['POST'])
