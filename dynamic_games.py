@@ -751,46 +751,10 @@ def sync_dynamic_game_prices(game_id):
     report = []
     updated = 0
 
-    def _coerce_gp_float(value):
-        try:
-            if value is None:
-                return None
-            if isinstance(value, (int, float)):
-                return float(value)
-            s = str(value).strip()
-            if not s:
-                return None
-            s = re.sub(r'<[^>]+>', ' ', s)
-            s = s.replace(',', '')
-            m = re.search(r'-?\d+(?:\.\d+)?', s)
-            if not m:
-                return None
-            return float(m.group(0))
-        except Exception:
-            return None
-
-    def _extract_gp_price_myr(pkg: dict):
-        if not isinstance(pkg, dict):
-            return None
-        for key in ('price', 'price_myr', 'myr', 'amount_myr', 'selling_price_myr', 'harga'):
-            val = _coerce_gp_float(pkg.get(key))
-            if val is not None and val > 0:
-                return float(val)
-        return None
-
     for gp_pkg in gp_packages:
         gp_id = int(gp_pkg['id'])
         gp_name = gp_pkg.get('name', '')
-        gp_price_myr = _extract_gp_price_myr(gp_pkg)
-        if gp_price_myr is None or gp_price_myr <= 0:
-            report.append({
-                'gp_id': gp_id,
-                'gp_name': gp_name,
-                'local_id': None,
-                'nota': 'Precio inválido/no disponible en respuesta API de GamePoint',
-                'raw_price': gp_pkg.get('price'),
-            })
-            continue
+        gp_price_myr = float(gp_pkg.get('price', 0))
         nuevo_costo = round(gp_price_myr * myr_to_usd, 4)
 
         local = gp_to_local.get(gp_id)
