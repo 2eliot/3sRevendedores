@@ -2151,7 +2151,7 @@
             '<div style="font-size:20px;font-weight:700;color:#58a6ff;">$' + Number(s.avg_abs_diff || 0).toFixed(4) + '</div>' +
           '</div>';
 
-        const snapshotKey = 'gpPriceHealthSnapshotV1';
+        const snapshotKey = 'gpPriceHealthSnapshotV2';
         let prev = {};
         try {
           prev = JSON.parse(localStorage.getItem(snapshotKey) || '{}') || {};
@@ -2163,21 +2163,22 @@
           tableWrap.innerHTML = '<div style="color:#888;padding:10px 0;">No hay paquetes mapeados para comparar.</div>';
         } else {
           let html = '<table class="table" style="width:100%;font-size:12px;"><thead><tr>' +
-            '<th>Juego</th><th>Paquete</th><th>Precio en GP antes</th><th>Precio en GP ahora</th><th>Precio mío antes</th><th>Precio actualizado ahora</th><th>Estado</th>' +
+            '<th>Juego</th><th>Paquete</th><th>Precio GP anterior (última consulta)</th><th>Precio GP actual (API)</th><th>Precio mío antes</th><th>Precio actualizado ahora</th><th>Estado</th>' +
             '</tr></thead><tbody>';
 
           const nextSnapshot = {};
+          const formatGp = (value) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '-';
+            return n.toFixed(2) + ' GP';
+          };
           items.forEach(it => {
             const key = it.row_key || (it.game_key + ':' + it.local_id);
             const prevRow = prev[key] || {};
 
             const gpBefore = (prevRow.gp_now_myr != null)
               ? Number(prevRow.gp_now_myr)
-              : (it.gp_price_before_myr != null)
-                ? Number(it.gp_price_before_myr)
-                : (it.gp_price_before_usd != null)
-                  ? Number(it.gp_price_before_usd) * usdToMyr
-                  : null;
+              : null;
             const gpNow = (it.gp_price_now_myr != null)
               ? Number(it.gp_price_now_myr)
               : (it.gp_price_now_usd != null)
@@ -2192,15 +2193,15 @@
             html += '<tr>' +
               '<td>' + (it.game_name || '-') + '</td>' +
               '<td>#' + it.local_id + ' ' + (it.local_name || '-') + '</td>' +
-              '<td>' + (gpBefore != null ? (gpBefore.toFixed(4) + ' GP') : '-') + '</td>' +
-              '<td>' + (gpNow != null ? (gpNow.toFixed(4) + ' GP') : '-') + '</td>' +
+              '<td>' + formatGp(gpBefore) + '</td>' +
+              '<td>' + formatGp(gpNow) + '</td>' +
               '<td>' + (myBefore != null ? ('$' + myBefore.toFixed(2)) : '-') + '</td>' +
               '<td>' + (myUpdatedNow != null ? ('$' + myUpdatedNow.toFixed(2)) : '-') + '</td>' +
               '<td style="color:' + statusColor + ';font-weight:700;">' + statusTxt + '</td>' +
             '</tr>';
 
             nextSnapshot[key] = {
-              gp_now_myr: gpNow,
+              gp_now_myr: (gpNow != null && Number.isFinite(gpNow)) ? Number(gpNow.toFixed(2)) : null,
               my_now_price: (it.my_price_now != null ? Number(it.my_price_now) : null),
               at: Date.now()
             };

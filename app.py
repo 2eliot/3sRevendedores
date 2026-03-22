@@ -5715,8 +5715,14 @@ def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmap
     Nuevo precio = nuevo_costo + ganancia_existente.
     Retorna dict con resultado o error."""
     default_profit_usd = float(os.environ.get('BLOODSTRIKE_PROFIT_USD', '0.11'))
+    sync_mode = str(os.environ.get('GAMECLUB_PRICE_SYNC_MODE', 'api_fixed_profit')).strip().lower()
+    if sync_mode not in ('api_fixed_profit', 'per_package_margin'):
+        sync_mode = 'api_fixed_profit'
     from dynamic_games import get_gp_myr_rate as _get_gp_myr_rate
-    myr_to_usd = _get_gp_myr_rate()
+    myr_to_usd = float(_get_gp_myr_rate())
+    # Failsafe: si llega invertida (>1), corregir para evitar inflar precios.
+    if myr_to_usd > 1:
+        myr_to_usd = 1.0 / myr_to_usd
     usd_to_myr = round((1.0 / float(myr_to_usd)), 6) if float(myr_to_usd) > 0 else None
     product_id = int(os.environ.get('BLOODSTRIKE_PRODUCT_ID', '155'))
     
@@ -5831,14 +5837,12 @@ def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmap
 
         nuevo_costo_usd = round(gp_price_myr * myr_to_usd, 4)
 
-        # Calcular ganancia actual de ESTE paquete: precio_venta - costo_compra
+        # Ganancia del paquete: por defecto usar margen fijo sobre costo API real.
         costo_actual = local_costs.get(local['id'], 0)
-        if costo_actual > 0:
-            ganancia_paquete = round(local['precio'] - costo_actual, 4)
+        if sync_mode == 'per_package_margin' and costo_actual > 0:
+            ganancia_paquete = round(float(local['precio']) - float(costo_actual), 4)
         else:
-            # Si falta costo histórico, inferir margen desde precio actual para
-            # mantener el precio base y que próximos cambios sigan el delta GP.
-            ganancia_paquete = round(float(local['precio']) - float(nuevo_costo_usd), 4)
+            ganancia_paquete = round(float(default_profit_usd), 4)
 
         nuevo_precio_venta = round(nuevo_costo_usd + ganancia_paquete, 2)
 
@@ -5905,6 +5909,7 @@ def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmap
     return {
         'success': True,
         'product_id': product_id,
+        'sync_mode': sync_mode,
         'default_profit_usd': default_profit_usd,
         'usd_to_myr_rate': usd_to_myr,
         'myr_to_usd_rate': myr_to_usd,
@@ -5999,6 +6004,12 @@ def admin_gameclub_price_health():
     try:
         from dynamic_games import get_gp_myr_rate as _get_gp_myr_rate
         myr_to_usd = float(_get_gp_myr_rate())
+        if myr_to_usd > 1:
+            myr_to_usd = 1.0 / myr_to_usd
+        sync_mode = str(os.environ.get('GAMECLUB_PRICE_SYNC_MODE', 'api_fixed_profit')).strip().lower()
+        if sync_mode not in ('api_fixed_profit', 'per_package_margin'):
+            sync_mode = 'api_fixed_profit'
+        default_profit_usd = float(os.environ.get('BLOODSTRIKE_PROFIT_USD', '0.11'))
         usd_to_myr = round((1.0 / myr_to_usd), 6) if myr_to_usd > 0 else None
 
         gc_token, gc_err = _gameclub_get_token()
@@ -6046,10 +6057,14 @@ def admin_gameclub_price_health():
                     my_updated_now = None
                     diff = None
                     ok = None
-                    if cost_before is not None:
+                    if sync_mode == 'per_package_margin' and cost_before is not None:
                         my_price_before = round(float(cost_before), 4)
                         margin = my_price_now - my_price_before
                         my_updated_now = round(gp_usd_now + margin, 2)
+                    elif sync_mode == 'api_fixed_profit':
+                        my_updated_now = round(gp_usd_now + default_profit_usd, 2)
+
+                    if my_updated_now is not None:
                         diff = round(my_price_now - my_updated_now, 4)
                         ok = abs(diff) <= 0.01
 
@@ -6119,6 +6134,8 @@ def admin_gameclub_price_health():
 
         return jsonify({
             'success': True,
+            'sync_mode': sync_mode,
+            'default_profit_usd': default_profit_usd,
             'usd_to_myr_rate': usd_to_myr,
             'myr_to_usd_rate': myr_to_usd,
             'generated_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
