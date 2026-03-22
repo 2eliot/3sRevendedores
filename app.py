@@ -185,6 +185,37 @@ def _gameclub_order_inquiry(token, reference_no):
     return data
 
 
+def _coerce_float(value):
+    """Convierte valores numéricos tolerando strings con texto/HTML; retorna None si no es válido."""
+    try:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        s = str(value).strip()
+        if not s:
+            return None
+        s = re.sub(r'<[^>]+>', ' ', s)
+        s = s.replace(',', '')
+        m = re.search(r'-?\d+(?:\.\d+)?', s)
+        if not m:
+            return None
+        return float(m.group(0))
+    except Exception:
+        return None
+
+
+def _gameclub_extract_package_price_myr(gp_pkg: dict):
+    """Extrae el precio MYR real del paquete en respuesta de GamePoint."""
+    if not isinstance(gp_pkg, dict):
+        return None
+    for key in ('price', 'price_myr', 'myr', 'amount_myr', 'selling_price_myr', 'harga'):
+        val = _coerce_float(gp_pkg.get(key))
+        if val is not None and val > 0:
+            return float(val)
+    return None
+
+
 def _generate_batch_id():
     return datetime.utcnow().strftime('%Y%m%d%H%M%S%f') + '-' + secrets.token_hex(4)
 
@@ -5746,7 +5777,16 @@ def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmap
     for gp_pkg in gp_packages:
         gp_id = int(gp_pkg['id'])
         gp_name = gp_pkg.get('name', '')
-        gp_price_myr = float(gp_pkg.get('price', 0))
+        gp_price_myr = _gameclub_extract_package_price_myr(gp_pkg)
+        if gp_price_myr is None or gp_price_myr <= 0:
+            report.append({
+                'gamepoint_id': gp_id,
+                'gamepoint_name': gp_name,
+                'local_id': None,
+                'nota': 'Precio inválido/no disponible en respuesta API de GamePoint',
+                'raw_price': gp_pkg.get('price'),
+            })
+            continue
         nuevo_costo_usd = round(gp_price_myr * myr_to_usd, 4)
         
         local = gp_to_local.get(gp_id)
@@ -5931,7 +5971,11 @@ def admin_gameclub_price_health():
                 gp_map = {}
                 for p in (detail_data or {}).get('package', []) or []:
                     try:
-                        gp_map[int(p.get('id'))] = float(p.get('price', 0))
+                        gp_id = int(p.get('id'))
+                        gp_price = _gameclub_extract_package_price_myr(p)
+                        if gp_price is None or gp_price <= 0:
+                            continue
+                        gp_map[gp_id] = gp_price
                     except Exception:
                         continue
 
