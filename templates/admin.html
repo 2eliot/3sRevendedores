@@ -2126,7 +2126,7 @@
         };
 
         const usdToMyr = normalizeUsdToMyr(data.usd_to_myr_rate, data.myr_to_usd_rate);
-        st.innerHTML = '<span style="color:#4ade80;">Actualizado. Tasa: 1 USD = ' + usdToMyr.toFixed(4) + ' MYR | Filas: ' + Number(s.total_rows || 0) + '</span>';
+        st.innerHTML = '<span style="color:#4ade80;">Actualizado. Tasa: 1 USD = ' + usdToMyr.toFixed(4) + ' MYR | Fórmula costo API: GP / tasa | Filas: ' + Number(s.total_rows || 0) + '</span>';
 
         const okRows = Number(s.ok_rows || 0);
         const badRows = Number(s.out_of_sync_rows || 0);
@@ -2163,7 +2163,7 @@
           tableWrap.innerHTML = '<div style="color:#888;padding:10px 0;">No hay paquetes mapeados para comparar.</div>';
         } else {
           let html = '<table class="table" style="width:100%;font-size:12px;"><thead><tr>' +
-            '<th>Juego</th><th>Paquete</th><th>Precio GP anterior (última consulta)</th><th>Precio GP actual (API)</th><th>Precio mío antes</th><th>Precio actualizado ahora</th><th>Estado</th>' +
+            '<th>Juego</th><th>Paquete</th><th>Precio GP anterior (última consulta)</th><th>Precio GP actual (API)</th><th>Costo USD API (GP/tasa)</th><th>Precio mío antes</th><th>Precio actualizado ahora</th><th>Estado</th>' +
             '</tr></thead><tbody>';
 
           const nextSnapshot = {};
@@ -2171,6 +2171,11 @@
             const n = Number(value);
             if (!Number.isFinite(n)) return '-';
             return n.toFixed(2) + ' GP';
+          };
+          const formatUsd = (value) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '-';
+            return '$' + n.toFixed(4);
           };
           items.forEach(it => {
             const key = it.row_key || (it.game_key + ':' + it.local_id);
@@ -2181,8 +2186,11 @@
               : null;
             const gpNow = (it.gp_price_now_myr != null)
               ? Number(it.gp_price_now_myr)
-              : (it.gp_price_now_usd != null)
-                ? Number(it.gp_price_now_usd) * usdToMyr
+                : null;
+            const gpCostUsdNow = (it.gp_price_now_usd != null)
+              ? Number(it.gp_price_now_usd)
+              : (gpNow != null && Number.isFinite(gpNow) && usdToMyr > 0)
+                ? Number((gpNow / usdToMyr).toFixed(4))
                 : null;
             const myBefore = (prevRow.my_now_price != null) ? Number(prevRow.my_now_price) : (it.my_price_now != null ? Number(it.my_price_now) : null);
             const myUpdatedNow = (it.my_price_updated_now != null) ? Number(it.my_price_updated_now) : null;
@@ -2195,6 +2203,7 @@
               '<td>#' + it.local_id + ' ' + (it.local_name || '-') + '</td>' +
               '<td>' + formatGp(gpBefore) + '</td>' +
               '<td>' + formatGp(gpNow) + '</td>' +
+              '<td>' + formatUsd(gpCostUsdNow) + '</td>' +
               '<td>' + (myBefore != null ? ('$' + myBefore.toFixed(2)) : '-') + '</td>' +
               '<td>' + (myUpdatedNow != null ? ('$' + myUpdatedNow.toFixed(2)) : '-') + '</td>' +
               '<td style="color:' + statusColor + ';font-weight:700;">' + statusTxt + '</td>' +

@@ -6050,18 +6050,18 @@ def admin_gameclub_price_health():
                         continue
 
                     gp_myr_now = float(gp_map[gp_id_int])
-                    gp_usd_now = round(gp_myr_now * myr_to_usd, 4)
+                    gp_usd_now = round((gp_myr_now / float(usd_to_myr)), 4) if usd_to_myr else None
                     my_price_now = float(lp.get('precio') or 0)
 
                     cost_before = cost_map.get(int(lp['id']))
                     my_updated_now = None
                     diff = None
                     ok = None
-                    if sync_mode == 'per_package_margin' and cost_before is not None:
+                    if gp_usd_now is not None and sync_mode == 'per_package_margin' and cost_before is not None:
                         my_price_before = round(float(cost_before), 4)
                         margin = my_price_now - my_price_before
                         my_updated_now = round(gp_usd_now + margin, 2)
-                    elif sync_mode == 'api_fixed_profit':
+                    elif gp_usd_now is not None and sync_mode == 'api_fixed_profit':
                         my_updated_now = round(gp_usd_now + default_profit_usd, 2)
 
                     if my_updated_now is not None:
@@ -6077,6 +6077,7 @@ def admin_gameclub_price_health():
                         'local_id': int(lp['id']),
                         'local_name': lp.get('nombre'),
                         'gp_package_id': gp_id_int,
+                        'conversion_formula': 'gp_price_myr / usd_to_myr_rate',
                         'gp_price_before_myr': gp_myr_before,
                         'gp_price_now_myr': round(gp_myr_now, 4),
                         'gp_price_before_usd': round(float(cost_before), 4) if cost_before is not None else None,
