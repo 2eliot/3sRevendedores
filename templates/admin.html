@@ -1981,7 +1981,7 @@
       } catch (e) {
         data = { raw };
       }
-      return { res, data, raw, redirected: res.redirected, finalUrl: res.url || '' };
+      return { res, data, raw };
     }
 
     async function syncBSPrices() {
@@ -1991,15 +1991,11 @@
       st.textContent = 'Sincronizando precios...';
       if (rpt) { rpt.style.display = 'none'; rpt.innerHTML = ''; }
       try {
-        const { res, data, raw, redirected, finalUrl } = await fetchJsonSafe('/admin/bloodstrike/sync_prices', {method:'POST',headers:{'Accept':'application/json'}});
+        const { res, data, raw } = await fetchJsonSafe('/admin/bloodstrike/sync_prices', {method:'POST',headers:{'Accept':'application/json'}});
         if (!res.ok || data.error) {
           let msg = data.error || data.message || '';
-          const redirectedToAuth = redirected && (finalUrl.includes('/auth') || finalUrl.includes('/login'));
-          if (!msg && redirectedToAuth) {
-            msg = 'Sesión admin expirada. Inicia sesión nuevamente.';
-          }
           if (!msg && raw && raw.trim().startsWith('<')) {
-            msg = 'El servidor respondió HTML en lugar de JSON. Revisa logs del backend.';
+            msg = 'Sesión admin expirada. Inicia sesión nuevamente.';
           }
           if (!msg && (res.status === 401 || res.status === 403)) {
             msg = 'Acceso denegado o sesión expirada.';
@@ -2161,8 +2157,8 @@
             const key = it.row_key || (it.game_key + ':' + it.local_id);
             const prevRow = prev[key] || {};
 
-            const gpBefore = (prevRow.gp_now_myr != null) ? Number(prevRow.gp_now_myr) : (it.gp_price_before_myr != null ? Number(it.gp_price_before_myr) : null);
-            const gpNow = (it.gp_price_now_myr != null) ? Number(it.gp_price_now_myr) : null;
+            const gpBefore = (prevRow.gp_now_usd != null) ? Number(prevRow.gp_now_usd) : (it.gp_price_before_usd != null ? Number(it.gp_price_before_usd) : null);
+            const gpNow = (it.gp_price_now_usd != null) ? Number(it.gp_price_now_usd) : null;
             const myBefore = (prevRow.my_now_price != null) ? Number(prevRow.my_now_price) : (it.my_price_now != null ? Number(it.my_price_now) : null);
             const myUpdatedNow = (it.my_price_updated_now != null) ? Number(it.my_price_updated_now) : null;
 
@@ -2172,15 +2168,15 @@
             html += '<tr>' +
               '<td>' + (it.game_name || '-') + '</td>' +
               '<td>#' + it.local_id + ' ' + (it.local_name || '-') + '</td>' +
-              '<td>' + (gpBefore != null ? (gpBefore.toFixed(4) + ' GP') : '-') + '</td>' +
-              '<td>' + (gpNow != null ? (gpNow.toFixed(4) + ' GP') : '-') + '</td>' +
+              '<td>' + (gpBefore != null ? ('$' + gpBefore.toFixed(4)) : '-') + '</td>' +
+              '<td>' + (gpNow != null ? ('$' + gpNow.toFixed(4)) : '-') + '</td>' +
               '<td>' + (myBefore != null ? ('$' + myBefore.toFixed(2)) : '-') + '</td>' +
               '<td>' + (myUpdatedNow != null ? ('$' + myUpdatedNow.toFixed(2)) : '-') + '</td>' +
               '<td style="color:' + statusColor + ';font-weight:700;">' + statusTxt + '</td>' +
             '</tr>';
 
             nextSnapshot[key] = {
-              gp_now_myr: gpNow,
+              gp_now_usd: gpNow,
               my_now_price: (it.my_price_now != null ? Number(it.my_price_now) : null),
               at: Date.now()
             };
@@ -2270,15 +2266,11 @@
       st.textContent = 'Sincronizando precios...';
       if (rpt) { rpt.style.display = 'none'; rpt.innerHTML = ''; }
       try {
-        const { res, data, raw, redirected, finalUrl } = await fetchJsonSafe(`/admin/dynamic-games/${gameId}/sync-prices`, {method:'POST',headers:{'Accept':'application/json'}});
+        const { res, data, raw } = await fetchJsonSafe(`/admin/dynamic-games/${gameId}/sync-prices`, {method:'POST',headers:{'Accept':'application/json'}});
         if (!res.ok || data.error) {
           let msg = data.error || data.message || '';
-          const redirectedToAuth = redirected && (finalUrl.includes('/auth') || finalUrl.includes('/login'));
-          if (!msg && redirectedToAuth) {
-            msg = 'Sesión admin expirada. Inicia sesión nuevamente.';
-          }
           if (!msg && raw && raw.trim().startsWith('<')) {
-            msg = 'El servidor respondió HTML en lugar de JSON. Revisa logs del backend.';
+            msg = 'Sesión admin expirada. Inicia sesión nuevamente.';
           }
           if (!msg && (res.status === 401 || res.status === 403)) {
             msg = 'Acceso denegado o sesión expirada.';

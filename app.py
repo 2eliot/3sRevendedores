@@ -5773,21 +5773,13 @@ def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmap
     
     report = []
     updated = 0
-
-    # Construir mapa de precios reales desde API (por package id).
-    gp_price_map = {}
-    gp_name_map = {}
-    gp_invalid_rows = []
+    
     for gp_pkg in gp_packages:
-        try:
-            gp_id = int(gp_pkg.get('id'))
-        except Exception:
-            continue
+        gp_id = int(gp_pkg['id'])
         gp_name = gp_pkg.get('name', '')
-        gp_name_map[gp_id] = gp_name
         gp_price_myr = _gameclub_extract_package_price_myr(gp_pkg)
         if gp_price_myr is None or gp_price_myr <= 0:
-            gp_invalid_rows.append({
+            report.append({
                 'gamepoint_id': gp_id,
                 'gamepoint_name': gp_name,
                 'local_id': None,
@@ -5795,88 +5787,66 @@ def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmap
                 'raw_price': gp_pkg.get('price'),
             })
             continue
-        gp_price_map[gp_id] = float(gp_price_myr)
-
-    # Actualizar SOLO paquetes locales mapeados consultando su precio real en API.
-    mapped_local_rows = [dict(lp) for lp in local_packages if lp['gamepoint_package_id']]
-    for local in mapped_local_rows:
-        gp_id = int(local['gamepoint_package_id'])
-        gp_name = gp_name_map.get(gp_id, '')
-        gp_price_myr = gp_price_map.get(gp_id)
-
-        if gp_price_myr is None:
-            report.append({
+        nuevo_costo_usd = round(gp_price_myr * myr_to_usd, 4)
+        
+        local = gp_to_local.get(gp_id)
+        
+        if local:
+            # Calcular ganancia actual de ESTE paquete: precio_venta - costo_compra
+            costo_actual = local_costs.get(local['id'], 0)
+            if costo_actual > 0:
+                ganancia_paquete = round(local['precio'] - costo_actual, 4)
+            else:
+                # Si falta costo histórico, inferir margen desde precio actual para
+                # mantener el precio base y que próximos cambios sigan el delta GP.
+                ganancia_paquete = round(float(local['precio']) - float(nuevo_costo_usd), 4)
+            
+            nuevo_precio_venta = round(nuevo_costo_usd + ganancia_paquete, 2)
+            
+            entry = {
                 'gamepoint_id': gp_id,
                 'gamepoint_name': gp_name,
+                'gamepoint_price_myr': gp_price_myr,
+                'costo_usd_anterior': round(costo_actual, 4),
+                'costo_usd_nuevo': round(nuevo_costo_usd, 4),
+                'ganancia_paquete': round(ganancia_paquete, 4),
+                'nuevo_precio_venta_usd': nuevo_precio_venta,
                 'local_id': local['id'],
                 'local_nombre': local['nombre'],
-                'nota': 'No se pudo obtener precio real de este packageid en GamePoint (omitido)',
-            })
-            continue
-
-        nuevo_costo_usd = round(gp_price_myr * myr_to_usd, 4)
-
-        # Calcular ganancia actual de ESTE paquete: precio_venta - costo_compra
-        costo_actual = local_costs.get(local['id'], 0)
-        if costo_actual > 0:
-            ganancia_paquete = round(local['precio'] - costo_actual, 4)
+                'precio_anterior': local['precio'],
+                'cambio': round(nuevo_precio_venta - local['precio'], 4),
+            }
+            
+            conn.execute(
+                'UPDATE precios_bloodstriker SET precio = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?',
+                (nuevo_precio_venta, local['id'])
+            )
+            conn.execute(
+                '''
+                INSERT INTO precios_compra (juego, paquete_id, precio_compra, activo)
+                VALUES (?, ?, ?, TRUE)
+                ON CONFLICT (juego, paquete_id) DO UPDATE
+                SET precio_compra = EXCLUDED.precio_compra,
+                    activo = EXCLUDED.activo,
+                    fecha_actualizacion = CURRENT_TIMESTAMP
+                ''',
+                ('bloodstriker', local['id'], nuevo_costo_usd)
+            )
+            updated += 1
         else:
-            # Si falta costo histórico, inferir margen desde precio actual para
-            # mantener el precio base y que próximos cambios sigan el delta GP.
-            ganancia_paquete = round(float(local['precio']) - float(nuevo_costo_usd), 4)
-
-        nuevo_precio_venta = round(nuevo_costo_usd + ganancia_paquete, 2)
-
-        entry = {
-            'gamepoint_id': gp_id,
-            'gamepoint_name': gp_name,
-            'gamepoint_price_myr': gp_price_myr,
-            'costo_usd_anterior': round(costo_actual, 4),
-            'costo_usd_nuevo': round(nuevo_costo_usd, 4),
-            'ganancia_paquete': round(ganancia_paquete, 4),
-            'nuevo_precio_venta_usd': nuevo_precio_venta,
-            'local_id': local['id'],
-            'local_nombre': local['nombre'],
-            'precio_anterior': local['precio'],
-            'cambio': round(nuevo_precio_venta - local['precio'], 4),
-        }
-
-        conn.execute(
-            'UPDATE precios_bloodstriker SET precio = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?',
-            (nuevo_precio_venta, local['id'])
-        )
-        conn.execute(
-            '''
-            INSERT INTO precios_compra (juego, paquete_id, precio_compra, activo)
-            VALUES (?, ?, ?, TRUE)
-            ON CONFLICT (juego, paquete_id) DO UPDATE
-            SET precio_compra = EXCLUDED.precio_compra,
-                activo = EXCLUDED.activo,
-                fecha_actualizacion = CURRENT_TIMESTAMP
-            ''',
-            ('bloodstriker', local['id'], nuevo_costo_usd)
-        )
-        updated += 1
+            nuevo_precio_venta = round(nuevo_costo_usd + default_profit_usd, 2)
+            entry = {
+                'gamepoint_id': gp_id,
+                'gamepoint_name': gp_name,
+                'gamepoint_price_myr': gp_price_myr,
+                'costo_usd_nuevo': round(nuevo_costo_usd, 4),
+                'ganancia_paquete': default_profit_usd,
+                'nuevo_precio_venta_usd': nuevo_precio_venta,
+                'local_id': None,
+                'nota': 'Sin mapeo local (gamepoint_package_id no asignado a ningún paquete)',
+            }
+        
         report.append(entry)
-
-    # Agregar referencias de paquetes API sin mapeo local (solo informativo).
-    for gp_id, gp_price_myr in gp_price_map.items():
-        if gp_id in gp_to_local:
-            continue
-        nuevo_costo_usd = round(gp_price_myr * myr_to_usd, 4)
-        report.append({
-            'gamepoint_id': gp_id,
-            'gamepoint_name': gp_name_map.get(gp_id, ''),
-            'gamepoint_price_myr': gp_price_myr,
-            'costo_usd_nuevo': round(nuevo_costo_usd, 4),
-            'ganancia_paquete': default_profit_usd,
-            'nuevo_precio_venta_usd': round(nuevo_costo_usd + default_profit_usd, 2),
-            'local_id': None,
-            'nota': 'Sin mapeo local (gamepoint_package_id no asignado a ningún paquete)',
-        })
-
-    # Agregar paquetes inválidos reportados por API (sin precio usable).
-    report.extend(gp_invalid_rows)
     
     conn.commit()
     conn.close()
@@ -6035,8 +6005,6 @@ def admin_gameclub_price_health():
                         diff = round(my_price_now - my_updated_now, 4)
                         ok = abs(diff) <= 0.01
 
-                    gp_myr_before = round(float(cost_before) * float(usd_to_myr), 4) if (cost_before is not None and usd_to_myr) else None
-
                     items.append({
                         'row_key': f"{game_key}:{lp['id']}",
                         'game_key': game_key,
@@ -6044,8 +6012,6 @@ def admin_gameclub_price_health():
                         'local_id': int(lp['id']),
                         'local_name': lp.get('nombre'),
                         'gp_package_id': gp_id_int,
-                        'gp_price_before_myr': gp_myr_before,
-                        'gp_price_now_myr': round(gp_myr_now, 4),
                         'gp_price_before_usd': round(float(cost_before), 4) if cost_before is not None else None,
                         'gp_price_now_usd': gp_usd_now,
                         'my_price_now': round(my_price_now, 2),

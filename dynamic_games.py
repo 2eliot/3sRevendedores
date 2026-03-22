@@ -785,19 +785,12 @@ def sync_dynamic_game_prices(game_id):
                 return float(val)
         return None
 
-    gp_price_map = {}
-    gp_name_map = {}
-    gp_invalid_rows = []
     for gp_pkg in gp_packages:
-        try:
-            gp_id = int(gp_pkg.get('id'))
-        except Exception:
-            continue
+        gp_id = int(gp_pkg['id'])
         gp_name = gp_pkg.get('name', '')
-        gp_name_map[gp_id] = gp_name
         gp_price_myr = _extract_gp_price_myr(gp_pkg)
         if gp_price_myr is None or gp_price_myr <= 0:
-            gp_invalid_rows.append({
+            report.append({
                 'gp_id': gp_id,
                 'gp_name': gp_name,
                 'local_id': None,
@@ -805,62 +798,42 @@ def sync_dynamic_game_prices(game_id):
                 'raw_price': gp_pkg.get('price'),
             })
             continue
-        gp_price_map[gp_id] = float(gp_price_myr)
-
-    mapped_local_rows = [dict(lp) for lp in local_pkgs if lp['gamepoint_package_id']]
-    for local in mapped_local_rows:
-        gp_id = int(local['gamepoint_package_id'])
-        gp_name = gp_name_map.get(gp_id, '')
-        gp_price_myr = gp_price_map.get(gp_id)
-
-        if gp_price_myr is None:
-            report.append({
-                'gp_id': gp_id,
-                'gp_name': gp_name,
-                'local_id': local['id'],
-                'local_nombre': local['nombre'],
-                'nota': 'No se pudo obtener precio real de este packageid en GamePoint (omitido)',
-            })
-            continue
-
         nuevo_costo = round(gp_price_myr * myr_to_usd, 4)
-        costo_actual = local_costs.get(local['id'], 0)
-        if costo_actual > 0:
-            ganancia = round(local['precio'] - costo_actual, 4)
+
+        local = gp_to_local.get(gp_id)
+        if local:
+            costo_actual = local_costs.get(local['id'], 0)
+            if costo_actual > 0:
+                ganancia = round(local['precio'] - costo_actual, 4)
+            else:
+                # Si falta costo histórico, inferir margen desde precio actual para
+                # mantener estable el precio base y que próximos cambios sigan el delta GP.
+                ganancia = round(float(local['precio']) - float(nuevo_costo), 4)
+            nuevo_precio = round(nuevo_costo + ganancia, 2)
+
+            entry = {
+                'gp_id': gp_id, 'gp_name': gp_name, 'gp_myr': gp_price_myr,
+                'costo_anterior': round(costo_actual, 4), 'costo_nuevo': round(nuevo_costo, 4),
+                'ganancia': round(ganancia, 4), 'precio_nuevo': nuevo_precio,
+                'local_id': local['id'], 'local_nombre': local['nombre'],
+                'precio_anterior': local['precio'],
+                'cambio': round(nuevo_precio - local['precio'], 4),
+            }
+            activo = True if float(nuevo_precio) > 0 else False
+            conn.execute('UPDATE paquetes_dinamicos SET precio=?, activo=?, fecha_actualizacion=CURRENT_TIMESTAMP WHERE id=?',
+                         (nuevo_precio, activo, local['id']))
+            conn.execute('INSERT INTO precios_compra (juego, paquete_id, precio_compra) VALUES (?, ?, ?) ON CONFLICT (juego, paquete_id) DO UPDATE SET precio_compra = EXCLUDED.precio_compra',
+                         (juego_key, local['id'], nuevo_costo))
+            updated += 1
         else:
-            # Si falta costo histórico, inferir margen desde precio actual para
-            # mantener estable el precio base y que próximos cambios sigan el delta GP.
-            ganancia = round(float(local['precio']) - float(nuevo_costo), 4)
-        nuevo_precio = round(nuevo_costo + ganancia, 2)
-
-        entry = {
-            'gp_id': gp_id, 'gp_name': gp_name, 'gp_myr': gp_price_myr,
-            'costo_anterior': round(costo_actual, 4), 'costo_nuevo': round(nuevo_costo, 4),
-            'ganancia': round(ganancia, 4), 'precio_nuevo': nuevo_precio,
-            'local_id': local['id'], 'local_nombre': local['nombre'],
-            'precio_anterior': local['precio'],
-            'cambio': round(nuevo_precio - local['precio'], 4),
-        }
-        activo = True if float(nuevo_precio) > 0 else False
-        conn.execute('UPDATE paquetes_dinamicos SET precio=?, activo=?, fecha_actualizacion=CURRENT_TIMESTAMP WHERE id=?',
-                     (nuevo_precio, activo, local['id']))
-        conn.execute('INSERT INTO precios_compra (juego, paquete_id, precio_compra) VALUES (?, ?, ?) ON CONFLICT (juego, paquete_id) DO UPDATE SET precio_compra = EXCLUDED.precio_compra',
-                     (juego_key, local['id'], nuevo_costo))
-        updated += 1
+            nuevo_precio = round(nuevo_costo + default_profit, 2)
+            entry = {
+                'gp_id': gp_id, 'gp_name': gp_name, 'gp_myr': gp_price_myr,
+                'costo_nuevo': round(nuevo_costo, 4), 'ganancia': default_profit,
+                'precio_nuevo': nuevo_precio, 'local_id': None,
+                'nota': 'Sin mapeo local',
+            }
         report.append(entry)
-
-    for gp_id, gp_price_myr in gp_price_map.items():
-        if gp_id in gp_to_local:
-            continue
-        nuevo_costo = round(gp_price_myr * myr_to_usd, 4)
-        report.append({
-            'gp_id': gp_id, 'gp_name': gp_name_map.get(gp_id, ''), 'gp_myr': gp_price_myr,
-            'costo_nuevo': round(nuevo_costo, 4), 'ganancia': default_profit,
-            'precio_nuevo': round(nuevo_costo + default_profit, 2), 'local_id': None,
-            'nota': 'Sin mapeo local',
-        })
-
-    report.extend(gp_invalid_rows)
 
     conn.commit()
     conn.close()
