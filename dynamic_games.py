@@ -54,6 +54,11 @@ def get_gp_usd_to_myr_rate():
         if row_old and row_old['valor']:
             old_myr_to_usd = float(row_old['valor'])
             if old_myr_to_usd > 0:
+                # Heurística de migración:
+                # - Si valor legado > 1, seguramente guardaron USD->MYR (ej: 3.94) en la clave vieja.
+                # - Si valor legado < 1, sí era MYR->USD (ej: 0.2538) y se invierte.
+                if old_myr_to_usd > 1:
+                    return old_myr_to_usd
                 return round(1.0 / old_myr_to_usd, 6)
     except Exception:
         pass
@@ -73,6 +78,8 @@ def get_gp_usd_to_myr_rate():
         try:
             parsed_old = float(env_myr_to_usd)
             if parsed_old > 0:
+                if parsed_old > 1:
+                    return parsed_old
                 return round(1.0 / parsed_old, 6)
         except Exception:
             pass

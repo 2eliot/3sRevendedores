@@ -1928,7 +1928,7 @@
         const data = await res.json();
         if (!res.ok || data.error) { st.textContent = data.error || 'Error'; return; }
         st.textContent = `${data.gamepoint_packages.length} paquetes GamePoint, ${data.local_packages.length} locales`;
-        const gpOpts = data.gamepoint_packages.map(p => `<option value="${p.id}">${p.id} - ${p.name} ($${p.price})</option>`).join('');
+        const gpOpts = data.gamepoint_packages.map(p => `<option value="${p.id}">${p.id} - ${p.name} (${p.price} MYR)</option>`).join('');
         let html = '<table class="table" style="width:100%;font-size:13px;"><thead><tr><th>Local ID</th><th>Nombre</th><th>Precio Venta</th><th>GamePoint Package</th><th></th></tr></thead><tbody>';
         data.local_packages.forEach(lp => {
           const sel = lp.gamepoint_package_id ? String(lp.gamepoint_package_id) : '';
@@ -1972,6 +1972,18 @@
       } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error de red</span>'; }
     }
 
+    async function fetchJsonSafe(url, options) {
+      const res = await fetch(url, options);
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = JSON.parse(raw || '{}');
+      } catch (e) {
+        data = { raw };
+      }
+      return { res, data, raw };
+    }
+
     async function syncBSPrices() {
       const st = document.getElementById('bs-mapping-status');
       const rpt = document.getElementById('bs-sync-report');
@@ -1979,20 +1991,35 @@
       st.textContent = 'Sincronizando precios...';
       if (rpt) { rpt.style.display = 'none'; rpt.innerHTML = ''; }
       try {
-        const res = await fetch('/admin/bloodstrike/sync_prices', {method:'POST',headers:{'Accept':'application/json'}});
-        const data = await res.json();
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">' + (data.error||'Error') + '</span>'; return; }
+        const { res, data, raw } = await fetchJsonSafe('/admin/bloodstrike/sync_prices', {method:'POST',headers:{'Accept':'application/json'}});
+        if (!res.ok || data.error) {
+          let msg = data.error || data.message || '';
+          if (!msg && raw && raw.trim().startsWith('<')) {
+            msg = 'Sesión admin expirada. Inicia sesión nuevamente.';
+          }
+          if (!msg && (res.status === 401 || res.status === 403)) {
+            msg = 'Acceso denegado o sesión expirada.';
+          }
+          if (!msg) msg = 'Error HTTP ' + res.status;
+          st.innerHTML = '<span style="color:#ff6b6b;">' + msg + '</span>';
+          return;
+        }
         const usdToMyr = Number(data.usd_to_myr_rate || (1 / Number(data.myr_to_usd_rate || 0.2538)));
         st.innerHTML = '<span style="color:#4ade80;">Sync OK: ' + data.packages_updated + '/' + data.total_gamepoint_packages + ' actualizados (1 USD = ' + usdToMyr.toFixed(4) + ' MYR)</span>';
         if (rpt && data.report) {
           let html = '<div style="background:#0d0d1a;border-radius:8px;padding:12px;font-size:12px;"><strong>Reporte de Sync:</strong><table class="table" style="width:100%;font-size:12px;margin-top:8px;"><thead><tr><th>GP ID</th><th>Nombre GP</th><th>Precio MYR</th><th>Costo USD</th><th>Venta USD</th><th>Local</th><th>Cambio</th></tr></thead><tbody>';
           data.report.forEach(r => {
-            const cambioColor = r.cambio > 0 ? '#ff6b6b' : (r.cambio < 0 ? '#4ade80' : '#888');
-            const cambioTxt = r.local_id ? (r.cambio > 0 ? '+' : '') + r.cambio.toFixed(4) : (r.nota || 'N/A');
+            const cambioNum = Number(r.cambio);
+            const hasCambio = Number.isFinite(cambioNum);
+            const cambioColor = hasCambio ? (cambioNum > 0 ? '#ff6b6b' : (cambioNum < 0 ? '#4ade80' : '#888')) : '#888';
+            const cambioTxt = r.local_id && hasCambio ? (cambioNum > 0 ? '+' : '') + cambioNum.toFixed(4) : (r.nota || 'N/A');
+            const gpMyrTxt = Number.isFinite(Number(r.gamepoint_price_myr)) ? Number(r.gamepoint_price_myr).toFixed(4) : (r.raw_price != null ? String(r.raw_price) : '-');
+            const costoTxt = Number.isFinite(Number(r.costo_usd_nuevo)) ? '$' + Number(r.costo_usd_nuevo).toFixed(4) : '-';
+            const ventaTxt = Number.isFinite(Number(r.nuevo_precio_venta_usd)) ? '$' + Number(r.nuevo_precio_venta_usd).toFixed(2) : '-';
             html += `<tr>
               <td>${r.gamepoint_id}</td><td>${r.gamepoint_name}</td>
-              <td>${r.gamepoint_price_myr}</td><td>$${(r.costo_usd_nuevo||0).toFixed(4)}</td>
-              <td style="font-weight:700;">$${r.nuevo_precio_venta_usd.toFixed(2)}</td>
+              <td>${gpMyrTxt}</td><td>${costoTxt}</td>
+              <td style="font-weight:700;">${ventaTxt}</td>
               <td>${r.local_id ? '#'+r.local_id+' '+r.local_nombre : '<span style="color:#888;">-</span>'}</td>
               <td style="color:${cambioColor};">${cambioTxt}</td>
             </tr>`;
@@ -2002,7 +2029,9 @@
           rpt.style.display = 'block';
         }
         loadBSMapping();
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error inesperado</span>'; }
+      } catch(e) {
+        st.innerHTML = '<span style="color:#ff6b6b;">Sin conexión con el servidor o la API de GamePoint</span>';
+      }
     }
 
     // ======= Tasa USD → MYR (GameClub) =======
@@ -2180,7 +2209,7 @@
         const data = await res.json();
         if (!res.ok || data.error) { st.textContent = data.error || 'Error'; return; }
         st.textContent = `${data.gamepoint_packages.length} paquetes GamePoint, ${data.local_packages.length} locales`;
-        const gpOpts = data.gamepoint_packages.map(p => `<option value="${p.id}">${p.id} - ${p.name} ($${p.price})</option>`).join('');
+        const gpOpts = data.gamepoint_packages.map(p => `<option value="${p.id}">${p.id} - ${p.name} (${p.price} MYR)</option>`).join('');
         let html = '<table class="table" style="width:100%;font-size:13px;"><thead><tr><th>Local ID</th><th>Nombre</th><th>Precio</th><th>GamePoint Package</th><th></th></tr></thead><tbody>';
         data.local_packages.forEach(lp => {
           html += `<tr>
@@ -2237,19 +2266,34 @@
       st.textContent = 'Sincronizando precios...';
       if (rpt) { rpt.style.display = 'none'; rpt.innerHTML = ''; }
       try {
-        const res = await fetch(`/admin/dynamic-games/${gameId}/sync-prices`, {method:'POST',headers:{'Accept':'application/json'}});
-        const data = await res.json();
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">'+(data.error||'Error')+'</span>'; return; }
+        const { res, data, raw } = await fetchJsonSafe(`/admin/dynamic-games/${gameId}/sync-prices`, {method:'POST',headers:{'Accept':'application/json'}});
+        if (!res.ok || data.error) {
+          let msg = data.error || data.message || '';
+          if (!msg && raw && raw.trim().startsWith('<')) {
+            msg = 'Sesión admin expirada. Inicia sesión nuevamente.';
+          }
+          if (!msg && (res.status === 401 || res.status === 403)) {
+            msg = 'Acceso denegado o sesión expirada.';
+          }
+          if (!msg) msg = 'Error HTTP ' + res.status;
+          st.innerHTML = '<span style="color:#ff6b6b;">'+ msg +'</span>';
+          return;
+        }
         st.innerHTML = '<span style="color:#4ade80;">✅ Sync OK: '+data.packages_updated+'/'+data.total_gp+' actualizados</span>';
         if (rpt && data.report) {
           let html = '<div style="background:#0d0d1a;border-radius:8px;padding:12px;font-size:12px;"><strong>Reporte de Sync:</strong><table class="table" style="width:100%;font-size:12px;margin-top:8px;"><thead><tr><th>GP ID</th><th>Nombre GP</th><th>Precio MYR</th><th>Costo USD</th><th>Venta USD</th><th>Local</th><th>Cambio</th></tr></thead><tbody>';
           data.report.forEach(r => {
-            const cambioColor = r.cambio > 0 ? '#ff6b6b' : (r.cambio < 0 ? '#4ade80' : '#888');
-            const cambioTxt = r.local_id ? (r.cambio > 0 ? '+' : '') + r.cambio.toFixed(4) : (r.nota || 'N/A');
+            const cambioNum = Number(r.cambio);
+            const hasCambio = Number.isFinite(cambioNum);
+            const cambioColor = hasCambio ? (cambioNum > 0 ? '#ff6b6b' : (cambioNum < 0 ? '#4ade80' : '#888')) : '#888';
+            const cambioTxt = r.local_id && hasCambio ? (cambioNum > 0 ? '+' : '') + cambioNum.toFixed(4) : (r.nota || 'N/A');
+            const gpMyrTxt = Number.isFinite(Number(r.gp_myr)) ? Number(r.gp_myr).toFixed(4) : (r.raw_price != null ? String(r.raw_price) : '-');
+            const costoTxt = Number.isFinite(Number(r.costo_nuevo)) ? '$' + Number(r.costo_nuevo).toFixed(4) : '-';
+            const ventaTxt = Number.isFinite(Number(r.precio_nuevo)) ? '$' + Number(r.precio_nuevo).toFixed(2) : '-';
             html += `<tr>
               <td>${r.gp_id}</td><td>${r.gp_name}</td>
-              <td>${r.gp_myr}</td><td>$${(r.costo_nuevo||0).toFixed(4)}</td>
-              <td style="font-weight:700;">$${r.precio_nuevo.toFixed(2)}</td>
+              <td>${gpMyrTxt}</td><td>${costoTxt}</td>
+              <td style="font-weight:700;">${ventaTxt}</td>
               <td>${r.local_id ? '#'+r.local_id+' '+r.local_nombre : '<span style="color:#888;">-</span>'}</td>
               <td style="color:${cambioColor};">${cambioTxt}</td>
             </tr>`;
@@ -2259,7 +2303,9 @@
           rpt.style.display = 'block';
         }
         loadDynMapping(gameId);
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error inesperado</span>'; }
+      } catch(e) {
+        st.innerHTML = '<span style="color:#ff6b6b;">Sin conexión con el servidor o la API de GamePoint</span>';
+      }
     }
 
     async function loadAdminCostoData() {
