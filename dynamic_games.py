@@ -797,7 +797,15 @@ def sync_dynamic_game_prices(game_id):
     def _extract_gp_price_myr(pkg: dict):
         if not isinstance(pkg, dict):
             return None
-        for key in ('price', 'price_myr', 'myr', 'amount_myr', 'selling_price_myr', 'harga'):
+        primary = _coerce_gp_float(pkg.get('price'))
+        if primary is not None and primary > 0:
+            return float(primary)
+
+        allow_fallback = str(os.environ.get('GAMECLUB_ALLOW_PRICE_FALLBACK_KEYS', '0')).strip() == '1'
+        if not allow_fallback:
+            return None
+
+        for key in ('price_myr', 'myr', 'amount_myr', 'selling_price_myr', 'harga'):
             val = _coerce_gp_float(pkg.get(key))
             if val is not None and val > 0:
                 return float(val)

@@ -2163,7 +2163,7 @@
           tableWrap.innerHTML = '<div style="color:#888;padding:10px 0;">No hay paquetes mapeados para comparar.</div>';
         } else {
           let html = '<table class="table" style="width:100%;font-size:12px;"><thead><tr>' +
-            '<th>Juego</th><th>Paquete</th><th>Precio GP anterior (última consulta)</th><th>Precio GP actual (API)</th><th>Costo USD API (GP/tasa)</th><th>Precio mío antes</th><th>Precio actualizado ahora</th><th>Estado</th>' +
+            '<th>Juego</th><th>Paquete</th><th>GP Package ID</th><th>Precio GP anterior (última consulta)</th><th>Precio GP actual (API)</th><th>Costo USD API (GP/tasa)</th><th>Precio mío antes</th><th>Precio actualizado ahora</th><th>Estado</th>' +
             '</tr></thead><tbody>';
 
           const nextSnapshot = {};
@@ -2201,6 +2201,7 @@
             html += '<tr>' +
               '<td>' + (it.game_name || '-') + '</td>' +
               '<td>#' + it.local_id + ' ' + (it.local_name || '-') + '</td>' +
+              '<td>' + (it.gp_package_id != null ? String(it.gp_package_id) : '-') + '</td>' +
               '<td>' + formatGp(gpBefore) + '</td>' +
               '<td>' + formatGp(gpNow) + '</td>' +
               '<td>' + formatUsd(gpCostUsdNow) + '</td>' +
