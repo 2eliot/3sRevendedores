@@ -5753,8 +5753,14 @@ def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmap
     # Crear mapeo gamepoint_package_id -> local row
     gp_to_local = {}
     for lp in local_packages:
-        if lp['gamepoint_package_id']:
-            gp_to_local[int(lp['gamepoint_package_id'])] = dict(lp)
+        gp_val = lp['gamepoint_package_id']
+        if not gp_val:
+            continue
+        try:
+            gp_to_local[int(gp_val)] = dict(lp)
+        except Exception:
+            # Ignorar mapeos corruptos/no numéricos para no romper la sincronización.
+            continue
 
     # Desactivar paquetes locales sin mapeo o con mapeo no existente (si se pide)
     if deactivate_unmapped:
@@ -5800,7 +5806,16 @@ def _bloodstrike_sync_prices_internal(deactivate_missing=False, deactivate_unmap
     # Actualizar SOLO paquetes locales mapeados consultando su precio real en API.
     mapped_local_rows = [dict(lp) for lp in local_packages if lp['gamepoint_package_id']]
     for local in mapped_local_rows:
-        gp_id = int(local['gamepoint_package_id'])
+        try:
+            gp_id = int(local['gamepoint_package_id'])
+        except Exception:
+            report.append({
+                'local_id': local.get('id'),
+                'local_nombre': local.get('nombre'),
+                'nota': 'gamepoint_package_id inválido (no numérico), omitido',
+                'raw_gamepoint_package_id': local.get('gamepoint_package_id'),
+            })
+            continue
         gp_name = gp_name_map.get(gp_id, '')
         gp_price_myr = gp_price_map.get(gp_id)
 
@@ -5908,11 +5923,14 @@ def admin_bloodstrike_sync_prices():
     deactivate_missing = str(request.args.get('deactivate_missing', '')).strip() == '1'
     deactivate_unmapped = str(request.args.get('deactivate_unmapped', '')).strip() == '1'
     
-    result = _bloodstrike_sync_prices_internal(deactivate_missing=deactivate_missing, deactivate_unmapped=deactivate_unmapped)
-    
-    if result.get('error'):
-        return jsonify(result), 500
-    return jsonify(result)
+    try:
+        result = _bloodstrike_sync_prices_internal(deactivate_missing=deactivate_missing, deactivate_unmapped=deactivate_unmapped)
+        if result.get('error'):
+            return jsonify(result), 500
+        return jsonify(result)
+    except Exception as e:
+        logger.exception('[admin_bloodstrike_sync_prices] Error no controlado')
+        return jsonify({'error': f'Error interno al sincronizar Blood Strike: {str(e)}'}), 500
 
 
 @app.route('/admin/bloodstrike/set_gamepoint_id', methods=['POST'])

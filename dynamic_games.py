@@ -43,8 +43,16 @@ def get_gp_usd_to_myr_rate():
             'SELECT valor FROM configuracion_redeemer WHERE clave = ?', (GP_USD_TO_MYR_RATE_KEY,)
         ).fetchone()
         if row_new and row_new['valor']:
+            parsed_new = float(row_new['valor'])
+            # Si la clave nueva quedó guardada con formato viejo (<1), normalizar.
+            if parsed_new > 1:
+                conn.close()
+                return parsed_new
+            if parsed_new > 0:
+                conn.close()
+                return round(1.0 / parsed_new, 6)
             conn.close()
-            return float(row_new['valor'])
+            return float(_GP_USD_TO_MYR_RATE_DEFAULT)
 
         # Compatibilidad con tasa anterior MYR->USD.
         row_old = conn.execute(
@@ -752,8 +760,13 @@ def sync_dynamic_game_prices(game_id):
     # Map gp_package_id -> local package
     gp_to_local = {}
     for lp in local_pkgs:
-        if lp['gamepoint_package_id']:
-            gp_to_local[int(lp['gamepoint_package_id'])] = dict(lp)
+        gp_val = lp['gamepoint_package_id']
+        if not gp_val:
+            continue
+        try:
+            gp_to_local[int(gp_val)] = dict(lp)
+        except Exception:
+            continue
 
     report = []
     updated = 0
@@ -809,7 +822,16 @@ def sync_dynamic_game_prices(game_id):
 
     mapped_local_rows = [dict(lp) for lp in local_pkgs if lp['gamepoint_package_id']]
     for local in mapped_local_rows:
-        gp_id = int(local['gamepoint_package_id'])
+        try:
+            gp_id = int(local['gamepoint_package_id'])
+        except Exception:
+            report.append({
+                'local_id': local.get('id'),
+                'local_nombre': local.get('nombre'),
+                'nota': 'gamepoint_package_id inválido (no numérico), omitido',
+                'raw_gamepoint_package_id': local.get('gamepoint_package_id'),
+            })
+            continue
         gp_name = gp_name_map.get(gp_id, '')
         gp_price_myr = gp_price_map.get(gp_id)
 

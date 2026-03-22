@@ -2115,7 +2115,17 @@
         const items = Array.isArray(data.items) ? data.items : [];
         const errors = Array.isArray(data.errors) ? data.errors : [];
 
-        const usdToMyr = Number(data.usd_to_myr_rate || (1 / Number(data.myr_to_usd_rate || 0.2538)));
+        const normalizeUsdToMyr = (usdToMyrRaw, myrToUsdRaw) => {
+          const u = Number(usdToMyrRaw);
+          const m = Number(myrToUsdRaw);
+          if (Number.isFinite(u) && u > 1) return u;
+          if (Number.isFinite(u) && u > 0 && u < 1) return 1 / u;
+          if (Number.isFinite(m) && m > 0 && m < 1) return 1 / m;
+          if (Number.isFinite(m) && m > 1) return m;
+          return 3.94;
+        };
+
+        const usdToMyr = normalizeUsdToMyr(data.usd_to_myr_rate, data.myr_to_usd_rate);
         st.innerHTML = '<span style="color:#4ade80;">Actualizado. Tasa: 1 USD = ' + usdToMyr.toFixed(4) + ' MYR | Filas: ' + Number(s.total_rows || 0) + '</span>';
 
         const okRows = Number(s.ok_rows || 0);
@@ -2161,8 +2171,18 @@
             const key = it.row_key || (it.game_key + ':' + it.local_id);
             const prevRow = prev[key] || {};
 
-            const gpBefore = (prevRow.gp_now_myr != null) ? Number(prevRow.gp_now_myr) : (it.gp_price_before_myr != null ? Number(it.gp_price_before_myr) : null);
-            const gpNow = (it.gp_price_now_myr != null) ? Number(it.gp_price_now_myr) : null;
+            const gpBefore = (prevRow.gp_now_myr != null)
+              ? Number(prevRow.gp_now_myr)
+              : (it.gp_price_before_myr != null)
+                ? Number(it.gp_price_before_myr)
+                : (it.gp_price_before_usd != null)
+                  ? Number(it.gp_price_before_usd) * usdToMyr
+                  : null;
+            const gpNow = (it.gp_price_now_myr != null)
+              ? Number(it.gp_price_now_myr)
+              : (it.gp_price_now_usd != null)
+                ? Number(it.gp_price_now_usd) * usdToMyr
+                : null;
             const myBefore = (prevRow.my_now_price != null) ? Number(prevRow.my_now_price) : (it.my_price_now != null ? Number(it.my_price_now) : null);
             const myUpdatedNow = (it.my_price_updated_now != null) ? Number(it.my_price_updated_now) : null;
 
