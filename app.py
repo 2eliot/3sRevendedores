@@ -206,23 +206,10 @@ def _coerce_float(value):
 
 
 def _gameclub_extract_package_price_myr(gp_pkg: dict):
-    """Extrae precio del paquete desde GamePoint.
-
-    Por defecto usa SOLO el campo `price` (fuente oficial esperada).
-    Si se habilita GAMECLUB_ALLOW_PRICE_FALLBACK_KEYS=1, permite llaves alternativas.
-    """
+    """Extrae el precio MYR real del paquete en respuesta de GamePoint."""
     if not isinstance(gp_pkg, dict):
         return None
-
-    primary = _coerce_float(gp_pkg.get('price'))
-    if primary is not None and primary > 0:
-        return float(primary)
-
-    allow_fallback = str(os.environ.get('GAMECLUB_ALLOW_PRICE_FALLBACK_KEYS', '0')).strip() == '1'
-    if not allow_fallback:
-        return None
-
-    for key in ('price_myr', 'myr', 'amount_myr', 'selling_price_myr', 'harga'):
+    for key in ('price', 'price_myr', 'myr', 'amount_myr', 'selling_price_myr', 'harga'):
         val = _coerce_float(gp_pkg.get(key))
         if val is not None and val > 0:
             return float(val)
