@@ -8901,6 +8901,24 @@ def dashboard():
             return 'Free Fire'
         return 'Otros'
 
+    def extract_base_package_amount(nombre_paquete):
+        raw_name = str(nombre_paquete or '').strip()
+        if not raw_name:
+            return None
+
+        amount_match = re.search(r'(\d{1,3}(?:[\.,]\d{3})+|\d+)', raw_name)
+        if not amount_match:
+            return None
+
+        raw_amount = amount_match.group(1)
+        normalized_amount = re.sub(r'[^\d]', '', raw_amount)
+        if not normalized_amount:
+            return None
+        try:
+            return int(normalized_amount)
+        except Exception:
+            return None
+
     def normalize_package_display_name(nombre_paquete, item_name):
         raw_name = str(nombre_paquete or '').strip()
         raw_name = re.sub(r'\sx\d+\s*$', '', raw_name, flags=re.IGNORECASE)
@@ -8914,18 +8932,16 @@ def dashboard():
         if item_name in ('Free Fire', 'Free Fire LATAM', 'Blood Striker'):
             if any(word in lower_name for word in ['tarjeta', 'pase', 'elite', 'cofre']):
                 return raw_name
-            amount_match = re.search(r'(\d[\d\.,]*)', raw_name)
-            if amount_match:
-                amount_value = re.sub(r'\D', '', amount_match.group(1))
-                if amount_value:
-                    try:
-                        return str(int(amount_value))
-                    except Exception:
-                        return amount_value
+            base_amount = extract_base_package_amount(raw_name)
+            if base_amount is not None:
+                return str(base_amount)
         return raw_name or 'Paquete'
 
     def package_order_key(package_name):
         normalized = str(package_name or '').strip().lower()
+        base_amount = extract_base_package_amount(normalized)
+        if base_amount is not None:
+            return (0, base_amount, normalized)
         exact_number = re.fullmatch(r'(\d+)', normalized)
         if exact_number:
             return (0, int(exact_number.group(1)), normalized)
