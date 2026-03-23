@@ -297,6 +297,7 @@ def inject_dynamic_games_menu():
     """Inyecta la lista de juegos dinámicos activos en todas las plantillas."""
     try:
         games = get_dynamic_games_list(only_active=True)
+        games = [g for g in games if g.get('slug') != 'bloodstriker']
         id_games = [g for g in games if (g.get('modo') or 'id') == 'id']
         pin_games = [g for g in games if (g.get('modo') or 'id') != 'id']
         return {
