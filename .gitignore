@@ -1,3 +1,6 @@
+# Archivos de estado local (no deben sincronizarse entre entornos)
+last_cleanup.txt
+
 # Variables de entorno y archivos sensibles
 .env
 .env.local
