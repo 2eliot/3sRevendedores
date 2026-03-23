@@ -2207,11 +2207,12 @@
       st.textContent = 'Importando paquetes desde GamePoint...';
       try {
         const res = await fetch(`/admin/dynamic-games/${gameId}/auto-import-packages`, {method:'POST',headers:{'Accept':'application/json'}});
-        const data = await res.json();
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">'+(data.error||'Error')+'</span>'; return; }
+        let data = null;
+        try { data = await res.json(); } catch(_) { st.innerHTML = '<span style="color:#ff6b6b;">Error del servidor (respuesta inválida). Revisa los logs.</span>'; return; }
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">'+(data.error||'Error '+res.status)+'</span>'; return; }
         st.innerHTML = `<span style="color:#4ade80;">✅ ${data.created} paquetes creados, ${data.skipped} ya existían (${data.total_gp} en GP)</span>`;
         loadDynMapping(gameId);
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error inesperado</span>'; }
+      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error de red: '+e.message+'</span>'; }
     }
 
     async function saveDynMapping(gameId, localId) {
