@@ -2709,7 +2709,8 @@ def login():
     admin_email = os.environ.get('ADMIN_EMAIL', 'admin@inefable.com').strip()
     admin_password = os.environ.get('ADMIN_PASSWORD', 'InefableAdmin2024!')
     
-    dev_login = not is_production and correo == 'admin' and contraseña == '123456'
+    _is_prod = bool(os.environ.get('DATABASE_URL'))
+    dev_login = not _is_prod and correo == 'admin' and contraseña == '123456'
     if dev_login or (correo.lower() == admin_email.lower() and contraseña == admin_password):
         logger.info(f"[Login] Admin login OK para {admin_email}")
         # Buscar o crear usuario admin en la base de datos
