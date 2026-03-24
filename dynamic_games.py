@@ -1534,7 +1534,7 @@ def _purchase_via_reseller(game, pkg, mapping, slug, user_id, is_admin, precio,
         # Try whitelabel endpoint first, fallback to legacy
         url = f"{base_url}/api/v1/recharge"
         req = urllib.request.Request(url, data=payload, headers={
-            'Authorization': f'Bearer {api_key}',
+            'X-API-Key': api_key,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'User-Agent': '3sRecargas-AutoRecharge/1.0'
