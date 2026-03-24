@@ -1,21 +1,3 @@
-def get_revendedores_balance():
-    api_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip().rstrip('/')
-    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
-    if not api_url or not api_key:
-        return 0.0
-    try:
-        url = f"{api_url}/api/v1/balance"
-        headers = {'X-API-Key': api_key}
-        resp = requests.get(url, headers=headers, timeout=10)
-        data = resp.json()
-        if resp.status_code == 200 and data.get('ok') and 'balance' in data:
-            return float(data['balance'])
-        if 'saldo' in data:
-            return float(data['saldo'])
-        return 0.0
-    except Exception as e:
-        logger.warning(f"Error consultando saldo revendedores: {e}")
-        return 0.0
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -4620,16 +4602,19 @@ def admin_update_name():
 def billetera():
     if 'usuario' not in session:
         return redirect('/auth')
+    
     is_admin = session.get('is_admin', False)
+    
     if is_admin:
+        # Admin ve todos los créditos agregados a usuarios
         wallet_credits = get_all_wallet_credits()
         recargas_admin = get_all_recargas_admin()
-        rev_balance = get_revendedores_balance()
+        
         return render_template('billetera.html', 
                              wallet_credits=wallet_credits,
                              recargas_admin=recargas_admin,
                              user_id=session.get('id', '00000'),
-                             balance=rev_balance,
+                             balance=0,
                              is_admin=True,
                              recarga_pendiente=None,
                              recargas_historial=[],
@@ -4638,19 +4623,29 @@ def billetera():
                              recarga_max=RECARGA_MAX_USDT,
                              recarga_bonus=RECARGA_BONUS_PERCENT)
     else:
+        # Usuario normal ve solo sus créditos de billetera
         user_id = session.get('user_db_id')
         if not user_id:
             flash('Error al acceder a la billetera', 'error')
             return redirect('/')
+        
+        # Marcar todas las notificaciones de cartera como vistas
         mark_wallet_credits_as_read(user_id)
+        
+        # Obtener créditos de billetera del usuario
         wallet_credits = get_user_wallet_credits(user_id)
+        
+        # Obtener recarga pendiente y historial de recargas
         recarga_pendiente = get_recarga_pendiente(user_id)
         recargas_historial = get_recargas_usuario(user_id)
+        
+        # Actualizar saldo
         conn = get_db_connection()
         user = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
         if user:
             session['saldo'] = user['saldo']
         conn.close()
+        
         return render_template('billetera.html', 
                              wallet_credits=wallet_credits, 
                              user_id=session.get('id', '00000'),
