@@ -2683,19 +2683,20 @@ def control_aviso_guardar():
 
 @app.route('/login', methods=['POST'])
 def login():
-    correo = request.form['correo']
-    contraseña = request.form['contraseña']
+    correo = request.form.get('correo', '').strip()
+    contraseña = request.form.get('contraseña', '')
     
     if not correo or not contraseña:
         flash('Por favor, complete todos los campos', 'error')
         return redirect('/auth')
     
     # Verificar credenciales de administrador (desde variables de entorno)
-    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@inefable.com')
+    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@inefable.com').strip()
     admin_password = os.environ.get('ADMIN_PASSWORD', 'InefableAdmin2024!')
     
     dev_login = not is_production and correo == 'admin' and contraseña == '123456'
-    if dev_login or (correo == admin_email and contraseña == admin_password):
+    if dev_login or (correo.lower() == admin_email.lower() and contraseña == admin_password):
+        logger.info(f"[Login] Admin login OK para {admin_email}")
         # Buscar o crear usuario admin en la base de datos
         conn = get_db_connection()
         admin_user = conn.execute('SELECT * FROM usuarios WHERE correo = ?', (admin_email,)).fetchone()
