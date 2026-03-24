@@ -52,7 +52,7 @@ _DT_NOW_MOD_RE = re.compile(
 )
 
 _BOOL_ASSIGN_PARAM_RE = re.compile(
-    r'\b(activo|usado|importante|visto|sin_ganancia|bono_activo)\b\s*=\s*%s',
+    r'\b(activo|usado|importante|visto|sin_ganancia|bono_activo|active|auto_enabled)\b\s*=\s*%s',
     re.IGNORECASE
 )
 

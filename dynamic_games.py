@@ -1011,7 +1011,7 @@ def validar_dinamico(slug):
     try:
         _conn_map = _get_conn()
         _rev_mapping = _conn_map.execute(
-            'SELECT remote_product_id, remote_package_id, remote_label FROM rev_item_mappings WHERE juego_id = ? AND paquete_id = ? AND auto_enabled = 1 AND active = 1',
+            'SELECT remote_product_id, remote_package_id, remote_label FROM rev_item_mappings WHERE juego_id = ? AND paquete_id = ? AND auto_enabled = TRUE AND active = TRUE',
             (game['id'], package_id)
         ).fetchone()
         _conn_map.close()

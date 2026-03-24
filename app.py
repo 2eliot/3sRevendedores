@@ -7504,7 +7504,7 @@ def admin_revendedores_mapping_data():
 
     conn = get_db_connection()
     catalog_rows = conn.execute(
-        'SELECT id, remote_product_id, remote_product_name, remote_package_id, remote_package_name FROM rev_catalog_items WHERE active = 1 ORDER BY remote_product_name, remote_package_name'
+        'SELECT id, remote_product_id, remote_product_name, remote_package_id, remote_package_name FROM rev_catalog_items WHERE active = TRUE ORDER BY remote_product_name, remote_package_name'
     ).fetchall()
 
     mappings_rows = conn.execute(
