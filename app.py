@@ -249,19 +249,27 @@ def _extract_pin_codes_from_csv_bytes(content: bytes):
 app = Flask(__name__)
 
 # Configuración de seguridad
-# En producción, usar variables de entorno
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+# IMPORTANTE: En producción con múltiples workers, SECRET_KEY DEBE estar en env vars.
+# Si no está definido, se genera uno fijo basado en el path del app para que todos
+# los workers compartan la misma clave (secrets.token_hex genera uno distinto por proceso).
+_env_secret = os.environ.get('SECRET_KEY', '').strip()
+if _env_secret:
+    app.secret_key = _env_secret
+else:
+    import hashlib as _hlib
+    app.secret_key = _hlib.sha256(f"3srecargas-fallback-{os.path.abspath(__file__)}".encode()).hexdigest()
+    logger.warning("[SEGURIDAD] SECRET_KEY no configurado. Usando clave derivada. Configura SECRET_KEY en produccion.")
 
 # Configuración de cookies seguras
 # SESSION_COOKIE_SECURE=True requiere HTTPS. En VPS sin HTTPS usar FORCE_HTTPS=false.
-is_production = os.environ.get('RENDER') == 'true' or os.environ.get('FLASK_ENV') == 'production'
 _force_https = os.environ.get('FORCE_HTTPS', '').strip().lower()
 if _force_https in ('false', '0', 'no'):
     _cookie_secure = False
 elif _force_https in ('true', '1', 'yes'):
     _cookie_secure = True
 else:
-    _cookie_secure = is_production
+    # Por defecto: solo activar Secure si se detecta HTTPS (Render)
+    _cookie_secure = os.environ.get('RENDER') == 'true'
 app.config['SESSION_COOKIE_SECURE'] = _cookie_secure
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevenir XSS
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protección CSRF
