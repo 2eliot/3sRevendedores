@@ -494,9 +494,9 @@ def admin_add_package(game_id):
     conn = _get_conn()
     cur = conn.execute('''
         INSERT INTO paquetes_dinamicos (juego_id, nombre, precio, descripcion, gamepoint_package_id, activo, orden)
-        VALUES (?, ?, ?, ?, ?, 1, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         RETURNING id
-    ''', (game_id, nombre, precio, descripcion, int(gp_pkg_id) if gp_pkg_id else None, orden))
+    ''', (game_id, nombre, precio, descripcion, int(gp_pkg_id) if gp_pkg_id else None, True, orden))
     pkg_id = cur.fetchone()[0]
     conn.commit()
 
@@ -604,8 +604,8 @@ def admin_auto_import_packages(game_id):
             clean_name = ' '.join(clean_name.split())
             conn.execute('''
                 INSERT INTO paquetes_dinamicos (juego_id, nombre, precio, descripcion, gamepoint_package_id, activo, orden)
-                VALUES (?, ?, 0.0, '', ?, FALSE, ?)
-            ''', (game_id, clean_name, gp_id, idx))
+                VALUES (?, ?, 0.0, '', ?, ?, ?)
+            ''', (game_id, clean_name, gp_id, False, idx))
             created += 1
 
         conn.commit()
