@@ -387,28 +387,8 @@
       <p>
         <span class="user-chip"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>ID <span class="chip-value">{{ user_id }}</span></span>
         <span class="user-chip chip-saldo"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg>Saldo <span class="chip-value">${{ "%.2f"|format(balance) }}</span></span>
-        {% if is_admin %}
-        <span class="user-chip chip-saldo" id="revendedores-balance-chip" style="background:#222; color:#a78bfa;">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg>
-          Saldo Revendedores <span class="chip-value" id="revendedores-balance-value">${{ revendedores_balance is not none and ("%.2f"|format(revendedores_balance)) or '---' }}</span>
-        </span>
-        {% endif %}
       </p>
     </section>
-
-    {% if is_admin %}
-    <script>
-    function fetchRevendedoresBalance() {
-      fetch('/api/admin/revendedores_balance').then(r => r.json()).then(data => {
-        if (data.ok && typeof data.balance === 'number') {
-          document.getElementById('revendedores-balance-value').textContent = `$${data.balance.toFixed(2)}`;
-        }
-      });
-    }
-    // Actualizar cada 10 segundos
-    setInterval(fetchRevendedoresBalance, 10000);
-    </script>
-    {% endif %}
 
     <div class="recarga-section">
       <!-- Sección de recarga con Binance Pay -->

@@ -1,23 +1,3 @@
-def get_revendedores_balance():
-    """Consulta el saldo de la cuenta revendedores usando la API externa y X-API-Key."""
-    api_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip().rstrip('/')
-    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
-    if not api_url or not api_key:
-        return None
-    try:
-        url = f"{api_url}/api/v1/balance"
-        headers = {'X-API-Key': api_key}
-        resp = requests.get(url, headers=headers, timeout=10)
-        data = resp.json()
-        if resp.status_code == 200 and data.get('ok') and 'balance' in data:
-            return float(data['balance'])
-        # Algunos endpoints pueden devolver el saldo en otro campo
-        if 'saldo' in data:
-            return float(data['saldo'])
-        return None
-    except Exception as e:
-        logger.warning(f"Error consultando saldo revendedores: {e}")
-        return None
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -2081,50 +2061,37 @@ def _recarga_to_dict(row):
     """Convierte una fila de recarga a dict con fechas en hora local"""
     if not row:
         return None
+    d = dict(row)
+    d['fecha_creacion'] = _utc_to_local(d.get('fecha_creacion', ''))
+    d['fecha_expiracion'] = _utc_to_local(d.get('fecha_expiracion', ''))
+    d['fecha_completada'] = _utc_to_local(d.get('fecha_completada', ''))
+    return d
 
-    @app.route('/billetera')
-    def billetera():
-        if not session.get('usuario_id'):
-            return redirect('/auth')
-        user_id = session['usuario_id']
-        is_admin = session.get('is_admin', False)
-        conn = get_db_connection()
-        row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
-        balance = float(row['saldo']) if row else 0.0
-        conn.close()
-        recarga_min = float(os.environ.get('RECARGA_MIN', 5))
-        recarga_max = float(os.environ.get('RECARGA_MAX', 500))
-        recarga_pendiente = get_recarga_pendiente(user_id)
-        recargas_historial = get_recargas_usuario(user_id)
-        binance_pay_id = os.environ.get('BINANCE_PAY_ID', '')
-        wallet_credits = []
-        recargas_admin = []
-        revendedores_balance = None
-        if is_admin:
-            recargas_admin = get_all_recargas_admin()
-            wallet_credits = get_admin_wallet_credits()
-            revendedores_balance = get_revendedores_balance()
-        return render_template('billetera.html',
-                               user_id=user_id,
-                               balance=balance,
-                               is_admin=is_admin,
-                               recarga_min=recarga_min,
-                               recarga_max=recarga_max,
-                               recarga_pendiente=recarga_pendiente,
-                               recargas_historial=recargas_historial,
-                               binance_pay_id=binance_pay_id,
-                               wallet_credits=wallet_credits,
-                               recargas_admin=recargas_admin,
-                               revendedores_balance=revendedores_balance)
+def get_all_recargas_admin(limit=50):
+    """Obtiene todas las recargas de todos los usuarios (para admin)"""
+    _ensure_recargas_table()
+    conn = get_db_connection()
+    recargas = conn.execute('''
+        SELECT r.*, u.nombre, u.apellido, u.correo
+        FROM recargas_binance r
+        LEFT JOIN usuarios u ON r.usuario_id = u.id
+        ORDER BY r.fecha_creacion DESC
+        LIMIT ?
+    ''', (limit,)).fetchall()
+    conn.close()
+    result = []
+    for r in recargas:
+        d = _recarga_to_dict(r)
+        d['nombre'] = r['nombre'] if r['nombre'] else ''
+        d['apellido'] = r['apellido'] if r['apellido'] else ''
+        d['correo'] = r['correo'] if r['correo'] else ''
+        result.append(d)
+    return result
+
+def get_recargas_usuario(user_id, limit=20):
+    """Obtiene el historial de recargas de un usuario"""
+    conn = get_db_connection()
     # Crear tabla si no existe (compatibilidad)
-    @app.route('/api/admin/revendedores_balance')
-    def api_admin_revendedores_balance():
-        if not session.get('is_admin'):
-            return jsonify({'ok': False, 'error': 'Solo admin'}), 403
-        balance = get_revendedores_balance()
-        if balance is not None:
-            return jsonify({'ok': True, 'balance': balance})
-        return jsonify({'ok': False, 'error': 'No se pudo consultar el saldo'}), 500
     conn.execute('''
         CREATE TABLE IF NOT EXISTS recargas_binance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
