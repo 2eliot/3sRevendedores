@@ -69,8 +69,8 @@ body {
   backdrop-filter: blur(10px);
   padding: 2.5rem;
   border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(34, 197, 94, 0.25);
-  border: 1px solid rgba(34, 197, 94, 0.35);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(220, 38, 38, 0.25);
+  border: 1px solid rgba(220, 38, 38, 0.35);
 }
 
 .auth-header {
@@ -83,7 +83,7 @@ body {
   font-size: 2rem;
   font-weight: 700;
   margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #16a34a, #22c55e);
+  background: linear-gradient(135deg, #dc2626, #ef4444);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -119,13 +119,13 @@ body {
 
 .tab-buttons button:hover {
   color: #fff;
-  background: rgba(34, 197, 94, 0.2);
+  background: rgba(220, 38, 38, 0.2);
 }
 
 .active-tab {
-  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
   color: #fff !important;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
   transform: translateY(-1px);
 }
 
@@ -161,8 +161,8 @@ body {
 
 .tab-content input:focus {
   outline: none;
-  border-color: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
   transform: translateY(-1px);
 }
 
@@ -172,7 +172,7 @@ body {
 
 .submit-btn {
   padding: 1rem;
-  background: linear-gradient(135deg, #16a34a, #22c55e);
+  background: linear-gradient(135deg, #dc2626, #ef4444);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -181,12 +181,12 @@ body {
   font-size: 1rem;
   transition: all 0.3s ease;
   margin-top: 0.5rem;
-  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
 }
 
 .submit-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.6);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6);
 }
 
 .submit-btn:active {
