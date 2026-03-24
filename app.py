@@ -7538,7 +7538,7 @@ def admin_revendedores_bulk_save():
             paquete_id = m.get('paquete_id')
             r_prod = str(m.get('remote_product_id', ''))
             r_pkg = str(m.get('remote_package_id', ''))
-            auto_en = 1 if m.get('auto_enabled') else 0
+            auto_en = bool(m.get('auto_enabled'))
 
             if not juego_id or not paquete_id:
                 continue
