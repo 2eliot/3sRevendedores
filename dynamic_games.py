@@ -969,10 +969,7 @@ def validar_dinamico(slug):
         return redirect(redirect_url)
 
     precio = pkg['precio']
-    gp_package_id = pkg.get('gamepoint_package_id')
-    if not gp_package_id:
-        flash('Este paquete no tiene configurado el ID de GamePoint.', 'error')
-        return redirect(redirect_url)
+    # Ya no se requiere gamepoint_package_id, solo mapping de revendedores
 
     # Check balance
     if not is_admin:
@@ -1024,6 +1021,9 @@ def validar_dinamico(slug):
             game, pkg, _rev_mapping, slug, user_id, is_admin, precio, package_id,
             player_id, player_id2, servidor, redirect_url, _start
         )
+    # Si no hay mapping, mostrar error claro
+    flash('Este paquete no está mapeado para recarga automática. Contacta al administrador.', 'error')
+    return redirect(redirect_url)
 
     get_token, gp_post, order_validate, order_create, order_inquiry = _gp_helpers()
     _tx_procesando_id = None
