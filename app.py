@@ -959,6 +959,41 @@ def init_db():
         except Exception:
             pass
 
+        # === Tablas para sistema de mapeo de revendedores ===
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS rev_catalog_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                remote_product_id TEXT NOT NULL,
+                remote_product_name TEXT NOT NULL DEFAULT '',
+                remote_package_id TEXT NOT NULL,
+                remote_package_name TEXT NOT NULL DEFAULT '',
+                active BOOLEAN DEFAULT TRUE,
+                raw_json TEXT DEFAULT '{}',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(remote_product_id, remote_package_id)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS rev_item_mappings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                juego_id INTEGER NOT NULL,
+                paquete_id INTEGER NOT NULL,
+                remote_product_id TEXT NOT NULL,
+                remote_package_id TEXT NOT NULL,
+                remote_label TEXT DEFAULT '',
+                auto_enabled BOOLEAN DEFAULT FALSE,
+                active BOOLEAN DEFAULT TRUE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(juego_id, paquete_id),
+                FOREIGN KEY (juego_id) REFERENCES juegos_dinamicos(id),
+                FOREIGN KEY (paquete_id) REFERENCES paquetes_dinamicos(id)
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_rev_mappings_paquete ON rev_item_mappings(paquete_id)')
+
         # Tablas para API de marca blanca (WebService accounts + órdenes)
         init_whitelabel_tables(cursor)
 
@@ -7346,6 +7381,193 @@ def admin_toggle_pin_source():
         flash(f'Error al actualizar configuración: {str(e)}', 'error')
     
     return redirect('/admin')
+
+# ──────────────────────────────────────────────────────────────
+# Rutas para Mapeo de Revendedores (sync catálogo + mappings)
+# ──────────────────────────────────────────────────────────────
+
+@app.route('/admin/revendedores/sync', methods=['POST'])
+def admin_revendedores_sync():
+    """Sincroniza catálogo de productos del revendedor externo."""
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Acceso denegado'}), 403
+
+    import urllib.request, urllib.error
+    base_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip().rstrip('/')
+    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
+
+    if not base_url or not api_key:
+        return jsonify({'error': 'Configurar REVENDEDORES_BASE_URL y REVENDEDORES_API_KEY en variables de entorno'}), 400
+
+    try:
+        url = f"{base_url}/api/v1/products"
+        req = urllib.request.Request(url, headers={
+            'Authorization': f'Bearer {api_key}',
+            'Accept': 'application/json',
+            'User-Agent': '3sRecargas-Admin/1.0'
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as he:
+        return jsonify({'error': f'Error HTTP {he.code} del servidor revendedor'}), 502
+    except Exception as e:
+        return jsonify({'error': f'Error conectando al revendedor: {str(e)}'}), 502
+
+    products = data if isinstance(data, list) else data.get('products', data.get('data', []))
+    if not isinstance(products, list):
+        return jsonify({'error': 'Respuesta inesperada del revendedor'}), 502
+
+    conn = get_db_connection()
+    inserted = 0
+    updated = 0
+    try:
+        for prod in products:
+            prod_id = str(prod.get('id', prod.get('product_id', '')))
+            prod_name = prod.get('name', prod.get('product_name', ''))
+            packages = prod.get('packages', prod.get('items', []))
+            if not isinstance(packages, list):
+                packages = []
+            for pkg in packages:
+                pkg_id = str(pkg.get('id', pkg.get('package_id', '')))
+                pkg_name = pkg.get('name', pkg.get('package_name', ''))
+                raw = json.dumps(pkg)
+
+                existing = conn.execute(
+                    'SELECT id FROM rev_catalog_items WHERE remote_product_id = ? AND remote_package_id = ?',
+                    (prod_id, pkg_id)
+                ).fetchone()
+
+                if existing:
+                    conn.execute('''
+                        UPDATE rev_catalog_items
+                        SET remote_product_name = ?, remote_package_name = ?, raw_json = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    ''', (prod_name, pkg_name, raw, existing['id']))
+                    updated += 1
+                else:
+                    conn.execute('''
+                        INSERT INTO rev_catalog_items
+                        (remote_product_id, remote_product_name, remote_package_id, remote_package_name, raw_json)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (prod_id, prod_name, pkg_id, pkg_name, raw))
+                    inserted += 1
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+    return jsonify({'ok': True, 'inserted': inserted, 'updated': updated,
+                    'total': inserted + updated})
+
+
+@app.route('/admin/revendedores/mapping-data')
+def admin_revendedores_mapping_data():
+    """Devuelve juegos, paquetes, catálogo remoto y mappings actuales."""
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Acceso denegado'}), 403
+
+    from dynamic_games import get_all_dynamic_games as _dg_all, get_dynamic_packages as _dg_pkgs
+
+    games = _dg_all()
+    games_out = []
+    for g in games:
+        pkgs = _dg_pkgs(g['id'])
+        games_out.append({
+            'id': g['id'],
+            'nombre': g['nombre'],
+            'slug': g['slug'],
+            'activo': g.get('activo', False),
+            'packages': [{'id': p['id'], 'nombre': p['nombre'], 'precio': p['precio']} for p in pkgs]
+        })
+
+    conn = get_db_connection()
+    catalog_rows = conn.execute(
+        'SELECT id, remote_product_id, remote_product_name, remote_package_id, remote_package_name FROM rev_catalog_items WHERE active = 1 ORDER BY remote_product_name, remote_package_name'
+    ).fetchall()
+
+    mappings_rows = conn.execute(
+        'SELECT id, juego_id, paquete_id, remote_product_id, remote_package_id, remote_label, auto_enabled, active FROM rev_item_mappings'
+    ).fetchall()
+    conn.close()
+
+    catalog = [dict(r) for r in catalog_rows]
+    mappings = [dict(r) for r in mappings_rows]
+
+    return jsonify({'games': games_out, 'catalog': catalog, 'mappings': mappings})
+
+
+@app.route('/admin/revendedores/mappings/bulk', methods=['POST'])
+def admin_revendedores_bulk_save():
+    """Guarda mappings en lote. Espera JSON: {mappings: [{juego_id, paquete_id, remote_product_id, remote_package_id, auto_enabled}]}."""
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Acceso denegado'}), 403
+
+    data = request.get_json(force=True, silent=True) or {}
+    items = data.get('mappings', [])
+    if not isinstance(items, list):
+        return jsonify({'error': 'Se espera una lista de mappings'}), 400
+
+    conn = get_db_connection()
+    saved = 0
+    try:
+        for m in items:
+            juego_id = m.get('juego_id')
+            paquete_id = m.get('paquete_id')
+            r_prod = str(m.get('remote_product_id', ''))
+            r_pkg = str(m.get('remote_package_id', ''))
+            auto_en = 1 if m.get('auto_enabled') else 0
+
+            if not juego_id or not paquete_id:
+                continue
+
+            # Si remote_product_id/remote_package_id vacíos → eliminar mapping
+            if not r_prod or not r_pkg:
+                conn.execute('DELETE FROM rev_item_mappings WHERE juego_id = ? AND paquete_id = ?',
+                             (juego_id, paquete_id))
+                saved += 1
+                continue
+
+            # Buscar label del catálogo
+            cat = conn.execute(
+                'SELECT remote_product_name, remote_package_name FROM rev_catalog_items WHERE remote_product_id = ? AND remote_package_id = ?',
+                (r_prod, r_pkg)
+            ).fetchone()
+            label = f"{cat['remote_product_name']} – {cat['remote_package_name']}" if cat else ''
+
+            existing = conn.execute(
+                'SELECT id FROM rev_item_mappings WHERE juego_id = ? AND paquete_id = ?',
+                (juego_id, paquete_id)
+            ).fetchone()
+
+            if existing:
+                conn.execute('''
+                    UPDATE rev_item_mappings
+                    SET remote_product_id = ?, remote_package_id = ?, remote_label = ?,
+                        auto_enabled = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                ''', (r_prod, r_pkg, label, auto_en, existing['id']))
+            else:
+                conn.execute('''
+                    INSERT INTO rev_item_mappings
+                    (juego_id, paquete_id, remote_product_id, remote_package_id, remote_label, auto_enabled)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (juego_id, paquete_id, r_prod, r_pkg, label, auto_en))
+            saved += 1
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+    return jsonify({'ok': True, 'saved': saved})
 
 # Rutas para sistema de noticias
 @app.route('/noticias')

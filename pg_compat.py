@@ -17,8 +17,14 @@ import re
 import logging
 import sqlite3
 
-import psycopg
-from psycopg.rows import dict_row
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+    _HAS_PSYCOPG = True
+except ImportError:
+    psycopg = None
+    dict_row = None
+    _HAS_PSYCOPG = False
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +86,8 @@ _PG_INTERVAL_SUB_RE = re.compile(
     r"NOW\(\)\s*-\s*INTERVAL\s*'\s*(\d+)\s*(seconds?|minutes?|hours?|days?)\s*'",
     re.IGNORECASE
 )
+# PostgreSQL regex match operator: col ~ 'pattern'
+_PG_REGEX_OP_RE = re.compile(r"(\w+)\s+~\s+'([^']+)'")
 
 
 def _convert_sql_for_sqlite(sql: str):
@@ -90,16 +98,25 @@ def _convert_sql_for_sqlite(sql: str):
     # %s placeholders (psycopg style) -> ? (sqlite style)
     sql = _PG_PLACEHOLDER_RE.sub('?', sql)
 
-    # NOW() -> datetime('now')
-    sql = _PG_NOW_RE.sub("datetime('now')", sql)
-
     # NOW() - INTERVAL '2 minutes' -> datetime('now', '-2 minutes')
+    # Must come BEFORE plain NOW() replacement
     def _repl_interval_sub(match):
         n = match.group(1)
         unit = match.group(2)
         return f"datetime('now', '-{n} {unit}')"
 
     sql = _PG_INTERVAL_SUB_RE.sub(_repl_interval_sub, sql)
+
+    # NOW() -> datetime('now')
+    sql = _PG_NOW_RE.sub("datetime('now')", sql)
+
+    # PostgreSQL regex operator col ~ 'pattern' -> 1 (no-op, always true in SQLite)
+    # SQLite doesn't support ~ regex; use a safe fallback
+    def _repl_regex_op(match):
+        col = match.group(1)
+        return f"{col} GLOB '*'"
+    sql = _PG_REGEX_OP_RE.sub(_repl_regex_op, sql)
+
     return sql
 
 
@@ -441,6 +458,8 @@ class PgConnection:
     """
 
     def __init__(self, dsn: str):
+        if not _HAS_PSYCOPG:
+            raise RuntimeError("psycopg is not installed. Set DATABASE_URL='' to use SQLite or install psycopg.")
         self._conn = psycopg.connect(dsn, row_factory=dict_row)
         # Importante: el código legacy usa muchos try/except para DDL (ALTER TABLE ...)
         # asumiendo comportamiento SQLite. En PostgreSQL, un error deja abortada la

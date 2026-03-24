@@ -42,7 +42,7 @@
         <button class="side-tab-button active" data-tab="usuarios" onclick="showTab('usuarios', event)" aria-label="Usuarios">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="label">Usuarios</span>
         </button>
-        <button class="side-tab-button" data-tab="pines" onclick="showTab('pines', event)" aria-label="Pines">
+        <button class="side-tab-button" data-tab="pines" onclick="showTab('pines', event)" aria-label="Pines" style="display:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l5 5-7 7-4 1 1-4 7-7z"/><path d="M2 22l6-6"/></svg></span><span class="label">Pines</span>
         </button>
         <button class="side-tab-button" data-tab="precios" onclick="showTab('precios', event)" aria-label="Precios">
@@ -57,15 +57,18 @@
         <button class="side-tab-button" data-tab="costo" onclick="showTab('costo', event)" aria-label="Costo">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/><circle cx="12" cy="12" r="5"/><path d="M12 7v5l3 3"/></svg></span><span class="label">Costo</span>
         </button>
-        <button class="side-tab-button" data-tab="gameclub" onclick="showTab('gameclub', event)" aria-label="GameClub">
+        <button class="side-tab-button" data-tab="gameclub" onclick="showTab('gameclub', event)" aria-label="GameClub" style="display:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10H7z"/><path d="M4 4h4"/><path d="M16 4h4"/><path d="M4 20h4"/><path d="M16 20h4"/></svg></span><span class="label">GameClub</span>
         </button>
         <!-- Redeemer oculto - se usa VPS externo -->
         <button class="side-tab-button" data-tab="apilog" onclick="showTab('apilog', event)" aria-label="Recargas API" style="display:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span><span class="label">Recargas</span>
         </button>
-        <button class="side-tab-button" data-tab="webservice" onclick="showTab('webservice', event)" aria-label="API Marca Blanca">
+        <button class="side-tab-button" data-tab="webservice" onclick="showTab('webservice', event)" aria-label="API Marca Blanca" style="display:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9-9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/><path d="M12 17h.01"/><path d="M17 12h.01"/></svg></span><span class="label">API</span>
+        </button>
+        <button class="side-tab-button" data-tab="mapeo" onclick="showTab('mapeo', event)" aria-label="Mapeo Revendedores">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/><path d="M14 14l7 7"/><path d="M3 3l7 7"/></svg></span><span class="label">Mapeo</span>
         </button>
         <a class="side-tab-button" href="/" aria-label="Volver al Inicio" style="text-decoration:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7"/><path d="M9 22V12h6v10"/></svg></span><span class="label">Inicio</span>
@@ -543,8 +546,6 @@
               <div class="form-group">
                 <label for="price_game_select">🎮 Juego:</label>
                 <select id="price_game_select">
-                  <option value="freefire_global" selected>Free Fire</option>
-                  <option value="freefire_id">Free Fire ID</option>
                   {% for dg in dyn_games %}
                   <option value="dyn_{{ dg.slug }}">{{ dg.nombre }}</option>
                   {% endfor %}
@@ -814,6 +815,36 @@
                 </ul>
               </div>
             </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ───── TAB MAPEO REVENDEDORES ───── -->
+      <div id="tab-mapeo" class="tab-content">
+        <section class="admin-section">
+          <h2 style="margin-bottom:18px;">🔗 Mapeo de Paquetes – Revendedores</h2>
+
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
+            <button id="btn-sync-catalog" onclick="syncRevCatalog()" style="background:#a78bfa;color:#fff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600;">
+              🔄 Sincronizar Catálogo
+            </button>
+            <span id="sync-status" style="font-size:0.85rem;color:#aaa;"></span>
+          </div>
+
+          <div style="margin-bottom:16px;">
+            <label style="font-weight:600;margin-right:8px;">Juego:</label>
+            <select id="mapeo-game-select" onchange="loadMappingUI()" style="padding:8px 16px;border-radius:8px;background:#1e1e2e;color:#fff;border:1px solid #333;min-width:220px;">
+              <option value="">— Seleccionar juego —</option>
+            </select>
+          </div>
+
+          <div id="mapeo-table-container" style="margin-top:12px;"></div>
+
+          <div id="mapeo-save-bar" style="display:none;margin-top:18px;padding:14px;background:#1a1a2e;border-radius:10px;text-align:right;">
+            <button onclick="saveMappingsBulk()" style="background:#00d4aa;color:#111;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;">
+              💾 Guardar Mappings
+            </button>
+            <span id="save-status" style="margin-left:12px;font-size:0.85rem;color:#aaa;"></span>
           </div>
         </section>
       </div>
@@ -2516,6 +2547,130 @@
         alert('Error al cargar detalles del usuario');
       }
     }
+
+    // ──────────────────────────────────────────
+    // Mapeo Revendedores – JS
+    // ──────────────────────────────────────────
+    let _mapeoData = {games: [], catalog: [], mappings: []};
+
+    function syncRevCatalog() {
+      const btn = document.getElementById('btn-sync-catalog');
+      const st = document.getElementById('sync-status');
+      btn.disabled = true;
+      st.textContent = 'Sincronizando…';
+      fetch('/admin/revendedores/sync', {method: 'POST'})
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { st.textContent = '❌ ' + d.error; }
+          else { st.textContent = `✅ ${d.inserted} nuevos, ${d.updated} actualizados (total ${d.total})`; loadMappingData(); }
+        })
+        .catch(e => st.textContent = '❌ ' + e)
+        .finally(() => btn.disabled = false);
+    }
+
+    function loadMappingData() {
+      fetch('/admin/revendedores/mapping-data')
+        .then(r => r.json())
+        .then(d => {
+          _mapeoData = d;
+          const sel = document.getElementById('mapeo-game-select');
+          const prev = sel.value;
+          sel.innerHTML = '<option value="">— Seleccionar juego —</option>';
+          (d.games || []).forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.id;
+            opt.textContent = g.nombre + (g.activo ? '' : ' (inactivo)');
+            sel.appendChild(opt);
+          });
+          if (prev) { sel.value = prev; loadMappingUI(); }
+        });
+    }
+
+    function loadMappingUI() {
+      const gameId = parseInt(document.getElementById('mapeo-game-select').value);
+      const container = document.getElementById('mapeo-table-container');
+      const saveBar = document.getElementById('mapeo-save-bar');
+      if (!gameId) { container.innerHTML = ''; saveBar.style.display = 'none'; return; }
+
+      const game = (_mapeoData.games || []).find(g => g.id === gameId);
+      if (!game || !game.packages.length) {
+        container.innerHTML = '<p style="color:#888;">Este juego no tiene paquetes.</p>';
+        saveBar.style.display = 'none';
+        return;
+      }
+
+      // Agrupar catálogo por producto
+      const catByProduct = {};
+      (_mapeoData.catalog || []).forEach(c => {
+        if (!catByProduct[c.remote_product_id]) catByProduct[c.remote_product_id] = {name: c.remote_product_name, items: []};
+        catByProduct[c.remote_product_id].items.push(c);
+      });
+
+      let html = '<table style="width:100%;border-collapse:collapse;font-size:0.92rem;">';
+      html += '<thead><tr style="border-bottom:1px solid #333;text-align:left;">';
+      html += '<th style="padding:8px;">Paquete local</th><th style="padding:8px;">Precio</th>';
+      html += '<th style="padding:8px;">Paquete remoto</th><th style="padding:8px;text-align:center;">Auto</th>';
+      html += '</tr></thead><tbody>';
+
+      game.packages.forEach(pkg => {
+        const mapping = (_mapeoData.mappings || []).find(m => m.juego_id === gameId && m.paquete_id === pkg.id);
+        const selVal = mapping ? (mapping.remote_product_id + '||' + mapping.remote_package_id) : '';
+        const autoChecked = mapping && mapping.auto_enabled ? 'checked' : '';
+
+        html += `<tr style="border-bottom:1px solid #222;" data-juego="${gameId}" data-paquete="${pkg.id}">`;
+        html += `<td style="padding:8px;">${pkg.nombre}</td>`;
+        html += `<td style="padding:8px;">$${pkg.precio.toFixed(2)}</td>`;
+        html += `<td style="padding:8px;"><select class="mapeo-remote-sel" style="width:100%;padding:6px;background:#1e1e2e;color:#fff;border:1px solid #444;border-radius:6px;">`;
+        html += `<option value="">— Sin mapear —</option>`;
+        Object.keys(catByProduct).forEach(pid => {
+          const grp = catByProduct[pid];
+          html += `<optgroup label="${grp.name}">`;
+          grp.items.forEach(c => {
+            const v = c.remote_product_id + '||' + c.remote_package_id;
+            const selected = v === selVal ? ' selected' : '';
+            html += `<option value="${v}"${selected}>${c.remote_package_name}</option>`;
+          });
+          html += '</optgroup>';
+        });
+        html += '</select></td>';
+        html += `<td style="padding:8px;text-align:center;"><input type="checkbox" class="mapeo-auto-chk" ${autoChecked} style="width:18px;height:18px;accent-color:#a78bfa;cursor:pointer;"></td>`;
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+      saveBar.style.display = 'block';
+    }
+
+    function saveMappingsBulk() {
+      const rows = document.querySelectorAll('#mapeo-table-container tr[data-juego]');
+      const mappings = [];
+      rows.forEach(row => {
+        const juego_id = parseInt(row.dataset.juego);
+        const paquete_id = parseInt(row.dataset.paquete);
+        const sel = row.querySelector('.mapeo-remote-sel');
+        const chk = row.querySelector('.mapeo-auto-chk');
+        const val = sel ? sel.value : '';
+        let r_prod = '', r_pkg = '';
+        if (val) { const parts = val.split('||'); r_prod = parts[0]; r_pkg = parts[1]; }
+        mappings.push({juego_id, paquete_id, remote_product_id: r_prod, remote_package_id: r_pkg, auto_enabled: chk ? chk.checked : false});
+      });
+
+      const st = document.getElementById('save-status');
+      st.textContent = 'Guardando…';
+      fetch('/admin/revendedores/mappings/bulk', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mappings})
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { st.textContent = '❌ ' + d.error; }
+          else { st.textContent = `✅ ${d.saved} mappings guardados`; loadMappingData(); }
+        })
+        .catch(e => st.textContent = '❌ ' + e);
+    }
+
     // Restaurar pestaña activa al cargar la página usando el hash de la URL
     document.addEventListener('DOMContentLoaded', function() {
       let initialTab = 'usuarios';
@@ -2525,6 +2680,8 @@
         initialTab = match[1];
       }
       showTab(initialTab);
+      // Pre-cargar datos de mapeo
+      loadMappingData();
     });
   </script>
 </body>

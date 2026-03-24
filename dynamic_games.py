@@ -1005,6 +1005,26 @@ def validar_dinamico(slug):
 
     # === PURCHASE VIA GAMEPOINT ===
     _start = time_module.time()
+
+    # ──── Check auto-recharge via reseller mapping ────
+    _rev_mapping = None
+    try:
+        _conn_map = _get_conn()
+        _rev_mapping = _conn_map.execute(
+            'SELECT remote_product_id, remote_package_id, remote_label FROM rev_item_mappings WHERE juego_id = ? AND paquete_id = ? AND auto_enabled = 1 AND active = 1',
+            (game['id'], package_id)
+        ).fetchone()
+        _conn_map.close()
+    except Exception:
+        pass
+
+    if _rev_mapping:
+        # ──── RESELLER API PATH ────
+        return _purchase_via_reseller(
+            game, pkg, _rev_mapping, slug, user_id, is_admin, precio, package_id,
+            player_id, player_id2, servidor, redirect_url, _start
+        )
+
     get_token, gp_post, order_validate, order_create, order_inquiry = _gp_helpers()
     _tx_procesando_id = None
 
@@ -1442,3 +1462,190 @@ def _refund(user_id, precio, is_admin):
         logger.info(f"[DynGame] Saldo ${precio} reembolsado al usuario {user_id}")
     except Exception as e:
         logger.error(f"[DynGame] Error reembolsando: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Auto-recharge via Reseller API
+# ---------------------------------------------------------------------------
+
+def _purchase_via_reseller(game, pkg, mapping, slug, user_id, is_admin, precio,
+                           package_id, player_id, player_id2, servidor, redirect_url, _start):
+    """Execute purchase through the mapped reseller API instead of GamePoint."""
+    import urllib.request, urllib.error
+
+    base_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip().rstrip('/')
+    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
+
+    if not base_url or not api_key:
+        flash('El revendedor no está configurado. Contacta al administrador.', 'error')
+        return redirect(redirect_url)
+
+    merchant_code = f"DG{game['id']}-" + secrets.token_hex(6).upper()
+    numero_control = f"DGR-{secrets.token_hex(4).upper()}"
+
+    # 1. Deduct balance atomically
+    if not is_admin:
+        conn = _get_conn()
+        cursor = conn.execute('UPDATE usuarios SET saldo = saldo - ? WHERE id = ? AND saldo >= ?',
+                              (precio, user_id, precio))
+        if cursor.rowcount == 0:
+            conn.close()
+            flash('Saldo insuficiente al momento de procesar.', 'error')
+            return redirect(redirect_url)
+        conn.commit()
+        new_saldo = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
+        conn.close()
+        session['saldo'] = new_saldo['saldo'] if new_saldo else 0
+
+    # 2. Insert 'procesando' record
+    _tx_id = None
+    try:
+        conn_proc = _get_conn()
+        cur = conn_proc.execute('''
+            INSERT INTO transacciones_dinamicas
+            (juego_id, usuario_id, player_id, player_id2, servidor, paquete_id,
+             numero_control, transaccion_id, monto, estado)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'procesando')
+            RETURNING id
+        ''', (game['id'], user_id, player_id, player_id2 or None, servidor or None,
+              package_id, numero_control, merchant_code, precio))
+        _tx_id = cur.fetchone()[0]
+        conn_proc.commit()
+        conn_proc.close()
+    except Exception as e:
+        logger.error(f"[DynGame:{slug}][Reseller] Error insertando procesando: {e}")
+        _refund(user_id, precio, is_admin)
+        flash('Error al procesar. Tu saldo ha sido devuelto.', 'error')
+        return redirect(redirect_url)
+
+    # 3. Call reseller API
+    r_prod = mapping['remote_product_id'] if isinstance(mapping, dict) else mapping[0]
+    r_pkg = mapping['remote_package_id'] if isinstance(mapping, dict) else mapping[1]
+
+    payload = json.dumps({
+        'product_id': int(r_prod) if r_prod.isdigit() else r_prod,
+        'package_id': int(r_pkg) if r_pkg.isdigit() else r_pkg,
+        'player_id': player_id,
+        'player_id2': player_id2 or '',
+        'external_order_id': merchant_code
+    }).encode('utf-8')
+
+    try:
+        # Try whitelabel endpoint first, fallback to legacy
+        url = f"{base_url}/api/v1/recharge"
+        req = urllib.request.Request(url, data=payload, headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': '3sRecargas-AutoRecharge/1.0'
+        }, method='POST')
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            resp_data = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as he:
+        body = ''
+        try:
+            body = he.read().decode()
+            resp_data = json.loads(body)
+        except Exception:
+            resp_data = {'ok': False, 'error': f'HTTP {he.code}: {body[:200]}'}
+    except Exception as e:
+        resp_data = {'ok': False, 'error': str(e)}
+
+    _duration = round(time_module.time() - _start, 1)
+
+    if resp_data.get('ok'):
+        # === SUCCESS ===
+        ref_no = resp_data.get('reference_no', resp_data.get('order_id', ''))
+        pin_key = resp_data.get('pin', resp_data.get('serial_key', ''))
+        ingame = resp_data.get('player_name', resp_data.get('ingame_name', ''))
+        estado_db = 'aprobado'
+
+        conn = _get_conn()
+        conn.execute('''
+            UPDATE transacciones_dinamicas
+            SET estado = ?, gamepoint_referenceno = ?, ingame_name = ?, pin_entregado = ?,
+                notas = 'auto-reseller', fecha_procesado = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (estado_db, str(ref_no), ingame, pin_key or None, _tx_id))
+
+        # Insert into transacciones for unified history
+        if pin_key:
+            pin_info = f"Código: {pin_key} - Ref: {ref_no}"
+        elif ingame:
+            pin_info = f"ID: {player_id} - Jugador: {ingame} - Ref: {ref_no}"
+        else:
+            pin_info = f"ID: {player_id} - Ref: {ref_no} (reseller)"
+
+        paquete_display = f"{game['nombre']} - {pkg['nombre']}"
+        conn.execute('''
+            INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto, duracion_segundos)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, numero_control, pin_info, merchant_code, paquete_display, -precio, _duration))
+
+        # Record in historial_compras
+        _saldo_row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
+        _saldo = _saldo_row['saldo'] if _saldo_row else 0
+        conn.execute('''
+            INSERT INTO historial_compras (usuario_id, monto, paquete_nombre, pin, tipo_evento, duracion_segundos, saldo_antes, saldo_despues)
+            VALUES (?, ?, ?, ?, 'compra', ?, ?, ?)
+        ''', (user_id, precio, paquete_display, pin_info, _duration, _saldo + precio, _saldo))
+
+        # Record profit
+        try:
+            juego_key = f'dyn_{game["slug"]}'
+            costo_row = conn.execute('SELECT precio_compra FROM precios_compra WHERE juego=? AND paquete_id=?',
+                                     (juego_key, package_id)).fetchone()
+            costo_unit = costo_row['precio_compra'] if costo_row else 0
+            profit_unit = round(precio - costo_unit, 4)
+            conn.execute('''
+                INSERT INTO profit_ledger (usuario_id, juego, paquete_id, cantidad, precio_venta_unit, costo_unit, profit_unit, profit_total, transaccion_id)
+                VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+            ''', (user_id, juego_key, package_id, precio, costo_unit, profit_unit, profit_unit, merchant_code))
+        except Exception:
+            pass
+
+        # Monthly spending
+        if not is_admin:
+            try:
+                from update_monthly_spending import update_monthly_spending
+                update_monthly_spending(conn, user_id, precio)
+            except Exception:
+                pass
+
+        conn.commit()
+        conn.close()
+
+        logger.info(f"[DynGame:{slug}][Reseller] OK | user={user_id} pkg={package_id} dur={_duration}s ref={ref_no}")
+
+        session[f'compra_dyn_{slug}_exitosa'] = {
+            'paquete_nombre': pkg['nombre'],
+            'monto_compra': precio,
+            'numero_control': numero_control,
+            'transaccion_id': merchant_code,
+            'player_id': player_id,
+            'player_id2': player_id2,
+            'servidor': servidor,
+            'player_name': ingame,
+            'estado': 'completado',
+            'gamepoint_ref': str(ref_no),
+            'serial_key': pin_key,
+        }
+        return redirect(f'/juego/d/{slug}?compra=exitosa')
+
+    else:
+        # === FAILURE ===
+        err_msg = resp_data.get('error', 'Error desconocido del revendedor')
+        logger.error(f"[DynGame:{slug}][Reseller] FAILED | user={user_id} pkg={package_id} err={err_msg}")
+
+        conn = _get_conn()
+        conn.execute('''
+            UPDATE transacciones_dinamicas
+            SET estado = 'rechazado', notas = ?, fecha_procesado = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (f'reseller: {err_msg}'[:500], _tx_id))
+        conn.commit()
+        conn.close()
+
+        _refund(user_id, precio, is_admin)
+        flash(f'La recarga falló: {err_msg}. Tu saldo ha sido devuelto.', 'error')
+        return redirect(redirect_url)
