@@ -7419,7 +7419,7 @@ def admin_revendedores_sync():
     try:
         url = f"{base_url}/api/v1/products"
         req = urllib.request.Request(url, headers={
-            'Authorization': f'Bearer {api_key}',
+            'X-API-Key': api_key,
             'Accept': 'application/json',
             'User-Agent': '3sRecargas-Admin/1.0'
         })
@@ -7430,7 +7430,8 @@ def admin_revendedores_sync():
     except Exception as e:
         return jsonify({'error': f'Error conectando al revendedor: {str(e)}'}), 502
 
-    products = data if isinstance(data, list) else data.get('products', data.get('data', []))
+    # El API devuelve {games: [{game_id, name, packages: [{package_id, name, price}]}]}
+    products = data.get('games', data.get('products', data.get('data', [])))
     if not isinstance(products, list):
         return jsonify({'error': 'Respuesta inesperada del revendedor'}), 502
 
@@ -7439,13 +7440,13 @@ def admin_revendedores_sync():
     updated = 0
     try:
         for prod in products:
-            prod_id = str(prod.get('id', prod.get('product_id', '')))
+            prod_id = str(prod.get('game_id', prod.get('id', prod.get('product_id', ''))))
             prod_name = prod.get('name', prod.get('product_name', ''))
             packages = prod.get('packages', prod.get('items', []))
             if not isinstance(packages, list):
                 packages = []
             for pkg in packages:
-                pkg_id = str(pkg.get('id', pkg.get('package_id', '')))
+                pkg_id = str(pkg.get('package_id', pkg.get('id', '')))
                 pkg_name = pkg.get('name', pkg.get('package_name', ''))
                 raw = json.dumps(pkg)
 
