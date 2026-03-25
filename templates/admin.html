@@ -1388,7 +1388,7 @@
       if (form) form.submit();
     }
 
-    // ======= Crear juego dinámico desde Precios =======
+    // ======= Crear / editar juego dinámico desde Precios =======
     function setCrearJuegoFormMode(editing) {
       const title = document.getElementById('cj-title');
       const submitBtn = document.getElementById('cj-submit-btn');
@@ -1444,25 +1444,48 @@
       const dualId = document.getElementById('cj-dual-id').checked;
       const serverSelect = document.getElementById('cj-server-select').checked;
       const localStock = document.getElementById('cj-local-stock').checked;
-      if (!nombre || (!productId && !localStock)) { st.innerHTML = '<span style="color:#ff6b6b;">Nombre y Product ID son obligatorios, excepto tarjetas con stock local</span>'; return; }
-      st.innerHTML = '<span style="color:#aaa;">Creando...</span>';
-      const payload = { nombre, gamepoint_product_id: productId || 0, modo, usa_stock_local: localStock, campo_id_label:'ID de Jugador', campo_id_placeholder:'Ingresa tu ID' };
-      if (dualId) { payload.campo_id2_label = 'Server ID'; payload.campo_id2_placeholder = 'Ingresa Server ID'; }
+      if (!nombre || (!productId && !localStock)) {
+        st.innerHTML = '<span style="color:#ff6b6b;">Nombre y Product ID son obligatorios, excepto tarjetas con stock local</span>';
+        return;
+      }
+
+      st.innerHTML = `<span style="color:#aaa;">${_editingDynGameId ? 'Guardando...' : 'Creando...'}</span>`;
+      const payload = {
+        nombre,
+        gamepoint_product_id: productId || 0,
+        modo,
+        usa_stock_local: localStock,
+        campo_id_label: 'ID de Jugador',
+        campo_id_placeholder: 'Ingresa tu ID'
+      };
+      if (dualId) {
+        payload.campo_id2_label = 'Server ID';
+        payload.campo_id2_placeholder = 'Ingresa Server ID';
+        payload.dual_id = true;
+      }
       if (serverSelect) {
         payload.campo_servidor = true;
+        payload.servidor_enabled = true;
         payload.servidor_opciones = document.getElementById('cj-server-opciones').value.trim();
       }
+
       try {
-        const res = await fetch('/admin/dynamic-games/create', {
-          method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+        const url = _editingDynGameId ? `/admin/dynamic-games/${_editingDynGameId}/update` : '/admin/dynamic-games/create';
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json','Accept':'application/json'},
           body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.success) {
-          st.innerHTML = '<span style="color:#4ade80;">✅ Creado. Recargando...</span>';
+          st.innerHTML = `<span style="color:#4ade80;">✅ ${_editingDynGameId ? 'Actualizado' : 'Creado'}. Recargando...</span>`;
           setTimeout(() => location.reload(), 800);
-        } else { st.innerHTML = '<span style="color:#ff6b6b;">❌ '+(data.error||'Error')+'</span>'; }
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">❌ Error de red</span>'; }
+        } else {
+          st.innerHTML = '<span style="color:#ff6b6b;">❌ ' + (data.error || 'Error') + '</span>';
+        }
+      } catch (e) {
+        st.innerHTML = '<span style="color:#ff6b6b;">❌ Error de red</span>';
+      }
     }
 
     // ======= Añadir paquete a juego dinámico =======
@@ -1472,25 +1495,32 @@
       const priceInput = document.getElementById('new-dyn-pkg-price');
       const nombre = nameInput.value.trim();
       const precio = parseFloat(priceInput.value);
-      if (!nombre || !precio || precio <= 0) { st.innerHTML = '<span style="color:#ff6b6b;">Nombre y precio requeridos</span>'; return; }
-      if (!_currentDynGameId) { st.innerHTML = '<span style="color:#ff6b6b;">Juego no identificado</span>'; return; }
-      st.innerHTML = `<span style="color:#aaa;">${_editingDynGameId ? 'Guardando...' : 'Creando...'}</span>`;
+      if (!nombre || !precio || precio <= 0) {
+        st.innerHTML = '<span style="color:#ff6b6b;">Nombre y precio requeridos</span>';
+        return;
+      }
+      if (!_currentDynGameId) {
+        st.innerHTML = '<span style="color:#ff6b6b;">Juego no identificado</span>';
+        return;
+      }
+
+      st.innerHTML = '<span style="color:#aaa;">Añadiendo...</span>';
       try {
         const res = await fetch(`/admin/dynamic-games/${_currentDynGameId}/packages/add`, {
-          method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+          method: 'POST',
+          headers: {'Content-Type':'application/json','Accept':'application/json'},
           body: JSON.stringify({ nombre, precio })
-        payload.servidor_enabled = true;
+        });
         const data = await res.json();
         if (data.success) {
           const pkgId = data.package_id;
-        const url = _editingDynGameId ? `/admin/dynamic-games/${_editingDynGameId}/update` : '/admin/dynamic-games/create';
-        const res = await fetch(url, {
+          const container = document.getElementById('price-package-list');
           if (container.querySelector('p')) container.innerHTML = '';
           const card = document.createElement('div');
           card.className = 'package-card';
           card.innerHTML = `
             <div class="package-card-header"><div class="package-left"><div class="package-title">ID ${pkgId}</div></div></div>
-          st.innerHTML = `<span style="color:#4ade80;">✅ ${_editingDynGameId ? 'Actualizado' : 'Creado'}. Recargando...</span>`;
+            <div class="package-forms">
               <div class="package-form"><label>Nombre</label><input type="text" class="pkg-name" data-id="${pkgId}" value="${nombre}" maxlength="50"></div>
               <div class="package-form"><label>Precio</label><input type="number" class="pkg-price" data-id="${pkgId}" value="${precio.toFixed(2)}" step="0.01" min="0"></div>
             </div>`;
@@ -1499,8 +1529,12 @@
           priceInput.value = '';
           nameInput.focus();
           st.innerHTML = '<span style="color:#4ade80;">✅ ' + nombre + ' añadido</span>';
-        } else { st.innerHTML = '<span style="color:#ff6b6b;">❌ '+(data.error||'Error')+'</span>'; }
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">❌ Error de red</span>'; }
+        } else {
+          st.innerHTML = '<span style="color:#ff6b6b;">❌ ' + (data.error || 'Error') + '</span>';
+        }
+      } catch (e) {
+        st.innerHTML = '<span style="color:#ff6b6b;">❌ Error de red</span>';
+      }
     }
 
     // ======= Eliminar juego dinámico =======

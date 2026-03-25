@@ -105,7 +105,7 @@
   <section class="user-panel">
     <p>
       <span class="user-chip"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>ID <span class="chip-value">{{ user_id }}</span></span>
-      <span class="user-chip chip-saldo"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg>Saldo <span class="chip-value">${{ "%.2f"|format(balance) }}</span></span>
+      <span class="user-chip chip-saldo"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg>Saldo <span class="chip-value" id="saldo-display">${{ "%.2f"|format(balance) }}</span></span>
     </p>
   </section>
 
@@ -480,6 +480,31 @@
         setTimeout(() => flashMessages.remove(), 300);
       }
     }, 2000);
+
+    {% if is_admin %}
+    async function refreshAdminRevendedoresBalance() {
+      try {
+        const response = await fetch('/admin/revendedores/balance', {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!data || !data.ok || typeof data.balance !== 'number') return;
+
+        const saldoDisplay = document.getElementById('saldo-display');
+        if (saldoDisplay) {
+          saldoDisplay.textContent = `$${data.balance.toFixed(2)}`;
+        }
+      } catch (error) {
+        console.error('No se pudo actualizar saldo de revendedores:', error);
+      }
+    }
+
+    refreshAdminRevendedoresBalance();
+    setInterval(refreshAdminRevendedoresBalance, 10000);
+    {% endif %}
 
     async function fetchBloodStrikerReloadNotifications() {
       try {
