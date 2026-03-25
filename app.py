@@ -47,7 +47,7 @@ import string
 import zipfile
 import io
 from admin_stats import bp as admin_stats_bp
-from dynamic_games import bp as dynamic_games_bp, get_all_dynamic_games as get_dynamic_games_list, sync_all_dynamic_games_prices
+from dynamic_games import bp as dynamic_games_bp, get_all_dynamic_games as get_dynamic_games_list, get_dynamic_game_by_slug, get_dynamic_packages, get_dynamic_package_by_id, sync_all_dynamic_games_prices
 from api_whitelabel import bp as whitelabel_bp, init_whitelabel_tables
 from update_monthly_spending import update_monthly_spending
 
@@ -183,6 +183,51 @@ def _gameclub_order_inquiry(token, reference_no):
     }
     _, data = _gameclub_post('order/inquiry', payload)
     return data
+
+
+def get_revendedores_balance():
+    """Consulta el saldo disponible en la cuenta del revendedor externo."""
+    base_url = (os.environ.get('REVENDEDORES_BASE_URL') or '').strip().rstrip('/')
+    api_key = (os.environ.get('REVENDEDORES_API_KEY') or '').strip()
+    if not base_url or not api_key:
+        return 0.0
+
+    headers = {
+        'X-API-Key': api_key,
+        'Accept': 'application/json',
+        'User-Agent': '3sRecargas-Web/1.0',
+    }
+
+    endpoints = (
+        '/api/v1/balance',
+        '/api/v1/account',
+    )
+
+    for endpoint in endpoints:
+        try:
+            response = requests.get(f"{base_url}{endpoint}", headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json() if response.content else {}
+        except Exception as exc:
+            logger.warning(f"No se pudo consultar saldo en {endpoint}: {exc}")
+            continue
+
+        candidates = [
+            data.get('balance'),
+            data.get('saldo'),
+            (data.get('account') or {}).get('balance') if isinstance(data.get('account'), dict) else None,
+            (data.get('data') or {}).get('balance') if isinstance(data.get('data'), dict) else None,
+            (data.get('user') or {}).get('balance') if isinstance(data.get('user'), dict) else None,
+        ]
+        for value in candidates:
+            if value is None:
+                continue
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                continue
+
+    return 0.0
 
 
 def _generate_batch_id():
@@ -905,6 +950,10 @@ def init_db():
                 fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        try:
+            cursor.execute("ALTER TABLE juegos_dinamicos ADD COLUMN usa_stock_local BOOLEAN DEFAULT FALSE")
+        except Exception:
+            pass
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS paquetes_dinamicos (
@@ -947,6 +996,25 @@ def init_db():
         ''')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tx_din_usuario ON transacciones_dinamicas(usuario_id, fecha DESC)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tx_din_juego ON transacciones_dinamicas(juego_id, fecha DESC)')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pines_dinamicos_stock (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                juego_id INTEGER NOT NULL,
+                paquete_id INTEGER NOT NULL,
+                pin_codigo TEXT NOT NULL,
+                usado BOOLEAN DEFAULT FALSE,
+                usuario_id INTEGER,
+                batch_id TEXT,
+                fecha_agregado DATETIME DEFAULT CURRENT_TIMESTAMP,
+                fecha_uso DATETIME,
+                FOREIGN KEY (juego_id) REFERENCES juegos_dinamicos(id),
+                FOREIGN KEY (paquete_id) REFERENCES paquetes_dinamicos(id),
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_dyn_pins_pkg_usado ON pines_dinamicos_stock(juego_id, paquete_id, usado)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_dyn_pins_batch ON pines_dinamicos_stock(batch_id)')
 
         # Tabla de log de recargas via API (Inefable Store)
         cursor.execute('''
@@ -2589,7 +2657,7 @@ def index():
             # Tomar solo las primeras per_page transacciones
             transactions_data['transactions'] = all_transactions[:per_page]
         
-        balance = 0  # Admin no tiene saldo
+        balance = get_revendedores_balance()
     else:
         # Usuario normal ve solo sus transacciones
         if 'user_db_id' in session:
@@ -3015,6 +3083,30 @@ def get_all_pins():
 
 def get_pins_by_game(game_type, only_unused=True, monto_id=None):
     """Obtiene pines por juego (freefire_latam o freefire_global), con filtro opcional por monto_id."""
+    if game_type.startswith('dyn_'):
+        game = get_dynamic_game_by_slug(game_type[4:])
+        if not game or not game.get('usa_stock_local'):
+            return []
+        conn = get_db_connection()
+        try:
+            params = [game['id']]
+            where_clauses = ['juego_id = ?']
+            if only_unused:
+                where_clauses.append('usado = FALSE')
+            if monto_id is not None:
+                where_clauses.append('paquete_id = ?')
+                params.append(monto_id)
+            where_sql = 'WHERE ' + ' AND '.join(where_clauses)
+            query = f'''
+                SELECT id, paquete_id AS monto_id, pin_codigo, usado, fecha_agregado, batch_id
+                FROM pines_dinamicos_stock
+                {where_sql}
+                ORDER BY fecha_agregado DESC
+            '''
+            return conn.execute(query, tuple(params)).fetchall()
+        finally:
+            conn.close()
+
     table = 'pines_freefire' if game_type == 'freefire_latam' else 'pines_freefire_global'
     conn = get_db_connection()
     try:
@@ -3042,6 +3134,21 @@ def delete_pins_by_batch_id(game_type, batch_id, only_unused=True):
     """Elimina pines de un lote específico (batch_id) para el juego indicado."""
     if not batch_id:
         return 0
+    if game_type.startswith('dyn_'):
+        game = get_dynamic_game_by_slug(game_type[4:])
+        if not game or not game.get('usa_stock_local'):
+            return 0
+        conn = get_db_connection()
+        try:
+            where_sql = 'juego_id = ? AND batch_id = ?'
+            params = [game['id'], str(batch_id)]
+            if only_unused:
+                where_sql += ' AND usado = FALSE'
+            cursor = conn.execute(f'DELETE FROM pines_dinamicos_stock WHERE {where_sql}', tuple(params))
+            conn.commit()
+            return cursor.rowcount
+        finally:
+            conn.close()
     table = 'pines_freefire' if game_type == 'freefire_latam' else 'pines_freefire_global'
     conn = get_db_connection()
     try:
@@ -3059,6 +3166,21 @@ def delete_pins_by_ids(game_type, pin_ids):
     """Elimina pines por IDs para el juego indicado."""
     if not pin_ids:
         return 0
+    if game_type.startswith('dyn_'):
+        game = get_dynamic_game_by_slug(game_type[4:])
+        if not game or not game.get('usa_stock_local'):
+            return 0
+        placeholders = ','.join('?' for _ in pin_ids)
+        conn = get_db_connection()
+        try:
+            cursor = conn.execute(
+                f'DELETE FROM pines_dinamicos_stock WHERE juego_id = ? AND id IN ({placeholders})',
+                (game['id'], *pin_ids)
+            )
+            conn.commit()
+            return cursor.rowcount
+        finally:
+            conn.close()
     table = 'pines_freefire' if game_type == 'freefire_latam' else 'pines_freefire_global'
     placeholders = ','.join('?' for _ in pin_ids)
     conn = get_db_connection()
@@ -3090,6 +3212,66 @@ def remove_duplicate_pins():
         raise e
     finally:
         conn.close()
+
+
+def add_dynamic_stock_pin(game_id, package_id, pin_codigo):
+    """Añade un pin al stock local de un juego dinámico de tarjeta."""
+    conn = get_db_connection()
+    conn.execute('''
+        INSERT INTO pines_dinamicos_stock (juego_id, paquete_id, pin_codigo, batch_id)
+        VALUES (?, ?, ?, NULL)
+    ''', (game_id, package_id, pin_codigo))
+    conn.commit()
+    conn.close()
+
+
+def add_dynamic_stock_pins_batch(game_id, package_id, pins_list):
+    """Añade múltiples pines al stock local de un juego dinámico."""
+    conn = get_db_connection()
+    try:
+        batch_id = _generate_batch_id()
+        added = 0
+        for pin_codigo in pins_list:
+            pin_codigo = (pin_codigo or '').strip()
+            if not pin_codigo:
+                continue
+            conn.execute('''
+                INSERT INTO pines_dinamicos_stock (juego_id, paquete_id, pin_codigo, batch_id)
+                VALUES (?, ?, ?, ?)
+            ''', (game_id, package_id, pin_codigo, batch_id))
+            added += 1
+        conn.commit()
+        return added
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def get_dynamic_stock_counts():
+    """Devuelve conteos de stock local por juego y paquete dinámico."""
+    conn = get_db_connection()
+    try:
+        rows = conn.execute('''
+            SELECT juego_id, paquete_id, COUNT(*) AS count
+            FROM pines_dinamicos_stock
+            WHERE usado = FALSE
+            GROUP BY juego_id, paquete_id
+        ''').fetchall()
+        data = {}
+        for row in rows:
+            juego_id = int(row['juego_id'])
+            paquete_id = int(row['paquete_id'])
+            data.setdefault(juego_id, {})[paquete_id] = int(row['count'])
+        return data
+    finally:
+        conn.close()
+
+
+def get_dynamic_stock_games():
+    """Lista de juegos dinámicos que usan stock local de tarjetas."""
+    return [g for g in get_dynamic_games_list(only_active=False) if g.get('usa_stock_local')]
 
 def get_duplicate_pins_count():
     """Obtiene el número de pines duplicados en la base de datos"""
@@ -3941,8 +4123,10 @@ def admin_panel():
     # Dynamic games for Precios + GameClub tabs
     from dynamic_games import get_all_dynamic_games as _dg_all, get_dynamic_packages as _dg_pkgs
     dyn_games = _dg_all()
+    dynamic_stock = get_dynamic_stock_counts()
     for dg in dyn_games:
         dg['_packages'] = _dg_pkgs(dg['id'])
+    dynamic_stock_games = [dg for dg in dyn_games if dg.get('usa_stock_local')]
     
     return render_template('admin.html', 
                          users=users, 
@@ -3956,7 +4140,9 @@ def admin_panel():
                          noticias=noticias,
                          games_active=games_active,
                          redeemer_config=redeemer_config,
-                         dyn_games=dyn_games)
+                         dyn_games=dyn_games,
+                         dynamic_stock=dynamic_stock,
+                         dynamic_stock_games=dynamic_stock_games)
 
 
 @app.route('/admin/gameclub/products', methods=['GET'])
@@ -4058,6 +4244,15 @@ def admin_import_pins_csv():
             packages_info = get_freefire_global_prices()
             package_info = packages_info.get(int(monto_id), {})
             juego_nombre = "Free Fire"
+        elif game_type.startswith('dyn_'):
+            dyn_game = get_dynamic_game_by_slug(game_type[4:])
+            pkg = get_dynamic_package_by_id(int(monto_id)) if monto_id else None
+            if not dyn_game or not dyn_game.get('usa_stock_local') or not pkg or pkg['juego_id'] != dyn_game['id']:
+                flash('Juego o paquete dinámico inválido', 'error')
+                return redirect('/admin')
+            added_count = add_dynamic_stock_pins_batch(dyn_game['id'], int(monto_id), pins_list)
+            juego_nombre = dyn_game['nombre']
+            package_info = {'nombre': pkg['nombre'], 'precio': float(pkg['precio'])}
         else:
             flash('Tipo de juego inválido', 'error')
             return redirect('/admin')
@@ -4236,11 +4431,28 @@ def admin_pins_list():
         monto_filter = None
     pins = get_pins_by_game(game, only_unused=only_unused, monto_id=monto_filter)
 
-    # Mapear nombres de paquetes
+    game_display_name = 'Free Fire Latam' if game == 'freefire_latam' else 'Free Fire'
+    pin_game_options = [
+        {'value': 'freefire_latam', 'label': 'Free Fire Latam'},
+        {'value': 'freefire_global', 'label': 'Free Fire'},
+    ]
+
     if game == 'freefire_latam':
         package_dict = get_package_info_with_prices()
-    else:
+    elif game == 'freefire_global':
         package_dict = get_freefire_global_prices()
+    elif game.startswith('dyn_'):
+        dyn_game = get_dynamic_game_by_slug(game[4:])
+        if not dyn_game or not dyn_game.get('usa_stock_local'):
+            flash('Juego dinámico de tarjetas no encontrado.', 'error')
+            return redirect('/admin')
+        game_display_name = dyn_game['nombre']
+        package_dict = {pkg['id']: {'nombre': pkg['nombre']} for pkg in get_dynamic_packages(dyn_game['id'])}
+    else:
+        package_dict = {}
+
+    for dyn_game in get_dynamic_stock_games():
+        pin_game_options.append({'value': f"dyn_{dyn_game['slug']}", 'label': dyn_game['nombre']})
 
     # Convertir a estructura simple para template
     pins_view = []
@@ -4289,7 +4501,17 @@ def admin_pins_list():
     if 'monto_filter' in locals() and monto_filter:
         selected_package_name = package_dict.get(monto_filter, {}).get('nombre')
 
-    return render_template('admin_pins.html', pins=pins_view, pin_groups=pin_groups, game=game, only_unused=only_unused, monto=monto_filter, selected_package_name=selected_package_name)
+    return render_template(
+        'admin_pins.html',
+        pins=pins_view,
+        pin_groups=pin_groups,
+        game=game,
+        game_display_name=game_display_name,
+        pin_game_options=pin_game_options,
+        only_unused=only_unused,
+        monto=monto_filter,
+        selected_package_name=selected_package_name,
+    )
 
 
 @app.route('/admin/delete_pins_batch', methods=['POST'])
@@ -4426,6 +4648,20 @@ def admin_add_pin():
             add_pin_freefire_global(int(monto_id), pin_codigo)
             juego_nombre = "Free Fire"
             table = 'precios_freefire_global'
+        elif game_type.startswith('dyn_'):
+            dyn_game = get_dynamic_game_by_slug(game_type[4:])
+            pkg = get_dynamic_package_by_id(int(monto_id)) if monto_id else None
+            if not dyn_game or not dyn_game.get('usa_stock_local') or not pkg or pkg['juego_id'] != dyn_game['id']:
+                if request.headers.get('Accept') == 'application/json':
+                    return jsonify({'success': False, 'error': 'Juego o paquete dinámico inválido'}), 400
+                flash('Juego o paquete dinámico inválido', 'error')
+                return redirect('/admin')
+            add_dynamic_stock_pin(dyn_game['id'], int(monto_id), pin_codigo)
+            paquete_nombre = f"{pkg['nombre']} / ${float(pkg['precio']):.2f}"
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': True, 'message': f'Pin agregado para {dyn_game["nombre"]} - {paquete_nombre}'})
+            flash(f'Pin agregado exitosamente para {dyn_game["nombre"]} - {paquete_nombre}', 'success')
+            return redirect('/admin')
         else:
             flash('Tipo de juego inválido', 'error')
             return redirect('/admin')
@@ -4479,6 +4715,20 @@ def admin_add_pins_batch():
             added_count = add_pins_batch_freefire_global(int(monto_id), pins_list)
             juego_nombre = "Free Fire"
             table = 'precios_freefire_global'
+        elif game_type.startswith('dyn_'):
+            dyn_game = get_dynamic_game_by_slug(game_type[4:])
+            pkg = get_dynamic_package_by_id(int(monto_id)) if monto_id else None
+            if not dyn_game or not dyn_game.get('usa_stock_local') or not pkg or pkg['juego_id'] != dyn_game['id']:
+                if request.headers.get('Accept') == 'application/json':
+                    return jsonify({'success': False, 'error': 'Juego o paquete dinámico inválido'}), 400
+                flash('Juego o paquete dinámico inválido', 'error')
+                return redirect('/admin')
+            added_count = add_dynamic_stock_pins_batch(dyn_game['id'], int(monto_id), pins_list)
+            paquete_nombre = f"{pkg['nombre']} / ${float(pkg['precio']):.2f}"
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': True, 'added': added_count, 'message': f'{added_count} pines agregados para {dyn_game["nombre"]} - {paquete_nombre}'})
+            flash(f'Se agregaron {added_count} pines exitosamente para {dyn_game["nombre"]} - {paquete_nombre}', 'success')
+            return redirect('/admin')
         else:
             flash('Tipo de juego inválido', 'error')
             return redirect('/admin')
@@ -4668,6 +4918,17 @@ def crear_recarga():
     if not user_id:
         flash('Error de sesión', 'error')
         return redirect('/billetera')
+
+
+@app.route('/admin/revendedores/balance', methods=['GET'])
+def admin_revendedores_balance():
+    if not session.get('is_admin'):
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    return jsonify({
+        'ok': True,
+        'balance': round(float(get_revendedores_balance()), 2),
+    })
     
     try:
         monto = float(request.form.get('monto', 0))

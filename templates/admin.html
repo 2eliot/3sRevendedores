@@ -42,7 +42,7 @@
         <button class="side-tab-button active" data-tab="usuarios" onclick="showTab('usuarios', event)" aria-label="Usuarios">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="label">Usuarios</span>
         </button>
-        <button class="side-tab-button" data-tab="pines" onclick="showTab('pines', event)" aria-label="Pines" style="display:none;">
+        <button class="side-tab-button" data-tab="pines" onclick="showTab('pines', event)" aria-label="Pines">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l5 5-7 7-4 1 1-4 7-7z"/><path d="M2 22l6-6"/></svg></span><span class="label">Pines</span>
         </button>
         <button class="side-tab-button" data-tab="precios" onclick="showTab('precios', event)" aria-label="Precios">
@@ -396,7 +396,7 @@
       <!-- Pestaña de Gestor de Pines -->
       <div id="tab-pines" class="tab-content">
         <section class="pins-section">
-      <h2>📌 Gestión de Pines Free Fire</h2>
+      <h2>📌 Gestión de Pines y Tarjetas</h2>
       
       <div class="pin-management">
         <div class="pin-selector-row">
@@ -405,6 +405,11 @@
             {% if games_active.freefire_global or session.get('is_admin') %}
             <option value="freefire_global" selected>Free Fire</option>
             {% endif %}
+            {% for dg in dyn_games %}
+            {% if dg.usa_stock_local %}
+            <option value="dyn_{{ dg.slug }}">{{ dg.nombre }}</option>
+            {% endif %}
+            {% endfor %}
           </select>
         </div>
 
@@ -587,6 +592,9 @@
               </label>
               <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
                 <input type="checkbox" id="cj-server-select" onchange="document.getElementById('cj-server-opts-row').style.display=this.checked?'block':'none'"> Selector de Servidor
+              </label>
+              <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="checkbox" id="cj-local-stock"> Etiqueta tarjeta (stock local)
               </label>
             </div>
             <div id="cj-server-opts-row" style="display:none;margin-top:6px;">
@@ -935,6 +943,18 @@
     }
   </script>
 
+  <script type="application/json" id="dyn-stock-data">
+    {
+      {% for dg in dynamic_stock_games %}
+      "dyn_{{ dg.slug }}": {
+        {% for p in dg._packages %}
+        "{{ p.id }}": {{ dynamic_stock.get(dg.id, {}).get(p.id, 0) }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    }
+  </script>
+
   <script>
     // Auto-ocultar mensajes flash después de 2 segundos
     setTimeout(function() {
@@ -1144,8 +1164,12 @@
     function renderPackageList(game) {
       const container = document.getElementById('package-list');
       if (!container) return;
-      const data = game === 'freefire_global' ? freefireGlobalPackages : freefireLatamPackages;
-      const stockMap = game === 'freefire_global' ? freefireGlobalStock : freefireLatamStock;
+      let data = game === 'freefire_global' ? freefireGlobalPackages : freefireLatamPackages;
+      let stockMap = game === 'freefire_global' ? freefireGlobalStock : freefireLatamStock;
+      if (game.startsWith('dyn_') && dynGamesData[game]) {
+        data = dynGamesData[game].packages || [];
+        stockMap = dynStockData[game] || {};
+      }
       container.innerHTML = '';
       data.forEach(pkg => {
         const card = document.createElement('div');
@@ -1359,9 +1383,10 @@
       const modo = document.getElementById('cj-modo').value;
       const dualId = document.getElementById('cj-dual-id').checked;
       const serverSelect = document.getElementById('cj-server-select').checked;
-      if (!nombre || !productId) { st.innerHTML = '<span style="color:#ff6b6b;">Nombre y Product ID son obligatorios</span>'; return; }
+      const localStock = document.getElementById('cj-local-stock').checked;
+      if (!nombre || (!productId && !localStock)) { st.innerHTML = '<span style="color:#ff6b6b;">Nombre y Product ID son obligatorios, excepto tarjetas con stock local</span>'; return; }
       st.innerHTML = '<span style="color:#aaa;">Creando...</span>';
-      const payload = { nombre, gamepoint_product_id: productId, modo, campo_id_label:'ID de Jugador', campo_id_placeholder:'Ingresa tu ID' };
+      const payload = { nombre, gamepoint_product_id: productId || 0, modo, usa_stock_local: localStock, campo_id_label:'ID de Jugador', campo_id_placeholder:'Ingresa tu ID' };
       if (dualId) { payload.campo_id2_label = 'Server ID'; payload.campo_id2_placeholder = 'Ingresa Server ID'; }
       if (serverSelect) {
         payload.campo_servidor = true;
@@ -1512,6 +1537,7 @@
     const freefireIdPackages = JSON.parse(document.getElementById('freefire-id-data').textContent);
     const freefireLatamStock = JSON.parse(document.getElementById('freefire-latam-stock').textContent);
     const freefireGlobalStock = JSON.parse(document.getElementById('freefire-global-stock').textContent);
+    const dynStockData = JSON.parse(document.getElementById('dyn-stock-data').textContent);
 
     // Inicializar selector de juego para pines (después de cargar datasets)
     const pinGameSelector = document.getElementById('pin_game_selector');

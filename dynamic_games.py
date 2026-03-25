@@ -308,6 +308,9 @@ def admin_create_game():
     icono = data.get('icono', '🎮')
     descripcion = data.get('descripcion', '')
     ganancia = float(data.get('ganancia_default', 0.10))
+    usa_stock_local = data.get('usa_stock_local') in (True, 'true', '1', 'on', 1)
+    if usa_stock_local:
+        modo = 'pin'
 
     # Build campos_config JSON
     campos = {}
@@ -339,8 +342,8 @@ def admin_create_game():
             'opciones': opciones,
         }
 
-    if not nombre or not product_id:
-        return jsonify({'error': 'Nombre y Product ID son obligatorios'}), 400
+    if not nombre or (not product_id and not usa_stock_local):
+        return jsonify({'error': 'Nombre y Product ID son obligatorios, excepto para tarjetas con stock local'}), 400
 
     slug = slugify(nombre)
 
@@ -352,10 +355,10 @@ def admin_create_game():
     conn = _get_conn()
     try:
         cur = conn.execute('''
-            INSERT INTO juegos_dinamicos (nombre, slug, gamepoint_product_id, modo, color_tema, icono, activo, campos_config, descripcion, ganancia_default)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO juegos_dinamicos (nombre, slug, gamepoint_product_id, modo, color_tema, icono, activo, campos_config, descripcion, ganancia_default, usa_stock_local)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
-        ''', (nombre, slug, int(product_id), modo, color, icono, False, json.dumps(campos), descripcion, ganancia))
+        ''', (nombre, slug, int(product_id or 0), modo, color, icono, False, json.dumps(campos), descripcion, ganancia, usa_stock_local))
         game_id = cur.fetchone()[0]
         conn.commit()
     except Exception as e:
@@ -385,6 +388,13 @@ def admin_update_game(game_id):
     icono = data.get('icono', game['icono'])
     descripcion = data.get('descripcion', game['descripcion'])
     ganancia = float(data.get('ganancia_default', game['ganancia_default']))
+    usa_stock_local = data.get('usa_stock_local')
+    if usa_stock_local is not None:
+        usa_stock_local = usa_stock_local in (True, 'true', '1', 'on', 1)
+    else:
+        usa_stock_local = bool(game.get('usa_stock_local'))
+    if usa_stock_local:
+        modo = 'pin'
     activo = data.get('activo')
     if activo is not None:
         activo = activo in (True, 'true', '1', 'on', 1)
@@ -421,9 +431,9 @@ def admin_update_game(game_id):
     conn = _get_conn()
     conn.execute('''
         UPDATE juegos_dinamicos SET nombre=?, gamepoint_product_id=?, modo=?, color_tema=?, icono=?, activo=?,
-        campos_config=?, descripcion=?, ganancia_default=?, fecha_actualizacion=CURRENT_TIMESTAMP
+        campos_config=?, descripcion=?, ganancia_default=?, usa_stock_local=?, fecha_actualizacion=CURRENT_TIMESTAMP
         WHERE id=?
-    ''', (nombre, int(product_id), modo, color, icono, activo, json.dumps(campos), descripcion, ganancia, game_id))
+    ''', (nombre, int(product_id or 0), modo, color, icono, activo, json.dumps(campos), descripcion, ganancia, usa_stock_local, game_id))
     conn.commit()
     conn.close()
 
@@ -455,6 +465,7 @@ def admin_delete_game(game_id):
         return jsonify({'error': 'Acceso denegado'}), 403
     conn = _get_conn()
     conn.execute('DELETE FROM paquetes_dinamicos WHERE juego_id=?', (game_id,))
+    conn.execute('DELETE FROM pines_dinamicos_stock WHERE juego_id=?', (game_id,))
     conn.execute('DELETE FROM transacciones_dinamicas WHERE juego_id=?', (game_id,))
     conn.execute('DELETE FROM juegos_dinamicos WHERE id=?', (game_id,))
     conn.commit()
@@ -554,6 +565,7 @@ def admin_delete_package(pkg_id):
     if not session.get('is_admin'):
         return jsonify({'error': 'Acceso denegado'}), 403
     conn = _get_conn()
+    conn.execute('DELETE FROM pines_dinamicos_stock WHERE paquete_id=?', (pkg_id,))
     conn.execute('DELETE FROM paquetes_dinamicos WHERE id=?', (pkg_id,))
     conn.commit()
     conn.close()
@@ -1002,6 +1014,12 @@ def validar_dinamico(slug):
 
     # === PURCHASE VIA GAMEPOINT ===
     _start = time_module.time()
+
+    if game.get('usa_stock_local'):
+        return _purchase_via_local_stock(
+            game, pkg, slug, user_id, is_admin, precio, package_id,
+            player_id, player_id2, servidor, redirect_url, _start
+        )
 
     # ──── Check auto-recharge via reseller mapping ────
     _rev_mapping = None
@@ -1462,6 +1480,128 @@ def _refund(user_id, precio, is_admin):
         logger.info(f"[DynGame] Saldo ${precio} reembolsado al usuario {user_id}")
     except Exception as e:
         logger.error(f"[DynGame] Error reembolsando: {e}")
+
+
+def _purchase_via_local_stock(game, pkg, slug, user_id, is_admin, precio,
+                              package_id, player_id, player_id2, servidor,
+                              redirect_url, _start):
+    """Entrega tarjetas desde inventario local para juegos dinámicos marcados con stock."""
+    merchant_code = f"DG{game['id']}-" + secrets.token_hex(6).upper()
+    numero_control = f"DGS-{secrets.token_hex(4).upper()}"
+    conn = _get_conn()
+    try:
+        if not is_admin:
+            cursor = conn.execute(
+                'UPDATE usuarios SET saldo = saldo - ? WHERE id = ? AND saldo >= ?',
+                (precio, user_id, precio)
+            )
+            if cursor.rowcount == 0:
+                conn.close()
+                flash('Saldo insuficiente al momento de procesar.', 'error')
+                return redirect(redirect_url)
+
+        pin_row = conn.execute('''
+            SELECT id, pin_codigo
+            FROM pines_dinamicos_stock
+            WHERE juego_id = ? AND paquete_id = ? AND usado = FALSE
+            ORDER BY id
+            LIMIT 1
+        ''', (game['id'], package_id)).fetchone()
+
+        if not pin_row:
+            conn.rollback()
+            conn.close()
+            flash('No hay stock disponible para esta tarjeta. Contacta al administrador.', 'error')
+            return redirect(redirect_url)
+
+        conn.execute('''
+            UPDATE pines_dinamicos_stock
+            SET usado = TRUE, usuario_id = ?, fecha_uso = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (user_id, pin_row['id']))
+
+        pin_code = pin_row['pin_codigo']
+        duration = round(time_module.time() - _start, 1)
+        paquete_display = f"{game['nombre']} - {pkg['nombre']}"
+
+        conn.execute('''
+            INSERT INTO transacciones_dinamicas
+            (juego_id, usuario_id, player_id, player_id2, servidor, paquete_id,
+             numero_control, transaccion_id, monto, estado, pin_entregado, fecha_procesado, notas)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'aprobado', ?, CURRENT_TIMESTAMP, 'stock-local')
+        ''', (game['id'], user_id, player_id or None, player_id2 or None, servidor or None,
+              package_id, numero_control, merchant_code, precio, pin_code))
+
+        pin_info = f"Código: {pin_code}"
+        conn.execute('''
+            INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto, duracion_segundos)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, numero_control, pin_info, merchant_code, paquete_display, -precio, duration))
+
+        saldo_row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
+        saldo_actual = saldo_row['saldo'] if saldo_row else 0
+        conn.execute('''
+            INSERT INTO historial_compras (usuario_id, monto, paquete_nombre, pin, tipo_evento, duracion_segundos, saldo_antes, saldo_despues)
+            VALUES (?, ?, ?, ?, 'compra', ?, ?, ?)
+        ''', (user_id, precio, paquete_display, pin_info, duration, saldo_actual + (0 if is_admin else precio), saldo_actual))
+
+        try:
+            juego_key = f'dyn_{game["slug"]}'
+            costo_row = conn.execute(
+                'SELECT precio_compra FROM precios_compra WHERE juego=? AND paquete_id=?',
+                (juego_key, package_id)
+            ).fetchone()
+            costo_unit = costo_row['precio_compra'] if costo_row else 0
+            profit_unit = round(precio - costo_unit, 4)
+            conn.execute('''
+                INSERT INTO profit_ledger (usuario_id, juego, paquete_id, cantidad, precio_venta_unit, costo_unit, profit_unit, profit_total, transaccion_id)
+                VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+            ''', (user_id, juego_key, package_id, precio, costo_unit, profit_unit, profit_unit, merchant_code))
+        except Exception:
+            pass
+
+        if not is_admin:
+            try:
+                from update_monthly_spending import update_monthly_spending
+                update_monthly_spending(conn, user_id, precio)
+            except Exception:
+                pass
+
+        conn.commit()
+        conn.close()
+
+        if not is_admin:
+            session['saldo'] = saldo_actual
+            try:
+                from app import register_weekly_sale
+                register_weekly_sale(f'dyn_{game["slug"]}', package_id, pkg['nombre'], precio, 1)
+            except Exception:
+                pass
+
+        session[f'compra_dyn_{slug}_exitosa'] = {
+            'paquete_nombre': pkg['nombre'],
+            'monto_compra': precio,
+            'numero_control': numero_control,
+            'transaccion_id': merchant_code,
+            'player_id': player_id,
+            'player_id2': player_id2,
+            'servidor': servidor,
+            'player_name': '',
+            'estado': 'completado',
+            'gamepoint_ref': '',
+            'serial_key': pin_code,
+        }
+        logger.info(f"[DynGame:{slug}][StockLocal] OK | user={user_id} pkg={package_id}")
+        return redirect(f'/juego/d/{slug}?compra=exitosa')
+    except Exception as exc:
+        try:
+            conn.rollback()
+            conn.close()
+        except Exception:
+            pass
+        logger.error(f"[DynGame:{slug}][StockLocal] Error: {exc}")
+        flash('No se pudo entregar la tarjeta desde stock local.', 'error')
+        return redirect(redirect_url)
 
 
 # ---------------------------------------------------------------------------
