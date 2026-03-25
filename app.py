@@ -2954,14 +2954,46 @@ def update_user_balance(user_id, new_balance):
 def delete_user(user_id):
     """Elimina un usuario y todos sus datos relacionados"""
     conn = get_db_connection()
-    # Eliminar transacciones del usuario
-    conn.execute('DELETE FROM transacciones WHERE usuario_id = ?', (user_id,))
-    # Eliminar créditos de billetera del usuario
-    conn.execute('DELETE FROM creditos_billetera WHERE usuario_id = ?', (user_id,))
-    # Eliminar usuario
-    conn.execute('DELETE FROM usuarios WHERE id = ?', (user_id,))
-    conn.commit()
-    conn.close()
+    user_id = int(user_id)
+
+    tables_to_delete = [
+        ('transacciones', 'usuario_id'),
+        ('historial_compras', 'usuario_id'),
+        ('transacciones_bloodstriker', 'usuario_id'),
+        ('transacciones_freefire_id', 'usuario_id'),
+        ('transacciones_dinamicas', 'usuario_id'),
+        ('creditos_billetera', 'usuario_id'),
+        ('noticias_vistas', 'usuario_id'),
+        ('notificaciones_personalizadas', 'usuario_id'),
+        ('recargas_binance', 'usuario_id'),
+        ('profit_ledger', 'usuario_id'),
+        ('monthly_user_spending', 'usuario_id'),
+    ]
+    tables_to_null = [
+        ('pines_freefire', 'usuario_id'),
+        ('pines_freefire_global', 'usuario_id'),
+        ('pines_dinamicos_stock', 'usuario_id'),
+        ('transacciones_bloodstriker', 'admin_id'),
+        ('transacciones_freefire_id', 'admin_id'),
+    ]
+
+    try:
+        for table_name, column_name in tables_to_delete:
+            if pg_table_exists(conn, table_name):
+                conn.execute(f'DELETE FROM {table_name} WHERE {column_name} = ?', (user_id,))
+
+        for table_name, column_name in tables_to_null:
+            if pg_table_exists(conn, table_name):
+                conn.execute(f'UPDATE {table_name} SET {column_name} = NULL WHERE {column_name} = ?', (user_id,))
+
+        deleted = conn.execute('DELETE FROM usuarios WHERE id = ?', (user_id,)).rowcount
+        conn.commit()
+        return deleted > 0
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def add_credit_to_user(user_id, amount):
     """Añade crédito al saldo de un usuario y registra en billetera"""
@@ -4581,8 +4613,15 @@ def admin_delete_user():
     user_id = request.form.get('user_id')
     
     if user_id:
-        delete_user(user_id)
-        flash(f'Usuario ID {user_id} eliminado exitosamente', 'success')
+        try:
+            deleted = delete_user(user_id)
+            if deleted:
+                flash(f'Usuario ID {user_id} eliminado exitosamente', 'success')
+            else:
+                flash('Usuario no encontrado', 'error')
+        except Exception as e:
+            logger.exception('Error eliminando usuario %s', user_id)
+            flash(f'Error al eliminar usuario: {str(e)}', 'error')
     else:
         flash('ID de usuario inválido', 'error')
     
