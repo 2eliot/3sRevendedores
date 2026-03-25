@@ -568,6 +568,7 @@
                   <input type="hidden" name="active" id="tg_active2" value="0">
                   <button type="submit" class="btn btn-danger">Desactivar</button>
                 </form>
+                <button type="button" id="btn-edit-dyn-game" class="btn btn-secondary" style="display:none;padding:8px 12px;font-size:12px;" onclick="editarJuegoDinamico()">Editar Juego</button>
                 <button type="button" id="btn-delete-dyn-game" class="btn btn-danger" style="display:none;padding:8px 12px;font-size:12px;" onclick="eliminarJuegoDinamico()">Eliminar Juego</button>
               </div>
             </div>
@@ -575,7 +576,7 @@
 
           <!-- Formulario crear juego dinámico (oculto por defecto) -->
           <div id="crear-juego-form" style="display:none;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:10px;padding:14px;margin-bottom:14px;">
-            <h4 style="color:#a78bfa;margin:0 0 10px;">+ Crear Juego Dinámico</h4>
+            <h4 id="cj-title" style="color:#a78bfa;margin:0 0 10px;">+ Crear Juego Dinámico</h4>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
               <div><label style="color:#8896a6;font-size:11px;display:block;">Nombre *</label>
                 <input id="cj-nombre" placeholder="Ej: Mobile Legends" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:13px;"></div>
@@ -602,7 +603,8 @@
               <input id="cj-server-opciones" placeholder="Ej: Asia, Europe, North America, South America" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:13px;">
             </div>
             <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
-              <button type="button" class="btn btn-success" style="padding:8px 16px;font-size:13px;" onclick="crearJuegoDinamico()">Crear</button>
+              <button type="button" id="cj-submit-btn" class="btn btn-success" style="padding:8px 16px;font-size:13px;" onclick="crearJuegoDinamico()">Crear</button>
+              <button type="button" id="cj-cancel-edit" class="btn btn-secondary" style="display:none;padding:8px 16px;font-size:13px;" onclick="cancelarEdicionJuegoDinamico()">Cancelar</button>
               <span id="cj-status" style="font-size:12px;color:#888;"></span>
             </div>
           </div>
@@ -932,6 +934,12 @@
       "dyn_{{ dg.slug }}": {
         "id": {{ dg.id }},
         "slug": "{{ dg.slug }}",
+        "gamepoint_product_id": {{ dg.gamepoint_product_id or 0 }},
+        "modo": "{{ dg.modo }}",
+        "usa_stock_local": {{ 'true' if dg.usa_stock_local else 'false' }},
+        "dual_id": {{ 'true' if dg._edit_dual_id else 'false' }},
+        "server_enabled": {{ 'true' if dg._edit_server_enabled else 'false' }},
+        "server_options": {{ dg._edit_server_options|tojson }},
         "nombre": "{{ dg.nombre }}",
         "packages": [
           {% for p in dg._packages %}
@@ -1249,6 +1257,7 @@
     // ======= Gestión de Precios (lista editable) =======
     const dynGamesData = JSON.parse(document.getElementById('dyn-games-data').textContent);
     let _currentDynGameId = null;
+    let _editingDynGameId = null;
 
     let _costBySource = null;
     let _costLoadPromise = null;
@@ -1312,10 +1321,14 @@
       else if (isDyn && dynGamesData[game]) {
         data = dynGamesData[game].packages || [];
         _currentDynGameId = dynGamesData[game].id;
+      } else {
+        _currentDynGameId = null;
       }
 
       if (addArea) addArea.style.display = isDyn ? 'block' : 'none';
+      const editBtn = document.getElementById('btn-edit-dyn-game');
       const delBtn = document.getElementById('btn-delete-dyn-game');
+      if (editBtn) editBtn.style.display = isDyn ? 'inline-block' : 'none';
       if (delBtn) delBtn.style.display = isDyn ? 'inline-block' : 'none';
 
       container.innerHTML = '';
@@ -1376,6 +1389,53 @@
     }
 
     // ======= Crear juego dinámico desde Precios =======
+    function setCrearJuegoFormMode(editing) {
+      const title = document.getElementById('cj-title');
+      const submitBtn = document.getElementById('cj-submit-btn');
+      const cancelBtn = document.getElementById('cj-cancel-edit');
+      if (title) title.textContent = editing ? 'Editar Juego Dinámico' : '+ Crear Juego Dinámico';
+      if (submitBtn) submitBtn.textContent = editing ? 'Guardar Cambios' : 'Crear';
+      if (cancelBtn) cancelBtn.style.display = editing ? 'inline-block' : 'none';
+    }
+
+    function resetCrearJuegoForm() {
+      document.getElementById('cj-nombre').value = '';
+      document.getElementById('cj-productid').value = '';
+      document.getElementById('cj-modo').value = 'id';
+      document.getElementById('cj-dual-id').checked = false;
+      document.getElementById('cj-server-select').checked = false;
+      document.getElementById('cj-local-stock').checked = false;
+      document.getElementById('cj-server-opciones').value = '';
+      document.getElementById('cj-server-opts-row').style.display = 'none';
+      document.getElementById('cj-status').innerHTML = '';
+      _editingDynGameId = null;
+      setCrearJuegoFormMode(false);
+    }
+
+    function editarJuegoDinamico() {
+      const sel = document.getElementById('price_game_select');
+      const key = sel ? sel.value : '';
+      const game = dynGamesData[key];
+      if (!game) return;
+      _editingDynGameId = game.id;
+      document.getElementById('crear-juego-form').style.display = 'block';
+      document.getElementById('cj-nombre').value = game.nombre || '';
+      document.getElementById('cj-productid').value = game.gamepoint_product_id || '';
+      document.getElementById('cj-modo').value = game.modo || 'id';
+      document.getElementById('cj-dual-id').checked = !!game.dual_id;
+      document.getElementById('cj-server-select').checked = !!game.server_enabled;
+      document.getElementById('cj-local-stock').checked = !!game.usa_stock_local;
+      document.getElementById('cj-server-opciones').value = game.server_options || '';
+      document.getElementById('cj-server-opts-row').style.display = game.server_enabled ? 'block' : 'none';
+      document.getElementById('cj-status').innerHTML = '';
+      setCrearJuegoFormMode(true);
+    }
+
+    function cancelarEdicionJuegoDinamico() {
+      resetCrearJuegoForm();
+      document.getElementById('crear-juego-form').style.display = 'none';
+    }
+
     async function crearJuegoDinamico() {
       const st = document.getElementById('cj-status');
       const nombre = document.getElementById('cj-nombre').value.trim();
@@ -1414,22 +1474,23 @@
       const precio = parseFloat(priceInput.value);
       if (!nombre || !precio || precio <= 0) { st.innerHTML = '<span style="color:#ff6b6b;">Nombre y precio requeridos</span>'; return; }
       if (!_currentDynGameId) { st.innerHTML = '<span style="color:#ff6b6b;">Juego no identificado</span>'; return; }
-      st.innerHTML = '<span style="color:#aaa;">Añadiendo...</span>';
+      st.innerHTML = `<span style="color:#aaa;">${_editingDynGameId ? 'Guardando...' : 'Creando...'}</span>`;
       try {
         const res = await fetch(`/admin/dynamic-games/${_currentDynGameId}/packages/add`, {
           method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
           body: JSON.stringify({ nombre, precio })
-        });
+        payload.servidor_enabled = true;
         const data = await res.json();
         if (data.success) {
           const pkgId = data.package_id;
-          const container = document.getElementById('price-package-list');
+        const url = _editingDynGameId ? `/admin/dynamic-games/${_editingDynGameId}/update` : '/admin/dynamic-games/create';
+        const res = await fetch(url, {
           if (container.querySelector('p')) container.innerHTML = '';
           const card = document.createElement('div');
           card.className = 'package-card';
           card.innerHTML = `
             <div class="package-card-header"><div class="package-left"><div class="package-title">ID ${pkgId}</div></div></div>
-            <div class="package-forms">
+          st.innerHTML = `<span style="color:#4ade80;">✅ ${_editingDynGameId ? 'Actualizado' : 'Creado'}. Recargando...</span>`;
               <div class="package-form"><label>Nombre</label><input type="text" class="pkg-name" data-id="${pkgId}" value="${nombre}" maxlength="50"></div>
               <div class="package-form"><label>Precio</label><input type="number" class="pkg-price" data-id="${pkgId}" value="${precio.toFixed(2)}" step="0.01" min="0"></div>
             </div>`;

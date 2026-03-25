@@ -4126,6 +4126,13 @@ def admin_panel():
     dynamic_stock = get_dynamic_stock_counts()
     for dg in dyn_games:
         dg['_packages'] = _dg_pkgs(dg['id'])
+        try:
+            campos_cfg = json.loads(dg.get('campos_config') or '{}')
+        except Exception:
+            campos_cfg = {}
+        dg['_edit_dual_id'] = bool((campos_cfg.get('campo_id2') or {}).get('enabled'))
+        dg['_edit_server_enabled'] = bool((campos_cfg.get('servidor') or {}).get('enabled'))
+        dg['_edit_server_options'] = ', '.join((campos_cfg.get('servidor') or {}).get('opciones') or [])
     dynamic_stock_games = [dg for dg in dyn_games if dg.get('usa_stock_local')]
     
     return render_template('admin.html', 
