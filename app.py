@@ -5481,24 +5481,6 @@ def validar_bloodstriker():
         flash(f'Saldo insuficiente. Necesitas ${precio:.2f} pero tienes ${saldo_actual:.2f}', 'error')
         return redirect('/juego/bloodstriker')
     
-    # Check for recent duplicate pending transaction (prevents double recharge on page refresh)
-    try:
-        conn_dup = get_db_connection()
-        dup = conn_dup.execute(
-            '''SELECT id FROM transacciones_bloodstriker
-               WHERE usuario_id = ? AND paquete_id = ?
-                 AND estado IN ('procesando', 'pendiente', 'aprobado')
-                 AND fecha >= (NOW() - INTERVAL '2 minutes')
-               LIMIT 1''',
-            (user_id, package_id)
-        ).fetchone()
-        conn_dup.close()
-        if dup:
-            flash('Ya se est\u00e1 procesando tu recarga. Espera unos segundos y revisa tu historial.', 'error')
-            return redirect('/juego/bloodstriker')
-    except Exception:
-        pass
-    
     # === COMPRA AUTOMÁTICA VIA GAMEPOINT CLUB ===
     import time as _time
     _bs_start = _time.time()
@@ -5528,24 +5510,6 @@ def validar_bloodstriker():
         _bs_transaccion_id = 'BS-' + ''.join(_bs_random.choices(_bs_string.ascii_uppercase + _bs_string.digits, k=8))
         try:
             conn_proc = get_db_connection()
-            dup_proc = conn_proc.execute(
-                '''SELECT id FROM transacciones_bloodstriker
-                   WHERE usuario_id = ? AND paquete_id = ?
-                     AND estado IN ('procesando', 'pendiente', 'aprobado')
-                     AND fecha >= (NOW() - INTERVAL '2 minutes')
-                   LIMIT 1''',
-                (user_id, package_id)
-            ).fetchone()
-            if dup_proc:
-                conn_proc.close()
-                if not is_admin:
-                    conn_r = get_db_connection()
-                    conn_r.execute('UPDATE usuarios SET saldo = saldo + ? WHERE id = ?', (precio, user_id))
-                    conn_r.commit()
-                    conn_r.close()
-                    session['saldo'] = session.get('saldo', 0) + precio
-                flash('Ya se est\u00e1 procesando tu recarga. Espera unos segundos y revisa tu historial.', 'error')
-                return redirect('/juego/bloodstriker')
             conn_proc.execute('''
                 INSERT INTO transacciones_bloodstriker
                 (usuario_id, player_id, paquete_id, numero_control, transaccion_id, monto, estado)
@@ -6563,9 +6527,6 @@ def freefire_id():
     if 'compra_freefire_id_exitosa' in session:
         compra_exitosa = True
         compra_data = session.pop('compra_freefire_id_exitosa')
-    
-    # Nonce de un solo uso para evitar doble submit/reintentos del navegador
-    session['ffid_form_nonce'] = secrets.token_urlsafe(16)
 
     return render_template('freefire_id.html', 
                          user_id=session.get('id', '00000'),
@@ -6574,7 +6535,6 @@ def freefire_id():
                          compra_exitosa=compra_exitosa,
                          is_admin=is_admin,
                          games_active=get_games_active(),
-                         ffid_form_nonce=session.get('ffid_form_nonce'),
                          **compra_data)
 
 @app.route('/validar/freefire_id', methods=['POST'])
@@ -6591,21 +6551,6 @@ def validar_freefire_id():
     
     package_id = request.form.get('monto')
     player_id = request.form.get('player_id')
-
-    # Validar nonce (un solo uso) para prevenir reintentos/doble submit en caídas
-    # Excepción: solicitudes API automáticas (Inefablestore) usan WEBB_API_KEY en su lugar
-    _webb_api_key_env = os.environ.get('WEBB_API_KEY', '').strip()
-    _webb_api_key_req = request.form.get('webb_api_key', '').strip()
-    _is_api_call = bool(_webb_api_key_env and _webb_api_key_req and _webb_api_key_env == _webb_api_key_req)
-
-    if not _is_api_call:
-        nonce_form = request.form.get('ffid_form_nonce')
-        nonce_session = session.pop('ffid_form_nonce', None)
-        if not nonce_form or not nonce_session or nonce_form != nonce_session:
-            flash('Solicitud duplicada o expirada. Recarga la página e intenta nuevamente.', 'error')
-            return redirect('/juego/freefire_id')
-    else:
-        session.pop('ffid_form_nonce', None)
     
     if not package_id or not player_id:
         flash('Por favor complete todos los campos', 'error')
@@ -6625,31 +6570,6 @@ def validar_freefire_id():
     if precio == 0:
         flash('Paquete no encontrado o inactivo', 'error')
         return redirect('/juego/freefire_id')
-
-    # Evitar doble envío real: solo bloquear si ya existe una recarga activa
-    # del mismo usuario/ID/paquete aún en procesamiento.
-    try:
-        conn_dup = get_db_connection()
-        dup = conn_dup.execute(
-            '''
-            SELECT id, estado, fecha
-            FROM transacciones_freefire_id
-            WHERE usuario_id = ?
-              AND player_id = ?
-              AND paquete_id = ?
-              AND estado = 'procesando'
-              AND datetime(fecha) >= datetime('now', '-2 minutes')
-            ORDER BY id DESC
-            LIMIT 1
-            ''',
-            (user_id, player_id, package_id)
-        ).fetchone()
-        conn_dup.close()
-        if dup:
-            flash('Ya se está procesando tu recarga. Espera unos segundos y revisa tu dashboard.', 'error')
-            return redirect('/juego/freefire_id')
-    except Exception:
-        pass
     
     # === PROTECCIÓN 1: Verificar saldo desde DB (no session) ===
     if not is_admin:

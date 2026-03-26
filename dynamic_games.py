@@ -994,24 +994,6 @@ def validar_dinamico(slug):
             flash(f'Saldo insuficiente. Necesitas ${precio:.2f} pero tienes ${saldo_actual:.2f}', 'error')
             return redirect(redirect_url)
 
-    # Check for recent duplicate pending transaction (extra safety net)
-    try:
-        conn_dup = _get_conn()
-        dup = conn_dup.execute(
-            '''SELECT id FROM transacciones_dinamicas
-               WHERE usuario_id = ? AND juego_id = ? AND paquete_id = ?
-                 AND estado IN ('procesando', 'pendiente', 'aprobado')
-                 AND fecha >= (NOW() - INTERVAL '2 minutes')
-               LIMIT 1''',
-            (user_id, game['id'], package_id)
-        ).fetchone()
-        conn_dup.close()
-        if dup:
-            flash('Ya se está procesando tu recarga. Espera unos segundos y revisa tu historial.', 'error')
-            return redirect(redirect_url)
-    except Exception:
-        pass
-
     # === PURCHASE VIA GAMEPOINT ===
     _start = time_module.time()
 
@@ -1065,19 +1047,6 @@ def validar_dinamico(slug):
         numero_control = f"DG-{secrets.token_hex(4).upper()}"
         try:
             conn_proc = _get_conn()
-            dup_proc = conn_proc.execute(
-                '''SELECT id FROM transacciones_dinamicas
-                   WHERE usuario_id = ? AND juego_id = ? AND paquete_id = ?
-                     AND estado IN ('procesando', 'pendiente', 'aprobado')
-                     AND fecha >= (NOW() - INTERVAL '2 minutes')
-                   LIMIT 1''',
-                (user_id, game['id'], package_id)
-            ).fetchone()
-            if dup_proc:
-                conn_proc.close()
-                _refund(user_id, precio, is_admin)
-                flash('Ya se está procesando tu recarga. Espera unos segundos y revisa tu historial.', 'error')
-                return redirect(redirect_url)
             cur_proc = conn_proc.execute('''
                 INSERT INTO transacciones_dinamicas
                 (juego_id, usuario_id, player_id, player_id2, servidor, paquete_id,
