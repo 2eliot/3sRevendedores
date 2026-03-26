@@ -9114,45 +9114,51 @@ def dashboard():
         fecha_fin = today.strftime('%Y-%m-%d')
         preset = 'hoy'
     
-    # Actualizar saldo desde la base de datos y obtener transacciones
+    # Actualizar saldo desde la base de datos y obtener compras persistentes.
+    # El dashboard debe depender del historial permanente y no del recorte de transacciones a 100 registros.
     conn = get_db_connection()
     
     if is_admin:
         # Admin ve estadísticas globales
         user = None
         
-        # Obtener todas las transacciones filtradas por fecha
-        transacciones_filtradas = conn.execute('''
-            SELECT t.*, u.nombre, u.apellido
-            FROM transacciones t
-            JOIN usuarios u ON t.usuario_id = u.id
-            WHERE DATE(t.fecha) BETWEEN ? AND ?
-            ORDER BY t.fecha DESC
-        ''', (fecha_inicio, fecha_fin)).fetchall()
-        
-        # Obtener todas las transacciones de Blood Striker filtradas por fecha
-        transacciones_bs = conn.execute('''
-            SELECT bs.*, u.nombre, u.apellido, p.nombre as paquete_nombre
-            FROM transacciones_bloodstriker bs
-            JOIN usuarios u ON bs.usuario_id = u.id
-            JOIN precios_bloodstriker p ON bs.paquete_id = p.id
-            WHERE DATE(bs.fecha) BETWEEN ? AND ? AND bs.estado = 'aprobado'
-            ORDER BY bs.fecha DESC
+        historial_filtrado = conn.execute('''
+            SELECT h.id, h.usuario_id, h.fecha, h.monto, h.paquete_nombre, h.pin, h.duracion_segundos,
+                   h.tipo_evento, u.nombre, u.apellido, u.correo
+            FROM historial_compras h
+            JOIN usuarios u ON h.usuario_id = u.id
+            WHERE COALESCE(h.tipo_evento, 'compra') = 'compra'
+              AND DATE(h.fecha, '-4 hours') BETWEEN ? AND ?
+            ORDER BY h.fecha DESC
         ''', (fecha_inicio, fecha_fin)).fetchall()
         
         # Obtener los 2 usuarios con más compras del mes actual (no del período seleccionado)
-        from datetime import datetime
-        current_month = datetime.now().strftime('%Y-%m')
-        
-        top_users = conn.execute('''
-            SELECT u.nombre, u.apellido, u.correo, COUNT(*) as total_compras, SUM(ABS(t.monto)) as monto_total
-            FROM transacciones t
-            JOIN usuarios u ON t.usuario_id = u.id
-            WHERE strftime('%Y-%m', t.fecha) = ?
-            GROUP BY u.id, u.nombre, u.apellido, u.correo
-            ORDER BY total_compras DESC, monto_total DESC
-            LIMIT 2
-        ''', (current_month,)).fetchall()
+        current_month = today.strftime('%Y-%m')
+
+        try:
+            top_users = conn.execute('''
+                SELECT u.nombre, u.apellido, u.correo,
+                       mus.purchases_count as total_compras,
+                       mus.total_spent as monto_total
+                FROM monthly_user_spending mus
+                JOIN usuarios u ON u.id = mus.usuario_id
+                WHERE mus.year_month = ?
+                ORDER BY mus.purchases_count DESC, mus.total_spent DESC
+                LIMIT 2
+            ''', (current_month,)).fetchall()
+        except Exception:
+            top_users = conn.execute('''
+                SELECT u.nombre, u.apellido, u.correo,
+                       COUNT(*) as total_compras,
+                       SUM(ABS(h.monto)) as monto_total
+                FROM historial_compras h
+                JOIN usuarios u ON h.usuario_id = u.id
+                WHERE COALESCE(h.tipo_evento, 'compra') = 'compra'
+                  AND strftime('%Y-%m', datetime(h.fecha, '-4 hours')) = ?
+                GROUP BY u.id, u.nombre, u.apellido, u.correo
+                ORDER BY total_compras DESC, monto_total DESC
+                LIMIT 2
+            ''', (current_month,)).fetchall()
         
     else:
         # Usuario normal ve solo sus datos
@@ -9160,23 +9166,15 @@ def dashboard():
         if user:
             session['saldo'] = user['saldo']
         
-        # Obtener transacciones del usuario filtradas por fecha
-        transacciones_filtradas = conn.execute('''
-            SELECT t.*, u.nombre, u.apellido
-            FROM transacciones t
-            JOIN usuarios u ON t.usuario_id = u.id
-            WHERE t.usuario_id = ? AND DATE(t.fecha) BETWEEN ? AND ?
-            ORDER BY t.fecha DESC
-        ''', (user_id, fecha_inicio, fecha_fin)).fetchall()
-        
-        # Obtener transacciones de Blood Striker del usuario filtradas por fecha
-        transacciones_bs = conn.execute('''
-            SELECT bs.*, u.nombre, u.apellido, p.nombre as paquete_nombre
-            FROM transacciones_bloodstriker bs
-            JOIN usuarios u ON bs.usuario_id = u.id
-            JOIN precios_bloodstriker p ON bs.paquete_id = p.id
-            WHERE bs.usuario_id = ? AND DATE(bs.fecha) BETWEEN ? AND ? AND bs.estado = 'aprobado'
-            ORDER BY bs.fecha DESC
+        historial_filtrado = conn.execute('''
+            SELECT h.id, h.usuario_id, h.fecha, h.monto, h.paquete_nombre, h.pin, h.duracion_segundos,
+                   h.tipo_evento, u.nombre, u.apellido, u.correo
+            FROM historial_compras h
+            JOIN usuarios u ON h.usuario_id = u.id
+            WHERE h.usuario_id = ?
+              AND COALESCE(h.tipo_evento, 'compra') = 'compra'
+              AND DATE(h.fecha, '-4 hours') BETWEEN ? AND ?
+            ORDER BY h.fecha DESC
         ''', (user_id, fecha_inicio, fecha_fin)).fetchall()
         
         top_users = []  # Los usuarios normales no ven top users
@@ -9192,9 +9190,10 @@ def dashboard():
     bloodstriker_packages_info = get_bloodstriker_prices()
     freefire_global_packages_info = get_freefire_global_prices()
     
-    for transaction in transacciones_filtradas:
+    for transaction in historial_filtrado:
         transaction_dict = dict(transaction)
-        monto = abs(transaction['monto'])
+        transaction_dict['transaccion_id'] = transaction_dict.get('transaccion_id') or f"historial:{transaction_dict['id']}"
+        monto = abs(float(transaction['monto'] or 0))
         monto_total += monto
         
         # Si ya tiene paquete_nombre (persistido), usarlo directamente
@@ -9251,22 +9250,6 @@ def dashboard():
         transaction_dict['fecha'] = convert_to_venezuela_time(transaction_dict['fecha'])
         transaction_dict['monto'] = monto
         
-        transacciones_procesadas.append(transaction_dict)
-    
-    # Procesar transacciones de Blood Striker aprobadas
-    for bs_transaction in transacciones_bs:
-        transaction_dict = {
-            'fecha': convert_to_venezuela_time(bs_transaction['fecha']),
-            'monto': abs(bs_transaction['monto']),
-            'paquete': bs_transaction['paquete_nombre'],
-            'numero_control': bs_transaction['numero_control'],
-            'transaccion_id': bs_transaction['transaccion_id'],
-            'pin': f"ID: {bs_transaction['player_id']}",
-            'nombre': bs_transaction['nombre'],
-            'apellido': bs_transaction['apellido'],
-            'is_bloodstriker': True
-        }
-        monto_total += transaction_dict['monto']
         transacciones_procesadas.append(transaction_dict)
     
     def _dashboard_tx_key(tx):
