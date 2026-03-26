@@ -3678,8 +3678,8 @@ def get_freefire_id_prices_cached():
     finally:
         return_db_connection(conn)
 
-def create_freefire_id_transaction(user_id, player_id, package_id, precio, pin_codigo=None):
-    """Crea una transacción pendiente de Free Fire ID"""
+def create_freefire_id_transaction(user_id, player_id, package_id, precio, pin_codigo=None, initial_status='pendiente'):
+    """Crea una transacción de Free Fire ID con el estado inicial indicado."""
     import random
     import string
     
@@ -3691,8 +3691,8 @@ def create_freefire_id_transaction(user_id, player_id, package_id, precio, pin_c
         conn.execute('''
             INSERT INTO transacciones_freefire_id 
             (usuario_id, player_id, paquete_id, numero_control, transaccion_id, monto, estado, pin_codigo)
-            VALUES (?, ?, ?, ?, ?, ?, 'pendiente', ?)
-        ''', (user_id, player_id, package_id, numero_control, transaccion_id, -precio, pin_codigo))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, player_id, package_id, numero_control, transaccion_id, -precio, initial_status, pin_codigo))
         conn.commit()
         row = conn.execute('SELECT id FROM transacciones_freefire_id WHERE transaccion_id = ?', (transaccion_id,)).fetchone()
         transaction_id = row['id'] if row else None
@@ -3708,14 +3708,14 @@ def create_freefire_id_transaction(user_id, player_id, package_id, precio, pin_c
         conn.close()
 
 def get_pending_freefire_id_transactions():
-    """Obtiene transacciones FFID pendientes para revisión manual (no las recientes en auto-proceso)."""
+    """Obtiene transacciones FFID pendientes o procesando para revisión manual."""
     conn = get_db_connection()
     transactions = conn.execute('''
         SELECT fi.*, u.nombre, u.apellido, u.correo, p.nombre as paquete_nombre
         FROM transacciones_freefire_id fi
         JOIN usuarios u ON fi.usuario_id = u.id
         JOIN precios_freefire_id p ON fi.paquete_id = p.id
-        WHERE fi.estado = 'pendiente'
+        WHERE fi.estado IN ('pendiente', 'procesando')
           AND datetime(fi.fecha) <= datetime('now', '-3 minutes')
         ORDER BY fi.fecha DESC
     ''').fetchall()
@@ -3745,14 +3745,14 @@ def get_pending_freefire_id_transactions():
     return formatted_transactions
 
 def get_user_pending_freefire_id_transactions(user_id):
-    """Obtiene las transacciones pendientes de Free Fire ID de un usuario específico"""
+    """Obtiene las transacciones activas de Free Fire ID de un usuario específico"""
     conn = get_db_connection()
     transactions = conn.execute('''
         SELECT fi.*, u.nombre, u.apellido, p.nombre as paquete_nombre
         FROM transacciones_freefire_id fi
         JOIN usuarios u ON fi.usuario_id = u.id
         JOIN precios_freefire_id p ON fi.paquete_id = p.id
-        WHERE fi.usuario_id = ? AND fi.estado = 'pendiente'
+        WHERE fi.usuario_id = ? AND fi.estado IN ('pendiente', 'procesando')
         ORDER BY fi.fecha DESC
     ''', (user_id,)).fetchall()
     
@@ -6626,8 +6626,8 @@ def validar_freefire_id():
         flash('Paquete no encontrado o inactivo', 'error')
         return redirect('/juego/freefire_id')
 
-    # Evitar doble envío: solo bloquear si hay una transacción PENDIENTE reciente
-    # (no bloquear si la anterior ya fue completada o rechazada)
+    # Evitar doble envío real: solo bloquear si ya existe una recarga activa
+    # del mismo usuario/ID/paquete aún en procesamiento.
     try:
         conn_dup = get_db_connection()
         dup = conn_dup.execute(
@@ -6637,7 +6637,7 @@ def validar_freefire_id():
             WHERE usuario_id = ?
               AND player_id = ?
               AND paquete_id = ?
-              AND estado = 'pendiente'
+              AND estado = 'procesando'
               AND datetime(fecha) >= datetime('now', '-2 minutes')
             ORDER BY id DESC
             LIMIT 1
@@ -6704,8 +6704,15 @@ def validar_freefire_id():
             conn.close()
             session['saldo'] = new_saldo['saldo'] if new_saldo else 0
         
-        # 3. Crear transacción (con PIN incluido directamente)
-        transaction_data = create_freefire_id_transaction(user_id, player_id, package_id, precio, pin_codigo=pin_codigo)
+        # 3. Crear transacción activa antes de la redención para bloquear solo envíos simultáneos
+        transaction_data = create_freefire_id_transaction(
+            user_id,
+            player_id,
+            package_id,
+            precio,
+            pin_codigo=pin_codigo,
+            initial_status='procesando'
+        )
         
         # 4. Actualizar gastos mensuales
         if not is_admin:
@@ -6822,8 +6829,8 @@ def validar_freefire_id():
     except Exception as e:
         logger.error(f"[FreeFire ID] Error general: {str(e)}")
 
-        # Fallback anti-transacciones atascadas en "pendiente"
-        # Si ya se creó la transacción y sigue pendiente, cerrarla como rechazada
+        # Fallback anti-transacciones atascadas en estados activos
+        # Si ya se creó la transacción y sigue activa, cerrarla como rechazada
         # y compensar saldo/pin cuando aplique.
         if transaction_data and transaction_data.get('id'):
             try:
@@ -6834,7 +6841,7 @@ def validar_freefire_id():
                 ).fetchone()
                 estado_actual = row_fix['estado'] if row_fix else None
 
-                if estado_actual == 'pendiente':
+                if estado_actual in ('pendiente', 'procesando'):
                     if redencion_exitosa:
                         # Si el PIN ya se redimió exitosamente, NO devolver PIN ni saldo.
                         # Cerrar como aprobado para evitar pérdida por doble compensación.
