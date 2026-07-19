@@ -500,6 +500,15 @@ body {
   background-color: #c82333;
 }
 
+.btn-password {
+  background-color: #6f42c1;
+  color: white;
+}
+
+.btn-password:hover {
+  background-color: #5a32a3;
+}
+
 .no-users {
   text-align: center;
   padding: 2rem;

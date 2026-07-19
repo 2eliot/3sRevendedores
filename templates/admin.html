@@ -138,6 +138,11 @@
                 <input type="hidden" name="user_id" value="{{ user.id }}">
                 <button type="submit" class="btn btn-danger">Eliminar</button>
               </form>
+              <form method="POST" action="/admin/change_password" class="inline-form" onsubmit="const pw = this.querySelector('input[name=new_password]').value; if(pw.length < 6) { alert('La contraseña debe tener al menos 6 caracteres'); return false; } return confirm('¿Cambiar contraseña de este usuario?')">
+                <input type="hidden" name="user_id" value="{{ user.id }}">
+                <input type="password" name="new_password" placeholder="Nueva contraseña" minlength="6" required class="small-input">
+                <button type="submit" class="btn btn-password">🔑 Contraseña</button>
+              </form>
             </div>
           </div>
           {% endfor %}

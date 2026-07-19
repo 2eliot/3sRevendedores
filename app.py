@@ -4675,6 +4675,37 @@ def admin_toggle_bono_activo():
     
     return redirect('/admin')
 
+@app.route('/admin/change_password', methods=['POST'])
+def admin_change_password():
+    if not session.get('is_admin'):
+        flash('Acceso denegado. Solo administradores.', 'error')
+        return redirect('/auth')
+    
+    user_id = request.form.get('user_id')
+    new_password = request.form.get('new_password', '')
+    
+    if not user_id or len(new_password) < 6:
+        flash('La contraseña debe tener al menos 6 caracteres', 'error')
+        return redirect('/admin')
+    
+    try:
+        conn = get_db_connection()
+        hashed = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=16)
+        conn.execute('UPDATE usuarios SET contraseña = ? WHERE id = ?', (hashed, user_id))
+        conn.commit()
+        flash(f'Contraseña actualizada para usuario ID {user_id}', 'success')
+    except Exception as e:
+        try:
+            conn.rollback()
+        except:
+            pass
+        logger.exception(f'Error cambiando contraseña para usuario {user_id}')
+        flash(f'Error al cambiar contraseña: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect('/admin')
+
 @app.route('/admin/add_pin', methods=['POST'])
 def admin_add_pin():
     if not session.get('is_admin'):
