@@ -1420,6 +1420,160 @@ def poll_pending_dynamic_transactions():
             logger.error(f"[DynGame Poll] Error procesando tx {row['transaccion_id']}: {e}")
 
 
+def poll_pending_reseller_transactions():
+    """Cierra las compras vía Reseller API que quedaron en 'procesando' (HTTP 202).
+
+    Consulta /api/v1/order-status del revendedor por external_order_id
+    (= transaccion_id) y actúa según el estado REAL:
+      - completada → aprobado: registra historial y profit como el flujo normal
+      - fallida    → rechazado y recién ahí se reembolsa
+      - no encontrada por más de 2 horas → la orden nunca llegó: rechazado + reembolso
+      - resto      → sigue en proceso: no se toca el saldo
+
+    El claim atómico (WHERE estado='procesando') evita cierres dobles cuando
+    varios workers corren este poller a la vez.
+    """
+    import urllib.request, urllib.parse
+    from datetime import datetime, timedelta
+
+    base_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip().rstrip('/')
+    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
+    if not base_url or not api_key:
+        return
+
+    try:
+        conn = _get_conn()
+        rows = conn.execute('''
+            SELECT td.id, td.transaccion_id, td.usuario_id, td.monto, td.numero_control,
+                   td.player_id, td.player_id2, td.servidor, td.paquete_id, td.fecha,
+                   jd.nombre AS juego_nombre, jd.slug, pd.nombre AS paquete_nombre
+            FROM transacciones_dinamicas td
+            JOIN juegos_dinamicos jd ON td.juego_id = jd.id
+            JOIN paquetes_dinamicos pd ON pd.id = td.paquete_id
+            WHERE td.estado = 'procesando'
+              AND td.notas LIKE 'reseller_pending%'
+              AND td.fecha >= (NOW() - INTERVAL '72 hours')
+            ORDER BY td.fecha
+            LIMIT 50
+        ''').fetchall()
+        conn.close()
+    except Exception as e:
+        logger.error(f"[Reseller Recon] Error consultando pendientes: {e}")
+        return
+
+    if not rows:
+        return
+
+    logger.info(f"[Reseller Recon] {len(rows)} compras reseller en proceso a verificar")
+
+    admin_ids_env = os.environ.get('ADMIN_USER_IDS', '').strip()
+    admin_ids = [int(x.strip()) for x in admin_ids_env.split(',') if x.strip().isdigit()]
+
+    for row in rows:
+        order_ref = str(row['transaccion_id'] or '').strip()
+        if not order_ref:
+            continue
+        try:
+            req = urllib.request.Request(
+                f"{base_url}/api/v1/order-status?external_order_id={urllib.parse.quote(order_ref)}",
+                headers={'X-API-Key': api_key, 'Accept': 'application/json',
+                         'User-Agent': '3sRecargas-Reconciler/1.0'})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode())
+        except Exception as e:
+            logger.warning(f"[Reseller Recon] {order_ref}: sin respuesta del revendedor ({e}) — se reintenta luego")
+            continue
+
+        if not data.get('ok'):
+            logger.warning(f"[Reseller Recon] {order_ref}: respuesta no-ok del revendedor — se reintenta luego")
+            continue
+
+        estado_api = str(data.get('status') or '').strip().lower()
+        found = bool(data.get('found', True))
+        monto = abs(float(row['monto'] or 0.0))
+
+        if found and estado_api == 'completada':
+            order_info = data.get('order') or {}
+            ref_no = str(order_info.get('reference_no') or '')
+            ingame = str(order_info.get('player_name') or '')
+            conn2 = _get_conn()
+            claim = conn2.execute('''
+                UPDATE transacciones_dinamicas
+                SET estado = 'aprobado', gamepoint_referenceno = ?, ingame_name = ?,
+                    notas = 'reseller_reconciled', fecha_procesado = CURRENT_TIMESTAMP
+                WHERE id = ? AND estado = 'procesando'
+            ''', (ref_no, ingame, row['id']))
+            if claim.rowcount == 0:
+                conn2.close()
+                continue  # otro worker ya la cerró
+            if ingame:
+                pin_info = f"ID: {row['player_id']} - Jugador: {ingame} - Ref: {ref_no}"
+            else:
+                pin_info = f"ID: {row['player_id']} - Ref: {ref_no} (reseller)"
+            paquete_display = f"{row['juego_nombre']} - {row['paquete_nombre']}"
+            conn2.execute('''
+                INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto, duracion_segundos)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (row['usuario_id'], row['numero_control'], pin_info, order_ref, paquete_display, -monto, 0))
+            _saldo_row = conn2.execute('SELECT saldo FROM usuarios WHERE id = ?', (row['usuario_id'],)).fetchone()
+            _saldo = _saldo_row['saldo'] if _saldo_row else 0
+            conn2.execute('''
+                INSERT INTO historial_compras (usuario_id, monto, paquete_nombre, pin, tipo_evento, duracion_segundos, saldo_antes, saldo_despues)
+                VALUES (?, ?, ?, ?, 'compra', 0, ?, ?)
+            ''', (row['usuario_id'], monto, paquete_display, pin_info, _saldo + monto, _saldo))
+            try:
+                juego_key = f"dyn_{row['slug']}"
+                costo_row = conn2.execute('SELECT precio_compra FROM precios_compra WHERE juego=? AND paquete_id=?',
+                                          (juego_key, row['paquete_id'])).fetchone()
+                costo_unit = costo_row['precio_compra'] if costo_row else 0
+                profit_unit = round(monto - costo_unit, 4)
+                conn2.execute('''
+                    INSERT INTO profit_ledger (usuario_id, juego, paquete_id, cantidad, precio_venta_unit, costo_unit, profit_unit, profit_total, transaccion_id)
+                    VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+                ''', (row['usuario_id'], juego_key, row['paquete_id'], monto, costo_unit, profit_unit, profit_unit, order_ref))
+            except Exception:
+                pass
+            conn2.commit()
+            conn2.close()
+            logger.info(f"[Reseller Recon] ✅ {order_ref} APROBADO (ref={ref_no})")
+
+        elif (found and estado_api == 'fallida') or (not found and _reseller_row_older_than(row['fecha'], hours=2)):
+            if found:
+                motivo = str((data.get('order') or {}).get('error') or 'Recarga fallida en el revendedor')[:400]
+            else:
+                motivo = 'orden nunca registrada en el revendedor (timeout al enviarla)'
+            conn2 = _get_conn()
+            claim = conn2.execute('''
+                UPDATE transacciones_dinamicas
+                SET estado = 'rechazado', notas = ?, fecha_procesado = CURRENT_TIMESTAMP
+                WHERE id = ? AND estado = 'procesando'
+            ''', (f'reseller_failed: {motivo}', row['id']))
+            if claim.rowcount == 0:
+                conn2.close()
+                continue
+            if row['usuario_id'] not in admin_ids:
+                conn2.execute('UPDATE usuarios SET saldo = saldo + ? WHERE id = ?', (monto, row['usuario_id']))
+            conn2.commit()
+            conn2.close()
+            logger.info(f"[Reseller Recon] ❌ {order_ref} RECHAZADO ({motivo}) — saldo devuelto")
+
+        else:
+            logger.debug(f"[Reseller Recon] {order_ref} sigue en '{estado_api or 'sin estado'}' (found={found})")
+
+        time_module.sleep(0.3)
+
+
+def _reseller_row_older_than(fecha, hours=2):
+    """True si la fecha (datetime o string de la BD) tiene más de N horas."""
+    from datetime import datetime, timedelta
+    try:
+        if isinstance(fecha, str):
+            fecha = datetime.fromisoformat(fecha.split('.')[0])
+        return (datetime.utcnow() - fecha) > timedelta(hours=hours)
+    except Exception:
+        return False
+
+
 def _update_tx_error(tx_id, notas=''):
     """Mark a 'procesando' transaction as 'error'."""
     if not tx_id:
@@ -1742,8 +1896,41 @@ def _purchase_via_reseller(game, pkg, mapping, slug, user_id, is_admin, precio,
         return redirect(f'/juego/d/{slug}?compra=exitosa')
 
     else:
-        # === FAILURE ===
         err_msg = resp_data.get('error', 'Error desconocido del revendedor')
+        api_status = str(resp_data.get('status') or '').strip().lower()
+
+        # === EN PROCESO (HTTP 202 del revendedor) ===
+        # El proveedor upstream sigue procesando la recarga: puede acreditarse
+        # minutos u horas después. Reembolsar aquí duplica (el cliente recupera
+        # el saldo Y la recarga puede entregarse igual). Se deja 'procesando'
+        # y poll_pending_reseller_transactions la cierra consultando
+        # /api/v1/order-status por external_order_id.
+        if resp_data.get('pending') or api_status in ('procesando', 'processing', 'pendiente', 'pending', 'queued'):
+            logger.warning(f"[DynGame:{slug}][Reseller] PENDING | user={user_id} order={merchant_code} — queda procesando, SIN reembolso ({err_msg})")
+            conn = _get_conn()
+            conn.execute('''
+                UPDATE transacciones_dinamicas
+                SET estado = 'procesando', notas = ?
+                WHERE id = ?
+            ''', (f'reseller_pending: {err_msg}'[:500], _tx_id))
+            conn.commit()
+            conn.close()
+            session[f'compra_dyn_{slug}_exitosa'] = {
+                'paquete_nombre': pkg['nombre'],
+                'monto_compra': precio,
+                'numero_control': numero_control,
+                'transaccion_id': merchant_code,
+                'player_id': player_id,
+                'player_id2': player_id2,
+                'servidor': servidor,
+                'player_name': '',
+                'estado': 'procesando',
+                'gamepoint_ref': '',
+                'serial_key': '',
+            }
+            return redirect(f'/juego/d/{slug}?compra=exitosa')
+
+        # === FAILURE ===
         logger.error(f"[DynGame:{slug}][Reseller] FAILED | user={user_id} pkg={package_id} err={err_msg}")
 
         conn = _get_conn()

@@ -2265,6 +2265,11 @@ def _dyngame_serial_poll_loop():
             poll_pending_dynamic_transactions()
         except Exception as e:
             logger.error(f"[DynGame Poll Loop] Error: {e}")
+        try:
+            from dynamic_games import poll_pending_reseller_transactions
+            poll_pending_reseller_transactions()
+        except Exception as e:
+            logger.error(f"[Reseller Recon Loop] Error: {e}")
         time_module.sleep(60)
 
 _dyngame_poll_thread = threading.Thread(target=_dyngame_serial_poll_loop, daemon=True)
