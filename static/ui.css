@@ -1419,3 +1419,10 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 }
 .compra-exitosa .detalles-info > p:first-child strong { color: var(--rc-coral) !important; font-weight: 600 !important; }
 .compra-exitosa .detalles-info > div[style] { margin: 0 !important; }
+
+/* Compra exitosa: sin Ref ni Número de Control; ID, jugador y juego en verde */
+.compra-exitosa .dx-control, .compra-exitosa .dx-ref { display: none !important; }
+.compra-exitosa .dx-id, .compra-exitosa .dx-player { color: var(--rc-green) !important; font-weight: 600; }
+.compra-exitosa .detalles-info > p:first-child strong { color: var(--rc-green) !important; }
+.compra-exitosa .detalles-info > p.dx-control, .compra-exitosa .detalles-info > p.dx-ref { display: none !important; }
+.compra-exitosa .detalles-info > p.dx-id, .compra-exitosa .detalles-info > p.dx-player { color: var(--rc-green) !important; font-weight: 600 !important; }

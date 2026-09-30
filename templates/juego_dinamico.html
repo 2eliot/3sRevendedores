@@ -292,11 +292,11 @@
             <p style="font-size:1.15em;font-weight:700;letter-spacing:2px;color:#ffffff;word-break:break-all;">{{ serial_key }}</p>
           </div>
           {% endif %}
-          {% if player_id %}<p><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>{% endif %}
+          {% if player_id %}<p class="dx-id"><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>{% endif %}
           {% if servidor %}<p><strong>Servidor:</strong> {{ servidor }}</p>{% endif %}
-          {% if player_name %}<p><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
-          <p><strong>Número de Control:</strong> {{ numero_control }}</p>
-          {% if gamepoint_ref %}<p><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
+          {% if player_name %}<p class="dx-player"><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
+          <p class="dx-control"><strong>Número de Control:</strong> {{ numero_control }}</p>
+          {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
@@ -314,8 +314,8 @@
           <div style="margin:10px 0;padding:12px 14px;background:rgba(255, 197, 49, 0.12);border:1px solid #ffc531;border-radius:10px;">
             <p style="color:#ffc531;font-size:0.9em;">⏳ Tu código está siendo generado. Aparecerá automáticamente en tu historial cuando esté listo.</p>
           </div>
-          <p><strong>Número de Control:</strong> {{ numero_control }}</p>
-          {% if gamepoint_ref %}<p><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
+          <p class="dx-control"><strong>Número de Control:</strong> {{ numero_control }}</p>
+          {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
@@ -339,11 +339,11 @@
             <p style="font-size:1.15em;font-weight:700;letter-spacing:2px;color:#ffffff;word-break:break-all;">{{ serial_key }}</p>
           </div>
           {% endif %}
-          {% if player_id %}<p><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>{% endif %}
+          {% if player_id %}<p class="dx-id"><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>{% endif %}
           {% if servidor %}<p><strong>Servidor:</strong> {{ servidor }}</p>{% endif %}
-          {% if player_name %}<p><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
-          <p><strong>Número de Control:</strong> {{ numero_control }}</p>
-          {% if gamepoint_ref %}<p><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
+          {% if player_name %}<p class="dx-player"><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
+          <p class="dx-control"><strong>Número de Control:</strong> {{ numero_control }}</p>
+          {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
