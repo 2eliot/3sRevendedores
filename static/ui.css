@@ -675,7 +675,7 @@ tbody tr:last-child td { border-bottom: 0 !important; }
   .header::before { font-size: 14px; }
   .hamburger, .icon-container > div, .icon-container > a, .icon-container > svg { min-width: 44px; height: 44px; }
   .header .icon-container { gap: 0 !important; }
-  .juego-container { margin: 16px 12px 32px !important; padding: 20px !important; border-radius: var(--ui-radius-lg) !important; }
+  .juego-container { box-sizing: border-box !important; width: calc(100% - 24px) !important; margin: 16px auto 32px !important; padding: 20px !important; border-radius: var(--ui-radius-lg) !important; }
   .juego-form { padding: 16px !important; }
   .dashboard-container { padding: 16px 12px !important; margin-top: 8px !important; }
   .transaction-card-simple { padding: 16px !important; }
@@ -1226,7 +1226,7 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .juego-container:has(form.idg) .entrega-info { padding: 14px !important; font-size: 13px; }
 .juego-container:has(form.idg) .volver-container { margin-top: 14px !important; }
 @media (max-width: 720px) {
-  .juego-container:has(form.idg) { padding: 16px !important; margin: 12px 10px 24px !important; }
+  .juego-container:has(form.idg) { padding: 16px !important; margin: 12px auto 24px !important; }
   .juego-container:has(form.idg) .juego-form { padding: 12px !important; }
 }
 
