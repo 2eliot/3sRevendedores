@@ -730,3 +730,6 @@ tbody tr:last-child td { border-bottom: 0 !important; }
 .ffid-voucher-details > div[style] .copy-btn-simple { min-height: 28px; padding: 0 10px !important; font-size: 12px !important; }
 .transaction-card-simple:has(.ffid-voucher) .tx-corner-date { margin-top: 6px; padding-top: 8px; font-size: 11px !important; }
 .ffid-voucher-amount strong { font-family: var(--rc-font) !important; }
+
+/* La barra lateral se vuelve de solo iconos por debajo de 992px: sin marca de texto */
+@media (max-width: 992px) { .admin-sidebar::before { display: none !important; } }

@@ -481,3 +481,24 @@
 @keyframes um-reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .um-more-body { animation: none; } .um-chevron { transition: none; } }
 @media (max-width: 720px) { .um-more-toggle { min-height: 44px; } }
+
+/* ---------- Tarjetas compactas ---------- */
+.um-grid { grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px; }
+.um-card { padding: 12px 14px; gap: 10px; border-radius: 12px; }
+.um-card-top { gap: 10px; }
+.um-avatar { width: 34px; height: 34px; font-size: 0.75rem; }
+.um-name { font-size: 0.9rem; }
+.um-email { font-size: 0.78rem; }
+.um-id { font-size: 0.7rem; padding: 2px 7px; }
+.um-balance { padding: 8px 12px; border-radius: 8px; }
+.um-balance-label { font-size: 0.78rem; }
+.um-balance-value { font-size: 1.1rem; }
+.um-more-toggle { min-height: 34px; padding: 0 10px; font-size: 0.78rem; border-radius: 8px; }
+.um-chevron { width: 14px; height: 14px; }
+.um-more-body { gap: 10px; padding-top: 10px; }
+@media (max-width: 720px) {
+  .um-grid { gap: 10px; }
+  .um-card { padding: 12px; }
+  .um-balance-value { font-size: 1.05rem; }
+  .um-more-toggle { min-height: 40px; }
+}
