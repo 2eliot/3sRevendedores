@@ -1317,3 +1317,87 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .idg-dlg-row dt { margin: 0 !important; font-size: 13px !important; color: var(--rc-ash); text-align: left !important; }
 .idg-dlg-row dd { margin: 0 !important; font-size: 14px !important; text-align: right !important; }
 .idg-dlg-total { max-width: none !important; margin: 8px 20px 0 !important; }
+
+/* ============================================================
+   PANTALLA DE COMPRA EXITOSA: comprobante compacto y profesional
+   ============================================================ */
+.compra-exitosa {
+  max-width: 380px;
+  margin: 16px auto 0 !important;
+  padding: 18px 16px 14px !important;
+  background: var(--rc-card) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: 16px !important;
+  text-align: left !important;
+}
+.compra-exitosa > h3 {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  margin: 0 0 12px !important;
+  font-size: 16px !important; font-weight: 600 !important;
+  color: var(--rc-text) !important; text-align: center;
+}
+.compra-exitosa > h3::before {
+  content: '';
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(89, 212, 153, 0.14) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2359d499' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / 20px no-repeat;
+}
+.compra-exitosa .solicitud-container {
+  margin: 0 !important; padding: 0 !important;
+  background: none !important; border: 0 !important; box-shadow: none !important;
+  animation: none !important;
+}
+.compra-exitosa .solicitud-info {
+  display: flex !important; align-items: center; justify-content: center; gap: 8px;
+  margin: 0 0 12px !important; padding: 0 !important; background: none !important; border: 0 !important;
+}
+.compra-exitosa .solicitud-label { margin: 0 !important; font-size: 12px !important; color: var(--rc-ash) !important; }
+.compra-exitosa .solicitud-estado {
+  margin: 0 !important; padding: 3px 10px !important;
+  border-radius: 999px; background: rgba(255, 255, 255, 0.06);
+  font-size: 11px !important; font-weight: 600 !important; letter-spacing: 0.05em;
+}
+.compra-exitosa .detalles-info {
+  margin: 0 !important; padding: 4px 12px !important;
+  background: var(--rc-recess) !important; border: 1px solid var(--rc-border) !important; border-radius: 12px !important;
+}
+.compra-exitosa .detalles-info > p {
+  display: flex !important; justify-content: space-between; align-items: baseline; gap: 12px;
+  margin: 0 !important; padding: 7px 0 !important;
+  font-size: 13px !important; line-height: 1.35 !important;
+  color: var(--rc-text) !important; text-align: right !important;
+  border-top: 1px solid var(--rc-border) !important;
+  overflow-wrap: anywhere;
+}
+.compra-exitosa .detalles-info > p:first-child {
+  justify-content: center; border-top: 0 !important; padding-top: 8px !important;
+  font-size: 14px !important;
+}
+.compra-exitosa .detalles-info > p strong { flex-shrink: 0; font-weight: 400 !important; color: var(--rc-ash) !important; text-align: left; }
+.compra-exitosa .detalles-info > p:first-child strong { font-weight: 600 !important; color: var(--rc-text) !important; }
+/* Monto (última fila) */
+.compra-exitosa .detalles-info > p:last-child {
+  margin-top: 0 !important; border-top: 1px solid var(--rc-border) !important;
+  color: var(--rc-green) !important; font-family: var(--rc-mono); font-size: 13px !important;
+}
+.compra-exitosa .detalles-info > p:last-child strong { font-family: var(--rc-font); }
+/* Código / serial entregado */
+.compra-exitosa .detalles-info > div[style] { margin: 6px 0 !important; padding: 8px 10px !important; border-radius: 10px !important; }
+.compra-exitosa .detalles-info > div[style] p { margin: 0 !important; text-align: left; }
+.compra-exitosa .detalles-info > div[style] p + p { font-family: var(--rc-mono); font-size: 14px !important; letter-spacing: 0.04em !important; }
+.compra-exitosa + .entrega-info, .compra-exitosa .entrega-info { max-width: 380px; margin-left: auto !important; margin-right: auto !important; font-size: 12.5px; }
+
+/* Filas etiqueta/valor sin flex: el valor no se parte si contiene un importe envuelto */
+.compra-exitosa .detalles-info > p:not(:first-child),
+.ffid-voucher-line, .ffid-voucher-amount {
+  display: block !important;
+  text-align: right !important;
+}
+.compra-exitosa .detalles-info > p:not(:first-child)::after,
+.ffid-voucher-line::after, .ffid-voucher-amount::after { content: ''; display: table; clear: both; }
+.compra-exitosa .detalles-info > p:not(:first-child) > strong:first-child,
+.ffid-voucher-line > strong:first-child, .ffid-voucher-amount > strong:first-child {
+  float: left;
+  margin-right: 12px;
+  text-align: left;
+}
+.compra-exitosa .detalles-info > p:first-child { display: block !important; text-align: center !important; }
