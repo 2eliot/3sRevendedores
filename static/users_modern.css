@@ -502,3 +502,71 @@
   .um-balance-value { font-size: 1.05rem; }
   .um-more-toggle { min-height: 40px; }
 }
+
+/* ---------- Botones de acción + ventana emergente ---------- */
+.um-actions { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px !important; }
+.um-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 34px; padding: 0 8px;
+  border: 1px solid var(--um-border); border-radius: 8px;
+  background: var(--um-surface-2); color: var(--um-text);
+  font: inherit; font-size: 0.76rem; font-weight: 600; white-space: nowrap;
+  cursor: pointer; transition: background-color 0.15s, border-color 0.15s;
+}
+.um-action svg { width: 14px; height: 14px; flex-shrink: 0; }
+.um-action:hover { background: #1b1c1e; border-color: var(--um-border-strong); }
+.um-action-primary { background: #e6e6e6; color: #07080a; border-color: transparent; }
+.um-action-primary:hover { background: #ffffff; }
+@media (max-width: 720px) { .um-action { min-height: 40px; } }
+@media (max-width: 380px) { .um-actions { grid-template-columns: 1fr; } }
+
+.um-dialog {
+  width: min(400px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--um-border-strong);
+  border-radius: 16px;
+  background: #0c0d0f;
+  color: var(--um-text);
+  box-shadow: rgba(255, 255, 255, 0.06) 0 1px 0 0 inset, rgba(0, 0, 0, 0.6) 0 24px 64px -12px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.um-dialog[open] { animation: um-dlg-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.um-dialog::backdrop { background: rgba(0, 0, 0, 0.6); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+@keyframes um-dlg-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+.um-dlg-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 0; }
+.um-dlg-title { margin: 0; font-size: 1.05rem; font-weight: 600; color: var(--um-text); }
+.um-dlg-sub { margin: 4px 0 0; font-size: 0.8rem; color: var(--um-muted); }
+.um-dlg-x {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0;
+  border: 0; border-radius: 8px; background: transparent; color: var(--um-muted); cursor: pointer;
+}
+.um-dlg-x svg { width: 16px; height: 16px; }
+.um-dlg-x:hover { background: var(--um-surface-2); color: var(--um-text); }
+.um-dlg-form { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px 20px; margin: 0; }
+.um-dlg-form[hidden] { display: none; }
+.um-dlg-form label { font-size: 0.8rem; font-weight: 500; color: var(--um-muted); }
+.um-dlg-form input:not([type=hidden]) {
+  height: 44px; padding: 0 12px; font-size: 1rem;
+  font-family: var(--um-mono); border-radius: 10px;
+}
+.um-dlg-form input[type=password] { font-family: inherit; }
+.um-dlg-hint { margin: 0; font-size: 0.75rem; color: var(--um-muted); }
+.um-dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.um-dlg-cancel, .um-dlg-submit {
+  position: relative; min-height: 38px; padding: 0 16px; border-radius: 10px;
+  font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.um-dlg-cancel { background: transparent; color: var(--um-text); border: 1px solid var(--um-border-strong); }
+.um-dlg-cancel:hover { background: var(--um-surface-2); }
+.um-dlg-submit { background: #e6e6e6; color: #07080a; border: 1px solid transparent; }
+.um-dlg-submit:hover { background: #ffffff; }
+@media (prefers-reduced-motion: reduce) { .um-dialog[open] { animation: none; } }
+/* Centrado explícito: un reset global anula el margin:auto nativo de <dialog> */
+.um-dialog { position: fixed; inset: 0; margin: auto !important; height: fit-content; max-height: calc(100vh - 32px); overflow: auto; }
+.um-dlg-form input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.um-dlg-form input[type=number]::-webkit-inner-spin-button,
+.um-dlg-form input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* Acción principal a lo ancho; secundarias en dos columnas */
+.um-actions { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.um-action-primary { grid-column: 1 / -1; }
+.um-action { font-size: 0.8rem; }
