@@ -97,7 +97,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--rc-accent); }
    ============================================================ */
 .th-dialog { position: fixed; inset: 0; margin: auto !important; height: fit-content; max-height: calc(100vh - 32px); overflow: auto; width: min(420px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--rc-border-strong); border-radius: 18px; background: var(--rc-card); color: var(--rc-text); box-shadow: rgba(0, 0, 0, 0.5) 0 24px 60px -12px; }
 .th-dialog::backdrop { background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(4px); }
-.th-body { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.th-body { text-align: left; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
 .th-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .th-head h3 { margin: 0; font-size: 17px; font-weight: 600; }
 .th-close { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--rc-border); background: transparent; color: var(--rc-ash); font-size: 18px; cursor: pointer; }
