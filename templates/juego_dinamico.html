@@ -61,6 +61,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
   <script src="{{ url_for('static', filename='id-game.js') }}" defer></script>
 </head>
@@ -136,6 +137,11 @@
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">
           <p><strong>Correo:</strong> {{ session.get('usuario', '---') }}</p>
+          <label class="price-toggle" onclick="event.stopPropagation()">
+            <span class="price-toggle-text">Ocultar precios<small>Para capturas a tus clientes</small></span>
+            <input type="checkbox" class="price-toggle-input" role="switch" aria-checked="false">
+            <span class="price-toggle-switch" aria-hidden="true"></span>
+          </label>
           {% if session.get('is_admin') %}
           <a href="/admin" class="admin-btn">🛠️ Panel Admin</a>
           {% endif %}
