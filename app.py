@@ -357,6 +357,17 @@ from id_verify import bp as id_verify_bp, verify_api_enabled
 app.register_blueprint(id_verify_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
+
+def ahora_local(fmt='%d/%m/%Y %H:%M'):
+    """Fecha/hora actual en la zona horaria de la tienda (DEFAULT_TZ), para plantillas."""
+    try:
+        return datetime.now(pytz.timezone(os.environ.get('DEFAULT_TZ', 'America/Caracas'))).strftime(fmt)
+    except Exception:
+        return datetime.now().strftime(fmt)
+
+
+app.jinja_env.globals['ahora_local'] = ahora_local
+
 @app.context_processor
 def inject_dynamic_games_menu():
     """Inyecta la lista de juegos dinámicos activos en todas las plantillas."""

@@ -1401,3 +1401,21 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
   text-align: left;
 }
 .compra-exitosa .detalles-info > p:first-child { display: block !important; text-align: center !important; }
+
+/* Compra exitosa v2: cada dato en su contenedor, juego en color */
+.compra-exitosa .detalles-info {
+  display: flex !important; flex-direction: column; gap: 6px;
+  padding: 0 !important; background: none !important; border: 0 !important;
+}
+.compra-exitosa .detalles-info > p:not(:first-child) {
+  padding: 9px 12px !important;
+  background: var(--rc-recess) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: 10px !important;
+}
+.compra-exitosa .detalles-info > p:last-child { margin-top: 0 !important; }
+.compra-exitosa .detalles-info > p:first-child {
+  padding: 0 0 4px !important; border: 0 !important; background: none !important; font-size: 15px !important;
+}
+.compra-exitosa .detalles-info > p:first-child strong { color: var(--rc-coral) !important; font-weight: 600 !important; }
+.compra-exitosa .detalles-info > div[style] { margin: 0 !important; }

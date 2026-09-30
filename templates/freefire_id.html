@@ -234,6 +234,7 @@
           {% endif %}
           <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
+          <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #9c9c9d; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
@@ -248,6 +249,7 @@
           <p><strong>Paquete:</strong> {{ paquete_nombre.split(' / ')[0] if ' / ' in paquete_nombre else paquete_nombre }}</p>
           <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
+          <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #9c9c9d; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>

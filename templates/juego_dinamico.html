@@ -297,6 +297,7 @@
           {% if player_name %}<p><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
           {% if gamepoint_ref %}<p><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
+          <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
@@ -315,6 +316,7 @@
           </div>
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
           {% if gamepoint_ref %}<p><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
+          <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
@@ -342,6 +344,7 @@
           {% if player_name %}<p><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
           {% if gamepoint_ref %}<p><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
+          <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
