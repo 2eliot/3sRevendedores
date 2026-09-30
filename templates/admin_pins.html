@@ -24,108 +24,76 @@
     {% endif %}
   {% endwith %}
 
-  <header class="admin-header">
-    <div class="admin-title">
-      <h1>📌 Gestión de Pines{% if game_display_name %} - {{ game_display_name }}{% endif %}</h1>
-    </div>
-    <div class="admin-info">
-      <a href="/admin" class="btn" style="background:#0f2233;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:4px;margin-right:10px;">🏠 Volver al Panel</a>
-      <a href="/logout" class="logout-btn">Cerrar Sesión</a>
-    </div>
-  </header>
-
-  <main class="admin-main">
-    <section class="pins-section">
-      <div class="filters" style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-        <form method="GET" action="/admin/pins" style="display:flex;gap:8px;align-items:center;">
-          <label>Juego:</label>
-          <select name="game">
-            {% for option in pin_game_options %}
-            <option value="{{ option.value }}" {% if game == option.value %}selected{% endif %}>{{ option.label }}</option>
-            {% endfor %}
-          </select>
-          <label>Estado:</label>
-          <select name="estado">
-            <option value="unused" {% if only_unused %}selected{% endif %}>Sin usar</option>
-            <option value="all" {% if not only_unused %}selected{% endif %}>Todos</option>
-          </select>
-          <button type="submit" class="btn btn-primary">Filtrar</button>
-        </form>
+  <main class="pv-wrap">
+    <header class="pv-head">
+      <a href="/admin" class="pv-back">← Volver al panel</a>
+      <div class="pv-title-row">
+        <h1 class="pv-title">Pines{% if game_display_name %} · {{ game_display_name }}{% endif %}</h1>
+        <span class="pv-total">{{ pins|length }} pin{{ '' if pins|length == 1 else 'es' }}</span>
       </div>
+    </header>
 
-      <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
-        <form method="POST" action="/admin/delete_pins_batch" onsubmit="return confirm('¿Eliminar el lote seleccionado? Esta acción no se puede deshacer.');" style="display:flex; gap:8px; align-items:center;">
-          <input type="hidden" name="game" value="{{ game }}">
-          <input type="hidden" name="estado" value="{% if only_unused %}unused{% else %}all{% endif %}">
-          <select name="batch_id" required>
-            <option value="" disabled selected>Selecciona un lote…</option>
-            {% for grp in pin_groups %}
-              {% if grp.batch_id %}
-                <option value="{{ grp.batch_id }}">{{ grp.fecha_agregado }} | {{ grp.paquete }} | {{ grp.pins|length }} pines | {{ grp.batch_id }}</option>
-              {% endif %}
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-danger">🗑️ Eliminar lote</button>
-        </form>
-        <a class="btn" href="/admin/pins?game={{ game }}&estado={% if only_unused %}unused{% else %}all{% endif %}{% if monto %}&monto={{ monto }}{% endif %}">↻ Actualizar</a>
+    <form method="GET" action="/admin/pins" class="pv-filters">
+      <label class="pv-field">
+        <span>Juego</span>
+        <select name="game" onchange="this.form.submit()">
+          {% for option in pin_game_options %}
+          <option value="{{ option.value }}" {% if game == option.value %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="pv-field">
+        <span>Estado</span>
+        <select name="estado" onchange="this.form.submit()">
+          <option value="unused" {% if only_unused %}selected{% endif %}>Sin usar</option>
+          <option value="all" {% if not only_unused %}selected{% endif %}>Todos</option>
+        </select>
+      </label>
+      {% if monto %}
+      <input type="hidden" name="monto" value="{{ monto }}">
+      <span class="pv-chip">Paquete: {{ selected_package_name or monto }}
+        <a href="/admin/pins?game={{ game }}&estado={% if only_unused %}unused{% else %}all{% endif %}" aria-label="Quitar filtro de paquete">×</a>
+      </span>
+      {% endif %}
+    </form>
+
+    <form method="POST" action="/admin/delete_pins" id="pv-delete-form" onsubmit="return confirm('¿Eliminar los pines seleccionados? Esta acción no se puede deshacer.');">
+      <input type="hidden" name="game" value="{{ game }}">
+
+      {% for day in pin_days %}
+      <section class="pv-day">
+        <div class="pv-day-head">
+          <label class="pv-check-all">
+            <input type="checkbox" class="pv-day-check" aria-label="Seleccionar todos los pines del {{ day.dia }}">
+            <span class="pv-day-date">{{ day.dia }}</span>
+          </label>
+          <span class="pv-day-meta">{{ day.pins|length }} pin{{ '' if day.pins|length == 1 else 'es' }} · {{ day.sin_usar }} sin usar</span>
+        </div>
+        <ul class="pv-list">
+          {% for pin in day.pins %}
+          <li class="pv-row">
+            <input type="checkbox" name="pin_ids" value="{{ pin.id }}" class="row-check" aria-label="Seleccionar pin {{ pin.pin_codigo }}">
+            <span class="pv-code">{{ pin.pin_codigo }}</span>
+            <button type="button" class="dx-copy pv-copy" data-copy="{{ pin.pin_codigo }}" aria-label="Copiar pin" title="Copiar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+            <span class="pv-pkg">{{ pin.paquete }}</span>
+            {% if pin.usado %}<span class="pv-badge is-used">Usado</span>{% else %}<span class="pv-badge is-free">Disponible</span>{% endif %}
+            <span class="pv-time">{{ pin.hora }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+      {% endfor %}
+
+      {% if not pin_days %}
+      <div class="pv-empty">No hay pines para mostrar con estos filtros.</div>
+      {% endif %}
+
+      <div class="pv-actionbar" id="pv-actionbar" hidden>
+        <span><strong id="pv-sel-count">0</strong> seleccionados</span>
+        <button type="button" class="pv-clear" id="pv-clear">Quitar selección</button>
+        <button type="submit" class="pv-delete">Eliminar seleccionados</button>
       </div>
-
-      <form method="POST" action="/admin/delete_pins" onsubmit="return confirm('¿Eliminar los pines seleccionados? Esta acción no se puede deshacer.');">
-        <input type="hidden" name="game" value="{{ game }}">
-        <div class="users-table-container">
-          <table class="users-table">
-            <thead>
-              <tr>
-                <th style="width:32px;"><input type="checkbox" id="select-all" /></th>
-                <th>ID</th>
-                <th>Paquete</th>
-                <th>Monto ID</th>
-                <th>Pin</th>
-                <th>Usado</th>
-                <th>Fecha agregado</th>
-                <th>Lote</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for grp in pin_groups %}
-                <tr>
-                  <td colspan="8" style="background:#07080a;font-weight:600;">
-                    {{ grp.fecha_agregado }}
-                    {% if grp.batch_id %}
-                      | Lote: <code>{{ grp.batch_id }}</code>
-                      | Cantidad: {{ grp.pins|length }}
-                    {% else %}
-                      | Pin individual
-                    {% endif %}
-                    | {{ grp.paquete }}
-                  </td>
-                </tr>
-                {% for pin in grp.pins %}
-                <tr>
-                  <td><input type="checkbox" name="pin_ids" value="{{ pin.id }}" class="row-check" /></td>
-                  <td>{{ pin.id }}</td>
-                  <td>{{ pin.paquete }}</td>
-                  <td>{{ pin.monto_id }}</td>
-                  <td><code>{{ pin.pin_codigo }}</code></td>
-                  <td>{% if pin.usado %}Sí{% else %}No{% endif %}</td>
-                  <td>{{ pin.fecha_agregado }}</td>
-                  <td>{% if pin.batch_id %}<code>{{ pin.batch_id }}</code>{% else %}-{% endif %}</td>
-                </tr>
-                {% endfor %}
-              {% endfor %}
-              {% if pin_groups is not defined or pin_groups|length == 0 %}
-              <tr>
-                <td colspan="8" style="text-align:center;">No hay pines para mostrar</td>
-              </tr>
-              {% endif %}
-            </tbody>
-          </table>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px;">
-          <button type="submit" class="btn btn-danger">🗑️ Eliminar seleccionados</button>
-        </div>
-      </form>
-    </section>
+    </form>
   </main>
 
   <script>
@@ -136,15 +104,35 @@
         flashMessages.style.opacity = '0';
         setTimeout(() => flashMessages.remove(), 300);
       }
-    }, 2000);
+    }, 2500);
 
-    // Seleccionar/Deseleccionar todos
-    const selectAll = document.getElementById('select-all');
-    if (selectAll) {
-      selectAll.addEventListener('change', function() {
-        document.querySelectorAll('.row-check').forEach(cb => cb.checked = selectAll.checked);
+    // Selección por día y barra de acción
+    (function () {
+      const bar = document.getElementById('pv-actionbar');
+      const count = document.getElementById('pv-sel-count');
+      function refresh() {
+        const n = document.querySelectorAll('.row-check:checked').length;
+        count.textContent = n;
+        bar.hidden = n === 0;
+        document.querySelectorAll('.pv-day').forEach(function (day) {
+          const boxes = day.querySelectorAll('.row-check');
+          const on = day.querySelectorAll('.row-check:checked').length;
+          const all = day.querySelector('.pv-day-check');
+          all.checked = boxes.length > 0 && on === boxes.length;
+          all.indeterminate = on > 0 && on < boxes.length;
+        });
+      }
+      document.addEventListener('change', function (e) {
+        if (e.target.classList.contains('pv-day-check')) {
+          e.target.closest('.pv-day').querySelectorAll('.row-check').forEach(function (cb) { cb.checked = e.target.checked; });
+        }
+        if (e.target.classList.contains('pv-day-check') || e.target.classList.contains('row-check')) refresh();
       });
-    }
+      document.getElementById('pv-clear').addEventListener('click', function () {
+        document.querySelectorAll('.row-check, .pv-day-check').forEach(function (cb) { cb.checked = false; });
+        refresh();
+      });
+    })();
   </script>
 </body>
 </html>

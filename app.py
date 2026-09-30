@@ -4605,6 +4605,20 @@ def admin_pins_list():
         if grp:
             pin_groups.append(grp)
 
+    # Agrupar por día (contenedores de la vista); los pines ya vienen ordenados por fecha desc
+    pin_days = []
+    days_map = {}
+    for pin in pins_view:
+        fecha_txt = str(pin.get('fecha_agregado') or '')
+        dia = fecha_txt[:10] or 'Sin fecha'
+        pin['hora'] = fecha_txt[11:16]
+        if dia not in days_map:
+            days_map[dia] = {'dia': dia, 'pins': [], 'sin_usar': 0}
+            pin_days.append(days_map[dia])
+        days_map[dia]['pins'].append(pin)
+        if not pin.get('usado'):
+            days_map[dia]['sin_usar'] += 1
+
     # Nombre del paquete seleccionado (si aplica)
     selected_package_name = None
     if 'monto_filter' in locals() and monto_filter:
@@ -4614,6 +4628,7 @@ def admin_pins_list():
         'admin_pins.html',
         pins=pins_view,
         pin_groups=pin_groups,
+        pin_days=pin_days,
         game=game,
         game_display_name=game_display_name,
         pin_game_options=pin_game_options,
