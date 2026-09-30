@@ -7177,6 +7177,7 @@ AUDIT_TEMPLATE = r'''
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
 </head>
 <body>
     <a href="/admin" class="back-link">← Volver al Admin</a>
@@ -7304,6 +7305,7 @@ PIN_LOG_TEMPLATE = r'''
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
 </head>
 <body>
     <a href="/admin" class="back-link">&#8592; Volver al Panel Admin</a>

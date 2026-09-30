@@ -63,6 +63,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
   <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
   <script src="{{ url_for('static', filename='id-game.js') }}" defer></script>
 </head>
 <body>
@@ -161,7 +162,7 @@
   <section class="juego-container">
     <h1 class="juego-titulo">{{ game.icono }} {{ game.nombre }}</h1>
 
-    <form method="POST" action="/validar/dinamico/{{ game.slug }}" class="juego-form" id="dg-form"{% if game.modo == 'id' %} data-id-game="dyn_{{ game.slug }}" data-game-name="{{ game.nombre }}" data-verify="{{ '1' if verify_api_enabled('dyn_' ~ game.slug) else '0' }}"{% endif %}>
+    <form method="POST" action="/validar/dinamico/{{ game.slug }}" class="juego-form" id="dg-form" data-id-game="dyn_{{ game.slug }}" data-game-name="{{ game.nombre }}" data-verify="{{ '1' if (game.modo == 'id' and verify_api_enabled('dyn_' ~ game.slug)) else '0' }}">
       <input type="hidden" name="dg_form_nonce" value="{{ dg_form_nonce }}">
       {% if game.modo == 'id' %}
         {% if campos.get('campo_id2', {}).get('enabled') %}
@@ -283,12 +284,6 @@
         <div class="detalles-info">
           <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
           <p><strong>Paquete:</strong> {{ paquete_nombre }}</p>
-          {% if serial_key %}
-          <div style="margin:10px 0;padding:12px 14px;background:rgba(89, 212, 153, 0.15);border:1px solid #59d499;border-radius:10px;">
-            <p style="color:#9c9c9d;font-size:0.85em;margin-bottom:4px;">Tu código / serial:</p>
-            <p style="font-size:1.15em;font-weight:700;letter-spacing:2px;color:#ffffff;word-break:break-all;">{{ serial_key }}</p>
-          </div>
-          {% endif %}
           {% if player_id %}<p class="dx-id"><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>{% endif %}
           {% if servidor %}<p><strong>Servidor:</strong> {{ servidor }}</p>{% endif %}
           {% if player_name %}<p class="dx-player"><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
@@ -296,6 +291,7 @@
           {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          {% if serial_key %}<div class="dx-code"><span class="dx-code-label">Código</span><span class="dx-code-value">{{ serial_key }}</span><button type="button" class="dx-copy" data-copy="{{ serial_key }}" aria-label="Copiar código" title="Copiar código"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>{% endif %}
         </div>
       </div>
       {% elif estado == 'pendiente_serial' %}
@@ -315,6 +311,7 @@
           {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          {% if serial_key %}<div class="dx-code"><span class="dx-code-label">Código</span><span class="dx-code-value">{{ serial_key }}</span><button type="button" class="dx-copy" data-copy="{{ serial_key }}" aria-label="Copiar código" title="Copiar código"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>{% endif %}
         </div>
       </div>
       <div class="entrega-info">
@@ -330,12 +327,6 @@
         <div class="detalles-info">
           <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
           <p><strong>Paquete:</strong> {{ paquete_nombre }}</p>
-          {% if serial_key %}
-          <div style="margin:10px 0;padding:12px 14px;background:rgba(89, 212, 153, 0.15);border:1px solid #59d499;border-radius:10px;">
-            <p style="color:#9c9c9d;font-size:0.85em;margin-bottom:4px;">Tu código / serial:</p>
-            <p style="font-size:1.15em;font-weight:700;letter-spacing:2px;color:#ffffff;word-break:break-all;">{{ serial_key }}</p>
-          </div>
-          {% endif %}
           {% if player_id %}<p class="dx-id"><strong>ID:</strong> {{ player_id }}{% if player_id2 %} / {{ player_id2 }}{% endif %}</p>{% endif %}
           {% if servidor %}<p><strong>Servidor:</strong> {{ servidor }}</p>{% endif %}
           {% if player_name %}<p class="dx-player"><strong>Jugador:</strong> {{ player_name }}</p>{% endif %}
@@ -343,6 +334,7 @@
           {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
           <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          {% if serial_key %}<div class="dx-code"><span class="dx-code-label">Código</span><span class="dx-code-value">{{ serial_key }}</span><button type="button" class="dx-copy" data-copy="{{ serial_key }}" aria-label="Copiar código" title="Copiar código"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>{% endif %}
         </div>
       </div>
       <div class="entrega-info">

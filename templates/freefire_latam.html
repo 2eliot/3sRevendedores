@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
   <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='id-game.js') }}" defer></script>
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -119,7 +121,7 @@
   <section class="juego-container">
     <h1 class="juego-titulo">Free Fire Latam</h1>
 
-    <form method="POST" action="/validar/freefire_latam" class="juego-form">
+    <form method="POST" action="/validar/freefire_latam" class="juego-form" data-id-game="freefire_latam" data-game-name="Free Fire">
       <div class="form-row">
         <div class="form-col">
           <label for="monto">Selecciona tu paquete:</label>

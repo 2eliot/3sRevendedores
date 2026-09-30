@@ -33,13 +33,20 @@
     var pid = form.querySelector('input[name=player_id]');
     var pid2 = form.querySelector('input[name=player_id2]');
     var srv = form.querySelector('select[name=servidor]');
+    var qty = form.querySelector('select[name=cantidad]');
     var submitBtn = form.querySelector('button[type=submit]');
-    if (!select || !pid || !submitBtn) return;
+    if (!select || !submitBtn) return;
     form.classList.add('idg');
+    if (!pid) form.classList.add('idg-codes');
 
     // ---- Paquetes en tarjetas ----
     var col = select.closest('.form-col');
     if (col) col.classList.add('idg-hidden-col');
+    else {
+      select.classList.add('idg-hidden-col');
+      var lab = select.id && form.querySelector('label[for="' + select.id + '"]');
+      if (lab) lab.classList.add('idg-hidden-col');
+    }
     var box = el('div', 'idg-packages');
     box.appendChild(el('div', 'idg-packages-title', 'Elige un paquete'));
     var grid = el('div', 'idg-grid');
@@ -48,7 +55,7 @@
     box.appendChild(grid);
     Array.prototype.forEach.call(select.options, function (o) {
       if (!o.value) return;
-      var p = parseOption(o.textContent);
+      var p = parseOption(o.dataset.fullText || o.textContent);
       var card = el('button', 'idg-pkg');
       card.type = 'button';
       card.setAttribute('role', 'radio');
@@ -81,7 +88,7 @@
 
     // ---- Verificar ID ----
     var result = null;
-    if (form.dataset.verify === '1') {
+    if (pid && form.dataset.verify === '1') {
       var row = el('div', 'idg-id-row');
       pid.parentNode.insertBefore(row, pid);
       row.appendChild(pid);
@@ -129,7 +136,7 @@
       });
     });
 
-    form._idg = { select: select, pid: pid, pid2: pid2, srv: srv, submitBtn: submitBtn };
+    form._idg = { select: select, pid: pid, pid2: pid2, srv: srv, qty: qty, submitBtn: submitBtn };
   }
 
   // ---- Ventana de confirmación ----
@@ -172,14 +179,20 @@
     var dl = d.querySelector('.idg-dlg-rows');
     dl.innerHTML = '';
     row(dl, 'Juego', form.dataset.gameName || '');
-    row(dl, labelOf(form, f.pid, 'ID de jugador'), f.pid.value.trim(), 'is-mono');
-    if (f.pid2) row(dl, labelOf(form, f.pid2, 'Zone ID'), f.pid2.value.trim(), 'is-mono');
-    if (f.srv && f.srv.value) row(dl, labelOf(form, f.srv, 'Servidor'), f.srv.value);
-    if (form.dataset.playerName) row(dl, 'Nombre del jugador', form.dataset.playerName, 'is-ok');
-    else row(dl, 'Nombre del jugador', form.dataset.verify === '1' ? 'Sin verificar' : 'No disponible', 'is-muted');
+    if (f.pid) {
+      row(dl, labelOf(form, f.pid, 'ID de jugador'), f.pid.value.trim(), 'is-mono');
+      if (f.pid2) row(dl, labelOf(form, f.pid2, 'Zone ID'), f.pid2.value.trim(), 'is-mono');
+      if (f.srv && f.srv.value) row(dl, labelOf(form, f.srv, 'Servidor'), f.srv.value);
+      if (form.dataset.playerName) row(dl, 'Nombre del jugador', form.dataset.playerName, 'is-ok');
+      else row(dl, 'Nombre del jugador', form.dataset.verify === '1' ? 'Sin verificar' : 'No disponible', 'is-muted');
+    }
     row(dl, 'Paquete', p.name);
-    d.querySelector('.idg-dlg-price').textContent = p.price ? '$' + p.price : '';
-    var s = saldoActual(), precio = parseFloat((p.price || '').replace(',', '.'));
+    var cantidad = f.qty && f.qty.value ? parseInt(f.qty.value, 10) || 1 : 1;
+    if (f.qty) row(dl, 'Cantidad', cantidad + (cantidad === 1 ? ' código' : ' códigos'));
+    var unit = parseFloat((p.price || '').replace(',', '.'));
+    var precio = isNaN(unit) ? NaN : Math.round(unit * cantidad * 100) / 100;
+    d.querySelector('.idg-dlg-price').textContent = isNaN(precio) ? '' : '$' + precio.toFixed(2);
+    var s = saldoActual();
     var saldoP = d.querySelector('.idg-dlg-saldo');
     if (s != null && !isNaN(precio)) {
       var despues = s - precio;

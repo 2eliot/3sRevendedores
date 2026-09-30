@@ -12,6 +12,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
   <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='id-game.js') }}" defer></script>
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -119,7 +121,7 @@
   <section class="juego-container">
     <h1 class="juego-titulo">Free Fire</h1>
 
-    <form method="POST" action="/validar/freefire" class="juego-form">
+    <form method="POST" action="/validar/freefire" class="juego-form" data-id-game="freefire_pin" data-game-name="Free Fire">
       <div class="form-row">
         <div class="form-col">
           <label for="monto">Selecciona tu paquete:</label>
@@ -255,7 +257,7 @@
       
       if (montoSelect.value && cantidadSelect.value) {
         const selectedOption = montoSelect.options[montoSelect.selectedIndex];
-        const priceText = selectedOption.textContent;
+        const priceText = selectedOption.dataset.fullText || selectedOption.textContent;
         const pricePart = priceText.split('/')[1];
         
         if (pricePart) {

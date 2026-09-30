@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
   <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -263,17 +264,6 @@
               </div>
               <div class="ffid-voucher-details">
                 <div class="ffid-voucher-line"><strong>Paquete:</strong> {{ transaction.paquete }}</div>
-                {% if transaction.get('is_dynamic_game') and transaction.get('serial_key') %}
-                <div style="margin:8px 0;padding:10px 14px;background:rgba(89, 212, 153, 0.15);border:1px solid #59d499;border-radius:10px;">
-                  <div style="color:#9c9c9d;font-size:0.8em;margin-bottom:4px;">Tu código / serial:</div>
-                  <div style="font-weight:700;letter-spacing:2px;color:#ffffff;font-size:1.05em;word-break:break-all;">{{ transaction.serial_key }}</div>
-                  <button class="copy-btn-simple" style="margin-top:6px;" data-pin="{{ transaction.serial_key }}" onclick="copyTransactionPin(this.getAttribute('data-pin'))">📋 Copiar código</button>
-                </div>
-                {% elif transaction.get('is_dynamic_game') and (transaction.get('estado') or '')|lower == 'pendiente' %}
-                <div style="margin:8px 0;padding:8px 12px;background:rgba(255, 197, 49, 0.12);border:1px solid #ffc531;border-radius:8px;">
-                  <span style="color:#ffc531;font-size:0.88em;">⏳ Código en proceso — se actualizará automáticamente en este historial</span>
-                </div>
-                {% endif %}
                 {% if transaction.get('player_name') %}
                 <div class="ffid-voucher-line"><strong>Jugador:</strong> <span class="ffid-player-name">{{ transaction.player_name }}</span></div>
                 {% endif %}
@@ -289,6 +279,11 @@
                 <div class="ffid-voucher-line"><strong>Usuario:</strong> ID: {{ transaction.usuario_id }} - {{ transaction.nombre }} {{ transaction.apellido }}</div>
                 {% else %}
                 <div class="ffid-voucher-line"><strong>Usuario:</strong> {{ transaction.nombre }} {{ transaction.apellido }}</div>
+                {% endif %}
+                {% if transaction.get('is_dynamic_game') and transaction.get('serial_key') %}
+                <div class="ffid-voucher-line dx-code-line"><strong>Código:</strong> <span class="dx-code-value">{{ transaction.serial_key }}</span><button type="button" class="copy-btn-simple" data-pin="{{ transaction.serial_key }}" onclick="copyTransactionPin(this.getAttribute('data-pin'))" aria-label="Copiar código" title="Copiar código">📋</button></div>
+                {% elif transaction.get('is_dynamic_game') and (transaction.get('estado') or '')|lower == 'pendiente' %}
+                <div class="dx-code-pending">⏳ Código en proceso — se actualizará automáticamente en este historial</div>
                 {% endif %}
               </div>
             </div>

@@ -1455,3 +1455,50 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .tx-search-btn:hover { background: #fff !important; }
 .tx-search-info { margin: -6px 0 14px; font-size: 13px; color: var(--rc-ash); }
 .tx-search-info strong { color: var(--rc-text); }
+
+/* ---------- Historial: nombre del juego destacado ---------- */
+.transaction-card-simple .transaction-header {
+  justify-content: center !important;
+  text-align: center !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--rc-text) !important;
+}
+/* Código al final del recibo con botón pequeño */
+.dx-code-line { align-items: center; }
+.dx-code-line .dx-code-value { font-family: var(--rc-mono); font-weight: 600; color: var(--rc-green); letter-spacing: 0.02em; }
+.dx-code-line .copy-btn-simple {
+  display: inline-grid !important; place-items: center; vertical-align: middle;
+  width: 24px !important; height: 24px !important; min-width: 0 !important; min-height: 0 !important;
+  margin: -3px 0 0 6px !important; border-radius: 6px !important;
+}
+.dx-code-line .copy-btn-simple::before { width: 13px !important; height: 13px !important; }
+.dx-code-pending { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 197, 49, 0.1); color: var(--rc-yellow); font-size: 12px; }
+
+/* ---------- Compra exitosa: código debajo del monto ---------- */
+.compra-exitosa .detalles-info > p:last-child { color: inherit; font-family: inherit; }
+.compra-exitosa .detalles-info > p:last-of-type {
+  color: var(--rc-green) !important; font-family: var(--rc-mono);
+}
+.compra-exitosa .detalles-info > p:last-of-type strong { font-family: var(--rc-font); }
+.dx-code {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 8px 8px 12px;
+  background: rgba(89, 212, 153, 0.08);
+  border: 1px solid rgba(89, 212, 153, 0.35);
+  border-radius: 10px;
+}
+.dx-code-label { font-size: 12px; color: var(--rc-ash); flex-shrink: 0; }
+.dx-code-value { flex: 1; min-width: 0; text-align: right; font-family: var(--rc-mono); font-size: 13.5px; font-weight: 600; color: var(--rc-text); overflow-wrap: anywhere; }
+.dx-copy {
+  flex-shrink: 0; display: inline-grid; place-items: center;
+  width: 28px !important; height: 28px !important; padding: 0 !important; margin: 0 !important;
+  border-radius: 7px !important; border: 1px solid var(--rc-border-strong) !important;
+  background: var(--rc-graphite) !important; color: var(--rc-mist) !important; cursor: pointer;
+}
+.dx-copy svg { width: 14px; height: 14px; }
+.dx-copy:hover { background: var(--rc-slate) !important; color: var(--rc-text) !important; }
+.dx-copy.is-copied { color: var(--rc-green) !important; border-color: rgba(89, 212, 153, 0.5) !important; }
+.dx-copy.is-copied svg { display: none; }
+.dx-copy.is-copied::after { content: '✓'; font-size: 14px; font-weight: 700; }
