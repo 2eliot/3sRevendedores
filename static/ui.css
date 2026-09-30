@@ -686,3 +686,47 @@ tbody tr:last-child td { border-bottom: 0 !important; }
 @media (max-width: 420px) {
   .header::before { content: '3sR'; }
 }
+
+/* ---------- Historial: comprobante compacto (filas etiqueta · valor) ---------- */
+.transaction-card-simple:has(.ffid-voucher) { padding: 14px 16px !important; }
+.transaction-card-simple:has(.ffid-voucher) .transaction-header { margin-bottom: 10px !important; padding-bottom: 10px !important; }
+.ffid-voucher-status { margin: 0 0 6px !important; }
+.ffid-voucher-status-label { font-size: 12px !important; }
+.ffid-voucher-status-value { font-size: 10px !important; padding: 2px 8px !important; }
+.ffid-voucher-details { display: flex !important; flex-direction: column; gap: 0 !important; }
+.ffid-voucher-line, .ffid-voucher-amount {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 !important;
+  padding: 4px 0 !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  text-align: right !important;
+  color: var(--rc-text) !important;
+  font-family: var(--rc-font) !important;
+  border: 0 !important;
+  overflow-wrap: anywhere;
+}
+.ffid-voucher-line strong, .ffid-voucher-amount strong {
+  flex-shrink: 0;
+  font-weight: 400 !important;
+  font-size: 13px !important;
+  color: var(--rc-ash) !important;
+  text-align: left;
+}
+.ffid-voucher-amount {
+  margin-top: 4px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid var(--rc-border) !important;
+  font-family: var(--rc-mono) !important;
+  color: var(--rc-green) !important;
+}
+.ffid-player-name { font-weight: 600 !important; }
+/* Código/serial más compacto */
+.ffid-voucher-details > div[style] { margin: 6px 0 !important; padding: 8px 12px !important; }
+.ffid-voucher-details > div[style] > div:nth-child(2) { font-size: 14px !important; }
+.ffid-voucher-details > div[style] .copy-btn-simple { min-height: 28px; padding: 0 10px !important; font-size: 12px !important; }
+.transaction-card-simple:has(.ffid-voucher) .tx-corner-date { margin-top: 6px; padding-top: 8px; font-size: 11px !important; }
+.ffid-voucher-amount strong { font-family: var(--rc-font) !important; }
