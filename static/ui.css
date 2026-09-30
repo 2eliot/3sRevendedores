@@ -1219,3 +1219,19 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
   .juego-form button.idg-pkg { padding: 7px 5px !important; }
   .idg-pkg.is-selected::after { top: -5px !important; right: -5px !important; width: 14px !important; height: 14px !important; background-size: 8px !important; }
 }
+
+/* Contenedor de la página de juego por ID: más compacto */
+.juego-container:has(form.idg) {
+  max-width: 560px !important;
+  padding: 22px !important;
+  margin-top: 16px !important;
+}
+.juego-container:has(form.idg) .juego-titulo { font-size: 24px !important; margin-bottom: 16px !important; }
+.juego-container:has(form.idg) .juego-form { padding: 16px !important; }
+.juego-container:has(form.idg) .juego-descripcion,
+.juego-container:has(form.idg) .entrega-info { padding: 14px !important; font-size: 13px; }
+.juego-container:has(form.idg) .volver-container { margin-top: 14px !important; }
+@media (max-width: 720px) {
+  .juego-container:has(form.idg) { padding: 16px !important; margin: 12px 10px 24px !important; }
+  .juego-container:has(form.idg) .juego-form { padding: 12px !important; }
+}
