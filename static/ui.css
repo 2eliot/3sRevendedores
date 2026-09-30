@@ -1801,15 +1801,3 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .user-box .ub-theme-text small { font-size: 12px; color: var(--rc-ash); font-weight: 400; }
 .user-box .ub-chev { width: 16px; height: 16px; color: var(--rc-smoke); }
 .user-box .logout-btn { border-top: 1px solid var(--rc-border) !important; }
-
-/* ---------- Historial: cada dato en su propio recuadro ---------- */
-.ffid-voucher-details { gap: 6px !important; }
-.ffid-voucher-status, .ffid-voucher-line, .ffid-voucher-amount {
-  background: var(--rc-recess) !important;
-  border: 1px solid var(--rc-border) !important;
-  border-radius: 10px !important;
-  padding: 8px 12px !important;
-  margin: 0 !important;
-}
-.ffid-voucher-status { margin-bottom: 6px !important; }
-.ffid-voucher-amount { padding-top: 8px !important; }
