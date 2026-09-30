@@ -31,24 +31,24 @@
   <header class="header">
     <div class="hamburger" onclick="window.location.href='/'">
       <svg class="icon" viewBox="0 0 24 24">
-        <path d="M19 12H5m7-7l-7 7 7 7" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M19 12H5m7-7l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
 
     <div class="icon-container">
-      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
       <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="Mi Dashboard">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5"/>
           <rect x="14" y="3" width="7" height="7" rx="1.5"/>
           <rect x="3" y="14" width="7" height="7" rx="1.5"/>
           <rect x="14" y="14" width="7" height="7" rx="1.5"/>
         </svg>
       </div>
-      <svg class="icon active" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+      <svg class="icon active" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
 
       <div class="user-icon" onclick="toggleUserBox()">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">
           <p><strong>Correo:</strong> {{ session.get('usuario', '---') }}</p>
           <label class="price-toggle" onclick="event.stopPropagation()">
@@ -71,7 +71,7 @@
   <style>
     .billetera-title {
       text-align: center;
-      color: #ffffff;
+      color: var(--rc-text);
       font-size: 2rem;
       margin: 20px 0 10px;
       font-weight: bold;
@@ -82,16 +82,16 @@
       padding: 0 15px;
     }
     .recarga-card {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(var(--rc-ink),0.05);
+      border: 1px solid rgba(var(--rc-ink),0.08);
       border-radius: 12px;
       padding: 24px;
       margin-bottom: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
     .recarga-card-header {
-      background: linear-gradient(90deg, #1b1c1e, #1b1c1e);
-      color: #ffffff;
+      background: linear-gradient(90deg, var(--rc-graphite), var(--rc-graphite));
+      color: var(--rc-text);
       font-weight: bold;
       font-size: 1rem;
       padding: 12px 18px;
@@ -100,7 +100,7 @@
       text-align: center;
     }
     .recarga-label {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-size: 0.85rem;
       margin-bottom: 6px;
       display: block;
@@ -108,21 +108,21 @@
     .recarga-input {
       width: 100%;
       padding: 12px 14px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(var(--rc-ink),0.08);
+      border: 1px solid rgba(var(--rc-ink),0.12);
       border-radius: 8px;
-      color: #e6e6e6;
+      color: var(--rc-mist);
       font-size: 1rem;
       box-sizing: border-box;
       outline: none;
       transition: border-color 0.2s;
     }
     .recarga-input:focus {
-      border-color: #363739;
+      border-color: var(--rc-border-strong);
       box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
     }
     .recarga-hint {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-size: 0.78rem;
       margin-top: 4px;
     }
@@ -130,8 +130,8 @@
       display: block;
       width: 100%;
       padding: 14px;
-      background: linear-gradient(90deg, #1b1c1e, #1b1c1e);
-      color: #ffffff;
+      background: linear-gradient(90deg, var(--rc-graphite), var(--rc-graphite));
+      color: var(--rc-text);
       font-weight: bold;
       font-size: 1rem;
       border: none;
@@ -143,40 +143,40 @@
     .recarga-btn:hover { opacity: 0.85; }
     .recarga-btn-secondary {
       background: transparent;
-      border: 1px solid #ff6363;
-      color: #ff6363;
+      border: 1px solid var(--rc-coral);
+      color: var(--rc-coral);
       margin-top: 10px;
     }
     .recarga-btn-secondary:hover { background: rgba(255, 99, 99, 0.06); }
     .recarga-info-box {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(var(--rc-ink),0.04);
+      border: 1px solid rgba(var(--rc-ink),0.08);
       border-radius: 10px;
       padding: 18px;
       margin-top: 16px;
     }
     .recarga-info-box h4 {
-      color: #ffffff;
+      color: var(--rc-text);
       margin: 0 0 10px;
       font-size: 0.95rem;
     }
     .recarga-info-box ol {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-size: 0.85rem;
       padding-left: 18px;
       margin: 0;
       line-height: 1.7;
     }
     .recarga-pending-box {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(var(--rc-ink),0.04);
+      border: 1px solid rgba(var(--rc-ink),0.08);
       border-radius: 10px;
       padding: 18px;
       margin-bottom: 16px;
     }
     .recarga-pending-box .code-display {
-      background: rgba(255,255,255,0.06);
-      border: 2px dashed #363739;
+      background: rgba(var(--rc-ink),0.06);
+      border: 2px dashed var(--rc-border-strong);
       border-radius: 8px;
       padding: 14px;
       text-align: center;
@@ -184,16 +184,16 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .recarga-pending-box .code-display:hover { background: rgba(255, 255, 255, 0.035); }
+    .recarga-pending-box .code-display:hover { background: rgba(var(--rc-ink), 0.035); }
     .recarga-pending-box .code-display .code-text {
-      color: #ffffff;
+      color: var(--rc-text);
       font-size: 1.5rem;
       font-weight: bold;
       font-family: 'Courier New', monospace;
       letter-spacing: 2px;
     }
     .recarga-pending-box .code-display .copy-hint {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-size: 0.75rem;
       margin-top: 4px;
     }
@@ -201,27 +201,27 @@
       display: flex;
       justify-content: space-between;
       padding: 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(var(--rc-ink),0.06);
       font-size: 0.88rem;
     }
-    .recarga-detail .label { color: #9c9c9d; }
-    .recarga-detail .value { color: #e6e6e6; font-weight: 500; }
+    .recarga-detail .label { color: var(--rc-ash); }
+    .recarga-detail .value { color: var(--rc-mist); font-weight: 500; }
     .recarga-countdown {
       text-align: center;
-      color: #ffc531;
+      color: var(--rc-yellow);
       font-size: 0.85rem;
       margin-top: 10px;
     }
     .historial-title {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-size: 1.1rem;
       text-align: center;
       margin: 30px 0 15px;
       font-weight: 600;
     }
     .recarga-history-card {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(var(--rc-ink),0.05);
+      border: 1px solid rgba(var(--rc-ink),0.08);
       border-radius: 10px;
       padding: 14px 18px;
       margin-bottom: 10px;
@@ -231,13 +231,13 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
     .recarga-history-left .rec-code {
-      color: #e6e6e6;
+      color: var(--rc-mist);
       font-weight: 600;
       font-size: 0.9rem;
       font-family: 'Courier New', monospace;
     }
     .recarga-history-left .rec-meta {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-size: 0.78rem;
       margin-top: 3px;
     }
@@ -251,16 +251,16 @@
       font-size: 0.75rem;
       font-weight: 600;
     }
-    .rec-status-completada { background: rgba(89, 212, 153, 0.1); color: #59d499; border: 1px solid rgba(89, 212, 153, 0.25); }
-    .rec-status-pendiente { background: rgba(255, 197, 49, 0.1); color: #ffc531; border: 1px solid rgba(255, 197, 49, 0.25); }
-    .rec-status-expirada { background: rgba(255, 99, 99, 0.1); color: #ff6363; border: 1px solid rgba(255, 99, 99, 0.25); }
+    .rec-status-completada { background: rgba(89, 212, 153, 0.1); color: var(--rc-green); border: 1px solid rgba(89, 212, 153, 0.25); }
+    .rec-status-pendiente { background: rgba(255, 197, 49, 0.1); color: var(--rc-yellow); border: 1px solid rgba(255, 197, 49, 0.25); }
+    .rec-status-expirada { background: rgba(255, 99, 99, 0.1); color: var(--rc-coral); border: 1px solid rgba(255, 99, 99, 0.25); }
     .rec-amount {
-      color: #e6e6e6;
+      color: var(--rc-mist);
       font-size: 0.88rem;
       margin-top: 4px;
     }
     .rec-bonus {
-      color: #59d499;
+      color: var(--rc-green);
       font-size: 0.78rem;
     }
     .copied-toast {
@@ -268,8 +268,8 @@
       top: 80px;
       left: 50%;
       transform: translateX(-50%);
-      background: #1b1c1e;
-      color: #ffffff;
+      background: var(--rc-graphite);
+      color: var(--rc-text);
       padding: 8px 20px;
       border-radius: 8px;
       font-weight: bold;
@@ -417,7 +417,7 @@
             </div>
             <div class="recarga-detail">
               <span class="label">Binance Pay ID</span>
-              <span class="value" style="cursor:pointer;" onclick="copyCode('{{ binance_pay_id }}')">{{ binance_pay_id }} <span style="font-size:0.75rem; color:#ffffff;">&#128203; Copiar</span></span>
+              <span class="value" style="cursor:pointer;" onclick="copyCode('{{ binance_pay_id }}')">{{ binance_pay_id }} <span style="font-size:0.75rem; color:var(--rc-text);">&#128203; Copiar</span></span>
             </div>
             <div class="recarga-detail" style="border-bottom:none;">
               <span class="label">Codigo de referencia (nota)</span>
@@ -433,12 +433,12 @@
             <div class="recarga-countdown" id="countdown"></div>
           </div>
 
-          <div id="auto-verify-status" style="text-align:center; padding:12px; margin-bottom:10px; border-radius:8px; background:rgba(255, 255, 255, 0.021); border:1px solid rgba(255, 255, 255, 0.07);">
-            <div style="color:#ffffff; font-size:0.9rem; font-weight:600;">
+          <div id="auto-verify-status" style="text-align:center; padding:12px; margin-bottom:10px; border-radius:8px; background:rgba(var(--rc-ink), 0.021); border:1px solid rgba(var(--rc-ink), 0.07);">
+            <div style="color:var(--rc-text); font-size:0.9rem; font-weight:600;">
               <span id="verify-spinner" style="display:inline-block; animation: spin 1s linear infinite; margin-right:6px;">&#9696;</span>
               <span id="verify-text">Verificando pago automaticamente...</span>
             </div>
-            <div style="color:#9c9c9d; font-size:0.75rem; margin-top:4px;" id="verify-sub">Se revisa cada 15 segundos</div>
+            <div style="color:var(--rc-ash); font-size:0.75rem; margin-top:4px;" id="verify-sub">Se revisa cada 15 segundos</div>
           </div>
           <form action="/billetera/cancelar-recarga" method="POST">
             <button type="submit" class="recarga-btn recarga-btn-secondary">Cancelar orden</button>

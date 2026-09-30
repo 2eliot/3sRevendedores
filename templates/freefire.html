@@ -32,7 +32,7 @@
   <header class="header">
     <div class="hamburger" onclick="toggleMenu()">
       <svg class="icon" viewBox="0 0 24 24">
-        <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <div id="menu-juegos" class="menu-juegos" onclick="event.stopPropagation()">
         {% set n_id = (dynamic_games_id_menu|length) %}
@@ -79,19 +79,19 @@
     </div>
 
     <div class="icon-container">
-      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
       <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="Mi Dashboard">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5"/>
           <rect x="14" y="3" width="7" height="7" rx="1.5"/>
           <rect x="3" y="14" width="7" height="7" rx="1.5"/>
           <rect x="14" y="14" width="7" height="7" rx="1.5"/>
         </svg>
       </div>
-      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
 
       <div class="user-icon" onclick="toggleUserBox()">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">
           <p><strong>Correo:</strong> {{ session.get('usuario', '---') }}</p>
           <label class="price-toggle" onclick="event.stopPropagation()">
@@ -148,7 +148,7 @@
         </div>
       </div>
 
-      <div id="total-price" class="total-price" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 8px; border-left: 4px solid #363739; color: #e6e6e6;"></div>
+      <div id="total-price" class="total-price" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(var(--rc-ink),0.04); border-radius: 8px; border-left: 4px solid var(--rc-border-strong); color: var(--rc-mist);"></div>
 
       <button type="submit" id="submit-btn">Validar compra</button>
     </form>
@@ -159,7 +159,7 @@
       
       {% if pines_list %}
         <!-- Múltiples pines -->
-        <div style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+        <div style="background: rgba(var(--rc-ink),0.05); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h4 style="margin: 0; font-size: 16px; font-weight: 600;">Tus pines</h4>
             <button class="copy-all-btn" onclick="copyAllPins()" style="margin: 0; padding: 6px 12px; font-size: 13px;">📋 Copiar Todos</button>
@@ -172,13 +172,13 @@
           </div>
           {% endfor %}
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-          <span style="font-weight: 600;">Cantidad solicitada: <span style="color: #59d499;">{{ cantidad_comprada }}</span></span>
-          <span style="font-weight: 600;">Total: <span style="color: #59d499;">${{ "%.2f"|format(monto_compra) }}</span></span>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(var(--rc-ink),0.05); border-radius: 8px;">
+          <span style="font-weight: 600;">Cantidad solicitada: <span style="color: var(--rc-green);">{{ cantidad_comprada }}</span></span>
+          <span style="font-weight: 600;">Total: <span style="color: var(--rc-green);">${{ "%.2f"|format(monto_compra) }}</span></span>
         </div>
       {% else %}
         <!-- Un solo pin -->
-        <div style="background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+        <div style="background: rgba(var(--rc-ink),0.05); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
           <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Tus pines</h4>
           <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
             <span style="flex: 0 0 auto; font-weight: 600; font-size: 14px;">{{ paquete_nombre }}:</span>
@@ -186,33 +186,33 @@
             <button class="copy-btn" onclick="copyPin('pinCode')" style="flex: 0 0 auto; padding: 6px 12px; font-size: 13px;">📋 Copiar</button>
           </div>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-          <span style="font-weight: 600;">Cantidad solicitada: <span style="color: #59d499;">1</span></span>
-          <span style="font-weight: 600;">Total: <span style="color: #59d499;">${{ "%.2f"|format(monto_compra) }}</span></span>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(var(--rc-ink),0.05); border-radius: 8px;">
+          <span style="font-weight: 600;">Cantidad solicitada: <span style="color: var(--rc-green);">1</span></span>
+          <span style="font-weight: 600;">Total: <span style="color: var(--rc-green);">${{ "%.2f"|format(monto_compra) }}</span></span>
         </div>
       {% endif %}
     </div>
     {% else %}
-    <div class="informacion" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.08);">
-      <p style="margin-bottom: 16px; color: #9c9c9d; font-size: 0.9em;">Los pines adquiridos no tienen reembolso una vez realizada la compra.</p>
+    <div class="informacion" style="background: rgba(var(--rc-ink),0.05); border-radius: 12px; padding: 20px; border: 1px solid rgba(var(--rc-ink),0.08);">
+      <p style="margin-bottom: 16px; color: var(--rc-ash); font-size: 0.9em;">Los pines adquiridos no tienen reembolso una vez realizada la compra.</p>
 
-      <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 16px; margin-top: 8px;">
-        <p style="font-weight: 700; font-size: 1.05em; margin-bottom: 12px; color: #e6e6e6;">Pasos para canjear tu PIN:</p>
+      <div style="background: rgba(var(--rc-ink),0.04); border-radius: 10px; padding: 16px; margin-top: 8px;">
+        <p style="font-weight: 700; font-size: 1.05em; margin-bottom: 12px; color: var(--rc-mist);">Pasos para canjear tu PIN:</p>
         <ol style="margin: 0; padding-left: 20px; list-style: none; counter-reset: steps;">
-          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #2e2612; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">1</span>
-            Ingresa a <a href="https://redeempins.com/" target="_blank" style="color: #ffc531; font-weight: 600; margin-left: 4px;">redeempins.com</a>
+          <li style="padding: 8px 0; color: var(--rc-ash); border-bottom: 1px solid rgba(var(--rc-ink),0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--rc-yellow-bg); color: var(--rc-text); border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">1</span>
+            Ingresa a <a href="https://redeempins.com/" target="_blank" style="color: var(--rc-yellow); font-weight: 600; margin-left: 4px;">redeempins.com</a>
           </li>
-          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #2e2612; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">2</span>
+          <li style="padding: 8px 0; color: var(--rc-ash); border-bottom: 1px solid rgba(var(--rc-ink),0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--rc-yellow-bg); color: var(--rc-text); border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">2</span>
             Ingresa el PIN que recibiste
           </li>
-          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #2e2612; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">3</span>
+          <li style="padding: 8px 0; color: var(--rc-ash); border-bottom: 1px solid rgba(var(--rc-ink),0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--rc-yellow-bg); color: var(--rc-text); border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">3</span>
             Ingresa tu ID de jugador
           </li>
-          <li style="padding: 8px 0; color: #9c9c9d; display: flex; align-items: center; gap: 10px;">
-            <span style="background: #2e2612; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">4</span>
+          <li style="padding: 8px 0; color: var(--rc-ash); display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--rc-yellow-bg); color: var(--rc-text); border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">4</span>
             Acepta los Terminos y Condiciones y presiona Canjear
           </li>
         </ol>

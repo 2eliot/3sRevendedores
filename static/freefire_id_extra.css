@@ -4,25 +4,25 @@
 .form-control {
   width: 100%;
   padding: 12px 15px;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid rgba(var(--rc-ink),0.12);
   border-radius: 10px;
   font-size: 1rem;
   margin-bottom: 1.25rem;
   transition: all 0.3s ease;
   font-family: 'Inter', sans-serif;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  background: rgba(255,255,255,0.08);
-  color: #e6e6e6;
+  background: rgba(var(--rc-ink),0.08);
+  color: var(--rc-mist);
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #363739;
+  border-color: var(--rc-border-strong);
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
 }
 
 .form-control::placeholder {
-  color: #9c9c9d;
+  color: var(--rc-ash);
 }
 
 /* Override freefire.css select margin-bottom:0 for vertical form layout */
@@ -32,18 +32,18 @@
 
 /* Force select option readability */
 .form-control option {
-  background: #1b1c1e;
-  color: #e6e6e6;
+  background: var(--rc-graphite);
+  color: var(--rc-mist);
 }
 
 /* Solicitud container */
 .solicitud-container {
-  background: rgba(255,255,255,0.06);
+  background: rgba(var(--rc-ink),0.06);
   border-radius: 10px;
   padding: 1.25rem;
   margin-bottom: 1rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(var(--rc-ink),0.08);
 }
 
 .solicitud-info {
@@ -52,20 +52,20 @@
   justify-content: center;
   margin-bottom: 1rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--rc-ink), 0.035);
   border-radius: 8px;
 }
 
 .solicitud-label {
   font-weight: 600;
-  color: #ffffff;
+  color: var(--rc-text);
   margin-right: 10px;
   margin-bottom: 0;
 }
 
 .solicitud-estado {
-  background: linear-gradient(135deg, #1b1c1e, #1b1c1e);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--rc-graphite), var(--rc-graphite));
+  color: var(--rc-text);
   padding: 5px 15px;
   border-radius: 20px;
   font-weight: 600;
@@ -74,43 +74,43 @@
 }
 
 .detalles-info {
-  border-top: 1px solid rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(var(--rc-ink),0.08);
   padding-top: 1rem;
 }
 
 .detalles-info p {
   margin: 8px 0;
-  color: #9c9c9d;
+  color: var(--rc-ash);
 }
 
 /* Compra exitosa override for dark theme */
 .compra-exitosa {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(var(--rc-ink),0.05);
+  border: 1px solid rgba(var(--rc-ink),0.08);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   text-align: left;
-  color: #e6e6e6;
+  color: var(--rc-mist);
 }
 .compra-exitosa h3 {
-  color: #ffffff;
+  color: var(--rc-text);
 }
 
 /* Entrega info */
 .entrega-info {
-  background: rgba(255,255,255,0.04);
+  background: rgba(var(--rc-ink),0.04);
   padding: 0.8rem;
   border-radius: 6px;
-  border-left: 4px solid #59d499;
-  color: #9c9c9d;
+  border-left: 4px solid var(--rc-green);
+  color: var(--rc-ash);
 }
 .entrega-info p {
   margin: 4px 0;
-  color: #9c9c9d;
+  color: var(--rc-ash);
 }
 
 /* Volver */
 .volver-container { text-align: center; margin-top: 1.5rem; }
-.volver-btn { color: #ffffff; text-decoration: none; font-weight: 600; }
-.volver-btn:hover { color: #ffffff; }
+.volver-btn { color: var(--rc-text); text-decoration: none; font-weight: 600; }
+.volver-btn:hover { color: var(--rc-text); }

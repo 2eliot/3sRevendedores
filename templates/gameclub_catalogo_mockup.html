@@ -64,7 +64,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #9c9c9d;
+      color: var(--rc-ash);
       background: transparent;
       cursor: default;
       transition: transform 160ms ease, background-color 160ms ease;
@@ -77,9 +77,9 @@
     }
 
     .nav-item.active {
-      color: var(--#ff6363);
-      background: #1b1c1e;
-      border-color: #363739;
+      color: var(--var(--rc-coral));
+      background: var(--rc-graphite);
+      border-color: var(--rc-border-strong);
       box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
     }
 
@@ -99,7 +99,7 @@
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      color: #ffffff;
+      color: var(--rc-text);
       font-weight: 600;
       font-size: 14px;
       font-family: "Space Grotesk", "DM Sans", sans-serif;
@@ -109,7 +109,7 @@
     .battery {
       width: 24px;
       height: 12px;
-      border: 1.8px solid #2a2b2d;
+      border: 1.8px solid var(--rc-border);
       border-radius: 3px;
       position: relative;
       display: inline-flex;
@@ -125,13 +125,13 @@
       width: 2px;
       height: 4px;
       border-radius: 1px;
-      background: #2f3031;
+      background: var(--rc-slate);
     }
 
     .battery-level {
       width: 78%;
       height: 100%;
-      background: #2f3031;
+      background: var(--rc-slate);
       border-radius: 2px;
     }
 
@@ -144,13 +144,13 @@
       font-size: 34px;
       font-weight: 700;
       letter-spacing: -0.6px;
-      color: #ffffff;
+      color: var(--rc-text);
     }
 
     .title svg {
       width: 30px;
       height: 30px;
-      stroke: #ffffff;
+      stroke: var(--rc-text);
     }
 
     .subtitle {
@@ -167,7 +167,7 @@
     .btn-load {
       border: 1px solid var(--gray-button-border);
       background: var(--gray-button);
-      color: #ffffff;
+      color: var(--rc-text);
       font-size: 14px;
       font-weight: 600;
       border-radius: 10px;
@@ -196,13 +196,13 @@
       gap: 8px;
       font-family: "Space Grotesk", "DM Sans", sans-serif;
       font-weight: 700;
-      color: #ffffff;
-      background: linear-gradient(180deg, #07080a 0%, #07080a 100%);
+      color: var(--rc-text);
+      background: linear-gradient(180deg, var(--rc-card) 0%, var(--rc-card) 100%);
     }
 
     .card-body {
       padding: 14px 16px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-size: 14px;
       line-height: 1.45;
     }
@@ -211,24 +211,24 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
-      background: #07080a;
+      background: var(--rc-card);
     }
 
     th,
     td {
-      border-bottom: 1px solid #2a2b2d;
+      border-bottom: 1px solid var(--rc-border);
       text-align: left;
       padding: 10px 8px;
     }
 
     th {
       font-weight: 700;
-      color: #ffffff;
-      background: #07080a;
+      color: var(--rc-text);
+      background: var(--rc-card);
     }
 
     .muted {
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     .card.exchange {
@@ -244,15 +244,15 @@
     }
 
     .rate-label {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-weight: 600;
       font-size: 15px;
     }
 
     .rate-input {
-      border: 1px solid #56c2ff;
+      border: 1px solid var(--rc-blue);
       background: var(--blue-dark);
-      color: #ffffff;
+      color: var(--rc-text);
       border-radius: 10px;
       padding: 10px 12px;
       width: 98px;
@@ -263,15 +263,15 @@
     }
 
     .rate-currency {
-      color: #ffffff;
+      color: var(--rc-text);
       font-weight: 700;
     }
 
     .save-btn {
       margin-left: auto;
-      border: 1px solid #ffc531;
-      background: var(--#2e2612);
-      color: #ffffff;
+      border: 1px solid var(--rc-yellow);
+      background: var(--var(--rc-yellow-bg));
+      color: var(--rc-text);
       border-radius: 10px;
       font-weight: 700;
       font-size: 14px;
@@ -294,7 +294,7 @@
     .swap-icon {
       width: 18px;
       height: 18px;
-      stroke: #9c9c9d;
+      stroke: var(--rc-ash);
       flex: 0 0 auto;
     }
 

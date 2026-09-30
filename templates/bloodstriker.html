@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
   <style>
     .juego-titulo {
-      color: #ffffff !important;
+      color: var(--rc-text) !important;
       background: none !important;
       -webkit-text-fill-color: currentColor !important;
     }
@@ -16,17 +16,17 @@
       padding: 0.75rem 1rem;
       font-size: 1rem;
       border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(var(--rc-ink),0.12);
       width: 100%;
       margin-bottom: 0;
-      background: rgba(255,255,255,0.08);
-      color: #e6e6e6;
+      background: rgba(var(--rc-ink),0.08);
+      color: var(--rc-mist);
       transition: all 0.3s ease;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .juego-form input.form-control:focus {
       outline: none;
-      border-color: #363739;
+      border-color: var(--rc-border-strong);
       box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
       transform: translateY(-1px);
     }
@@ -69,7 +69,7 @@
   <header class="header">
     <div class="hamburger" onclick="toggleMenu()">
       <svg class="icon" viewBox="0 0 24 24">
-        <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <div id="menu-juegos" class="menu-juegos" onclick="event.stopPropagation()">
         {% set n_id = (dynamic_games_id_menu|length) %}
@@ -116,19 +116,19 @@
     </div>
 
     <div class="icon-container">
-      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
       <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="Mi Dashboard">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5"/>
           <rect x="14" y="3" width="7" height="7" rx="1.5"/>
           <rect x="3" y="14" width="7" height="7" rx="1.5"/>
           <rect x="14" y="14" width="7" height="7" rx="1.5"/>
         </svg>
       </div>
-      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
 
       <div class="user-icon" onclick="toggleUserBox()">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">
           <p><strong>Correo:</strong> {{ session.get('usuario', '---') }}</p>
           <label class="price-toggle" onclick="event.stopPropagation()">
@@ -209,7 +209,7 @@
       <div class="solicitud-container">
         <div class="solicitud-info">
           <p class="solicitud-label">Estado:</p>
-          <p class="solicitud-estado" id="estadoSolicitud" style="color: #59d499;">✅ COMPLETADO</p>
+          <p class="solicitud-estado" id="estadoSolicitud" style="color: var(--rc-green);">✅ COMPLETADO</p>
         </div>
         <div class="detalles-info">
           <p><strong>Blood Strike</strong></p>
@@ -223,7 +223,7 @@
           <p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>
           {% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
-          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #9c9c9d; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(var(--rc-ink),0.1); color: var(--rc-ash); font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
       {% elif estado == 'procesando' %}
@@ -231,7 +231,7 @@
       <div class="solicitud-container">
         <div class="solicitud-info">
           <p class="solicitud-label">Estado:</p>
-          <p class="solicitud-estado" id="estadoSolicitud" style="color: #ffc531;">⏳ PROCESANDO</p>
+          <p class="solicitud-estado" id="estadoSolicitud" style="color: var(--rc-yellow);">⏳ PROCESANDO</p>
         </div>
         <div class="detalles-info">
           <p><strong>Blood Strike</strong></p>
@@ -245,7 +245,7 @@
           <p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>
           {% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
-          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #9c9c9d; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(var(--rc-ink),0.1); color: var(--rc-ash); font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
       <div class="entrega-info">
@@ -264,7 +264,7 @@
           <p class="dx-id"><strong>ID de Jugador:</strong> {{ player_id }}</p>
           <p class="dx-control"><strong>Número de Control:</strong> {{ numero_control }}</p>
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
-          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #9c9c9d; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(var(--rc-ink),0.1); color: var(--rc-ash); font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
       {% endif %}
@@ -272,22 +272,22 @@
     {% else %}
     <div class="juego-descripcion">
       <p>🎯 <strong>¿Cómo funciona Blood Strike?</strong></p>
-      <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 16px; margin-top: 8px;">
+      <div style="background: rgba(var(--rc-ink),0.04); border-radius: 10px; padding: 16px; margin-top: 8px;">
         <ol style="margin: 0; padding-left: 20px; list-style: none;">
-          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #1b1c1e; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">1</span>
+          <li style="padding: 8px 0; color: var(--rc-ash); border-bottom: 1px solid rgba(var(--rc-ink),0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--rc-graphite); color: var(--rc-text); border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">1</span>
             Ingresa tu <strong>ID de jugador</strong> de Blood Strike
           </li>
-          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #1b1c1e; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">2</span>
+          <li style="padding: 8px 0; color: var(--rc-ash); border-bottom: 1px solid rgba(var(--rc-ink),0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--rc-graphite); color: var(--rc-text); border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">2</span>
             Selecciona el paquete de monedas que deseas
           </li>
-          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #1b1c1e; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">3</span>
+          <li style="padding: 8px 0; color: var(--rc-ash); border-bottom: 1px solid rgba(var(--rc-ink),0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--rc-graphite); color: var(--rc-text); border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">3</span>
             Presiona <strong>Recargar Ahora</strong> y espera unos segundos
           </li>
-          <li style="padding: 8px 0; color: #9c9c9d; display: flex; align-items: center; gap: 10px;">
-            <span style="background: #1b1c1e; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">4</span>
+          <li style="padding: 8px 0; color: var(--rc-ash); display: flex; align-items: center; gap: 10px;">
+            <span style="background: var(--rc-graphite); color: var(--rc-text); border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">4</span>
             Las monedas se agregan <strong>automáticamente</strong> a tu cuenta
           </li>
         </ol>
@@ -341,13 +341,13 @@
         const toast = document.createElement('div');
         toast.setAttribute('data-notification-id', idStr);
         toast.style.background = '#0f172a';
-        toast.style.color = '#ffffff';
+        toast.style.color = 'var(--rc-text)';
         toast.style.borderRadius = '12px';
         toast.style.boxShadow = '0 8px 24px rgba(0,0,0,0.22)';
         toast.style.padding = '12px 12px 12px 14px';
         toast.style.width = '320px';
         toast.style.maxWidth = 'calc(100vw - 32px)';
-        toast.style.border = '1px solid rgba(255,255,255,0.10)';
+        toast.style.border = '1px solid rgba(var(--rc-ink),0.10)';
         toast.style.display = 'flex';
         toast.style.gap = '10px';
 
@@ -373,7 +373,7 @@
         close.textContent = 'X';
         close.setAttribute('aria-label', 'Cerrar notificación');
         close.style.background = 'transparent';
-        close.style.color = '#ffffff';
+        close.style.color = 'var(--rc-text)';
         close.style.border = 'none';
         close.style.cursor = 'pointer';
         close.style.fontWeight = '700';

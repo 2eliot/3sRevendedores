@@ -16,8 +16,8 @@
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(135deg, #07080a 0%, #1b1c1e 100%);
-      color: #e6e6e6;
+      background: linear-gradient(135deg, var(--rc-card) 0%, var(--rc-graphite) 100%);
+      color: var(--rc-mist);
       line-height: 1.6;
     }
     
@@ -29,17 +29,17 @@
 
     /* Sección de estadísticas integrada */
     .stats-section {
-      background: rgba(255,255,255,0.05);
+      background: rgba(var(--rc-ink),0.05);
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(var(--rc-ink),0.08);
       margin-bottom: 24px;
     }
 
     .stats-header {
       margin-bottom: 24px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid rgba(var(--rc-ink),0.08);
       padding-bottom: 20px;
     }
 
@@ -50,12 +50,12 @@
     .dashboard-title {
       font-size: 28px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--rc-text);
       margin-bottom: 8px;
     }
 
     .dashboard-subtitle {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-size: 16px;
       font-weight: 400;
       margin-bottom: 16px;
@@ -67,11 +67,11 @@
 
     .user-details {
       font-size: 14px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
       padding: 12px 16px;
-      background: rgba(255,255,255,0.04);
+      background: rgba(var(--rc-ink),0.04);
       border-radius: 8px;
-      border-left: 4px solid #363739;
+      border-left: 4px solid var(--rc-border-strong);
     }
 
     .filter-buttons-integrated {
@@ -83,9 +83,9 @@
 
     .filter-btn {
       padding: 8px 16px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.05);
-      color: #9c9c9d;
+      border: 1px solid rgba(var(--rc-ink),0.12);
+      background: rgba(var(--rc-ink),0.05);
+      color: var(--rc-ash);
       border-radius: 8px;
       font-size: 14px;
       font-weight: 500;
@@ -95,16 +95,16 @@
     }
 
     .filter-btn:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: rgba(255,255,255,0.2);
+      background: rgba(var(--rc-ink),0.1);
+      border-color: rgba(var(--rc-ink),0.2);
       text-decoration: none;
-      color: #e6e6e6;
+      color: var(--rc-mist);
     }
 
     .filter-btn.active {
-      background: #1b1c1e;
-      color: #ffffff;
-      border-color: #363739;
+      background: var(--rc-graphite);
+      color: var(--rc-text);
+      border-color: var(--rc-border-strong);
     }
 
     .custom-date-section {
@@ -123,29 +123,29 @@
     .date-label {
       font-size: 12px;
       font-weight: 500;
-      color: #9c9c9d;
+      color: var(--rc-ash);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .date-input {
       padding: 8px 12px;
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(var(--rc-ink),0.12);
       border-radius: 6px;
       font-size: 14px;
-      background: rgba(255,255,255,0.08);
-      color: #e6e6e6;
+      background: rgba(var(--rc-ink),0.08);
+      color: var(--rc-mist);
     }
 
     .date-input:focus {
       outline: none;
-      border-color: #363739;
+      border-color: var(--rc-border-strong);
       box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
     }
 
     .view-btn {
-      background: #0f2233;
-      color: #ffffff;
+      background: var(--rc-blue-bg);
+      color: var(--rc-text);
       border: none;
       padding: 8px 20px;
       border-radius: 6px;
@@ -159,7 +159,7 @@
     }
 
     .view-btn:hover {
-      background: #0f2233;
+      background: var(--rc-blue-bg);
       transform: translateY(-1px);
     }
 
@@ -177,18 +177,18 @@
     }
 
     .stat-card {
-      background: rgba(255,255,255,0.05);
+      background: rgba(var(--rc-ink),0.05);
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(var(--rc-ink),0.08);
       transition: all 0.2s;
     }
 
     .stat-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-      background: rgba(255,255,255,0.08);
+      background: rgba(var(--rc-ink),0.08);
     }
 
     .stat-header {
@@ -201,7 +201,7 @@
     .stat-title {
       font-size: 14px;
       font-weight: 500;
-      color: #9c9c9d;
+      color: var(--rc-ash);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -217,35 +217,35 @@
     }
 
     .stat-icon.transactions {
-      background: rgba(255, 255, 255, 0.052);
-      color: #ffffff;
+      background: rgba(var(--rc-ink), 0.052);
+      color: var(--rc-text);
     }
 
     .stat-icon.amount {
       background: rgba(89, 212, 153, 0.15);
-      color: #59d499;
+      color: var(--rc-green);
     }
 
     .stat-icon.balance {
       background: rgba(255, 197, 49, 0.15);
-      color: #ffc531;
+      color: var(--rc-yellow);
     }
 
     .stat-icon.days {
-      background: rgba(255, 255, 255, 0.052);
-      color: #ffffff;
+      background: rgba(var(--rc-ink), 0.052);
+      color: var(--rc-text);
     }
 
     .stat-value {
       font-size: 32px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--rc-text);
       margin-bottom: 4px;
     }
 
     .stat-subtitle {
       font-size: 14px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     /* Gráfico y tabla */
@@ -257,11 +257,11 @@
     }
 
     .chart-section {
-      background: rgba(255,255,255,0.05);
+      background: rgba(var(--rc-ink),0.05);
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(var(--rc-ink),0.08);
     }
 
     .chart-header {
@@ -271,13 +271,13 @@
     .chart-title {
       font-size: 18px;
       font-weight: 600;
-      color: #ffffff;
+      color: var(--rc-text);
       margin-bottom: 4px;
     }
 
     .chart-subtitle {
       font-size: 14px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     .chart-container {
@@ -286,55 +286,55 @@
     }
 
     .games-section {
-      background: rgba(255,255,255,0.05);
+      background: rgba(var(--rc-ink),0.05);
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(var(--rc-ink),0.08);
     }
 
     .section-title {
       font-size: 18px;
       font-weight: 600;
-      color: #ffffff;
+      color: var(--rc-text);
       margin-bottom: 20px;
     }
 
     .transactions-section .section-title {
-      color: #ffffff;
+      color: var(--rc-text);
     }
 
     /* Tabla oscura */
     .table-dark {
       width: 100%;
       border-collapse: collapse;
-      color: #e6e6e6;
+      color: var(--rc-mist);
     }
     .table-dark th, .table-dark td {
       padding: 10px 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(var(--rc-ink),0.06);
     }
     .table-dark th {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-weight: 600;
       text-align: left;
     }
     .table-header-row {
-      background: rgba(255,255,255,0.03);
+      background: rgba(var(--rc-ink),0.03);
     }
     .table-row:hover {
-      background: rgba(255,255,255,0.06);
+      background: rgba(var(--rc-ink),0.06);
     }
 
     /* Cantidades positivas resaltadas */
     .qty-positive {
-      color: #ffc531;
+      color: var(--rc-yellow);
       font-weight: 600;
     }
 
     /* Separador visual entre categorías */
     .category-separator td {
-      border-top: 2px solid rgba(255,255,255,0.1);
+      border-top: 2px solid rgba(var(--rc-ink),0.1);
     }
 
     /* Contenedor responsive con scroll horizontal si es necesario */
@@ -353,7 +353,7 @@
       justify-content: space-between;
       align-items: center;
       padding: 12px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(var(--rc-ink),0.06);
     }
 
     .game-item:last-child {
@@ -378,22 +378,22 @@
 
     .game-icon.freefire-latam {
       background: rgba(255, 99, 99, 0.15);
-      color: #ff6363;
+      color: var(--rc-coral);
     }
 
     .game-icon.freefire-global {
       background: rgba(86, 194, 255, 0.15);
-      color: #56c2ff;
+      color: var(--rc-blue);
     }
 
     .game-icon.bloodstriker {
       background: rgba(89, 212, 153, 0.15);
-      color: #59d499;
+      color: var(--rc-green);
     }
 
     .game-name {
       font-weight: 500;
-      color: #e6e6e6;
+      color: var(--rc-mist);
       font-size: 14px;
     }
 
@@ -403,22 +403,22 @@
 
     .game-amount {
       font-weight: 600;
-      color: #ffffff;
+      color: var(--rc-text);
       font-size: 14px;
     }
 
     .game-count {
       font-size: 12px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     /* Top usuarios */
     .top-users-section {
-      background: rgba(255,255,255,0.05);
+      background: rgba(var(--rc-ink),0.05);
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(var(--rc-ink),0.08);
       margin-bottom: 24px;
     }
 
@@ -427,7 +427,7 @@
       justify-content: space-between;
       align-items: center;
       padding: 16px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(var(--rc-ink),0.06);
     }
 
     .user-item:last-child {
@@ -444,11 +444,11 @@
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #1b1c1e 0%, #1b1c1e 100%);
+      background: linear-gradient(135deg, var(--rc-graphite) 0%, var(--rc-graphite) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #ffffff;
+      color: var(--rc-text);
       font-weight: 600;
       font-size: 14px;
     }
@@ -460,13 +460,13 @@
 
     .user-name {
       font-weight: 500;
-      color: #e6e6e6;
+      color: var(--rc-mist);
       font-size: 14px;
     }
 
     .user-email {
       font-size: 12px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     .user-stats-item {
@@ -475,22 +475,22 @@
 
     .user-amount {
       font-weight: 600;
-      color: #ffffff;
+      color: var(--rc-text);
       font-size: 14px;
     }
 
     .user-count {
       font-size: 12px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     /* Transacciones */
     .transactions-section {
-      background: rgba(255,255,255,0.05);
+      background: rgba(var(--rc-ink),0.05);
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(var(--rc-ink),0.08);
     }
 
     .transactions-header {
@@ -505,10 +505,10 @@
       align-items: center;
       gap: 16px;
       padding: 12px 16px;
-      background: rgba(255,255,255,0.04);
+      background: rgba(var(--rc-ink),0.04);
       border-radius: 8px;
       margin-bottom: 20px;
-      border: 1px solid rgba(255,255,255,0.06);
+      border: 1px solid rgba(var(--rc-ink),0.06);
     }
 
     .summary-item {
@@ -519,12 +519,12 @@
     }
 
     .summary-label {
-      color: #9c9c9d;
+      color: var(--rc-ash);
       font-weight: 500;
     }
 
     .summary-value {
-      color: #ffffff;
+      color: var(--rc-text);
       font-weight: 600;
     }
 
@@ -533,7 +533,7 @@
       justify-content: space-between;
       align-items: center;
       padding: 16px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(var(--rc-ink),0.06);
     }
 
     .transaction-item:last-child {
@@ -548,25 +548,25 @@
 
     .transaction-package {
       font-weight: 500;
-      color: #e6e6e6;
+      color: var(--rc-mist);
       font-size: 14px;
     }
 
     .transaction-details {
       font-size: 12px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     .transaction-amount {
       font-weight: 600;
-      color: #ff6363;
+      color: var(--rc-coral);
       font-size: 14px;
     }
 
     .no-data {
       text-align: center;
       padding: 60px 20px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     .no-data-icon {
@@ -579,24 +579,24 @@
       font-size: 16px;
       font-weight: 500;
       margin-bottom: 8px;
-      color: #e6e6e6;
+      color: var(--rc-mist);
     }
 
     .no-data-subtitle {
       font-size: 14px;
-      color: #9c9c9d;
+      color: var(--rc-ash);
     }
 
     /* Usar exactamente los mismos estilos del header del index desde styles.css */
     .header {
-      background-color: #040506;
+      background-color: var(--rc-canvas);
       padding: 0.8rem 1.5rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       position: relative;
       z-index: 10;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(var(--rc-ink),0.06);
     }
     
     .hamburger {
@@ -607,7 +607,7 @@
     .hamburger .icon {
       width: 32px;
       height: 32px;
-      stroke: #ffffff;
+      stroke: var(--rc-text);
       fill: none;
     }
 
@@ -616,8 +616,8 @@
       position: absolute;
       top: 40px;
       left: 0;
-      background: #07080a;
-      color: #ffffff;
+      background: var(--rc-card);
+      color: var(--rc-text);
       padding: 0.8rem 1rem;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
@@ -644,13 +644,13 @@
     }
     
     .menu-juegos a {
-      color: #ffffff;
+      color: var(--rc-text);
       text-decoration: none;
       font-size: 0.95rem;
     }
     
     .menu-juegos a:hover {
-      color: #ffffff;
+      color: var(--rc-text);
       font-weight: bold;
     }
 
@@ -666,7 +666,7 @@
       width: 26px;
       height: 26px;
       fill: none;
-      stroke: #ffffff;
+      stroke: var(--rc-text);
       stroke-width: 1.8;
       transition: transform 0.25s cubic-bezier(.4,0,.2,1), stroke 0.25s ease, filter 0.25s ease;
       cursor: pointer;
@@ -674,12 +674,12 @@
     
     .icon:hover {
       transform: scale(1.15);
-      stroke: #ffffff;
+      stroke: var(--rc-text);
       filter: drop-shadow(0 0 6px rgba(167,139,250,0.45));
     }
 
     .icon.active {
-      stroke: #ffffff;
+      stroke: var(--rc-text);
     }
 
     /* Contenedor del ícono de cartera con notificación */
@@ -693,8 +693,8 @@
       position: absolute;
       top: -8px;
       right: -8px;
-      background: #13261d;
-      color: #ffffff;
+      background: var(--rc-green-bg);
+      color: var(--rc-text);
       border-radius: 50%;
       width: 20px;
       height: 20px;
@@ -703,7 +703,7 @@
       justify-content: center;
       font-size: 0.75rem;
       font-weight: 700;
-      border: 2px solid #2a2b2d;
+      border: 2px solid var(--rc-border);
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
       animation: wallet-notification-pulse 2s infinite;
     }
@@ -737,12 +737,12 @@
 
     .dashboard-icon-container .icon {
       fill: none;
-      stroke: #ffffff;
+      stroke: var(--rc-text);
       transition: stroke 0.25s ease, filter 0.25s ease;
     }
 
     .dashboard-icon-container:hover .icon {
-      stroke: #ffffff;
+      stroke: var(--rc-text);
       filter: drop-shadow(0 0 6px rgba(167,139,250,0.45));
     }
 
@@ -757,8 +757,8 @@
       position: absolute;
       top: -8px;
       right: -8px;
-      background: #0f2233;
-      color: #ffffff;
+      background: var(--rc-blue-bg);
+      color: var(--rc-text);
       border-radius: 50%;
       width: 20px;
       height: 20px;
@@ -767,7 +767,7 @@
       justify-content: center;
       font-size: 0.75rem;
       font-weight: 700;
-      border: 2px solid #2a2b2d;
+      border: 2px solid var(--rc-border);
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
       animation: news-notification-pulse 2s infinite;
     }
@@ -797,8 +797,8 @@
       position: absolute;
       top: 40px;
       right: 0;
-      background-color: #07080a;
-      color: #ffffff;
+      background-color: var(--rc-card);
+      color: var(--rc-text);
       padding: 0.8rem 1rem;
       border-radius: 6px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
@@ -821,40 +821,40 @@
       margin-top: 0.5rem;
       margin-right: 0.5rem;
       padding: 0.4rem 0.6rem;
-      background: #1b1c1e;
-      color: #ffffff;
+      background: var(--rc-graphite);
+      color: var(--rc-text);
       text-decoration: none;
       border-radius: 4px;
       font-size: 0.85rem;
     }
     
     .user-box .admin-btn:hover {
-      background: #1b1c1e;
+      background: var(--rc-graphite);
     }
 
     .user-box .logout-btn {
       display: inline-block;
       margin-top: 0.5rem;
       padding: 0.4rem 0.6rem;
-      background: #2f3031;
-      color: #ffffff;
+      background: var(--rc-slate);
+      color: var(--rc-text);
       text-decoration: none;
       border-radius: 4px;
     }
     
     .user-box .logout-btn:hover {
-      background: #2f3031;
+      background: var(--rc-slate);
     }
 
     /* Panel de usuario separado */
     .user-panel {
-      background: linear-gradient(135deg, #07080a 0%, #1b1c1e 100%);
+      background: linear-gradient(135deg, var(--rc-card) 0%, var(--rc-graphite) 100%);
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 12px;
       padding: 10px 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(var(--rc-ink),0.06);
       margin-bottom: 0;
     }
     .user-panel p {
@@ -869,37 +869,37 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(var(--rc-ink),0.07);
+      border: 1px solid rgba(var(--rc-ink),0.1);
       border-radius: 20px;
       padding: 5px 14px;
       font-size: 0.85rem;
-      color: rgba(255,255,255,0.7);
+      color: rgba(var(--rc-ink),0.7);
       backdrop-filter: blur(4px);
       transition: background 0.2s ease, border-color 0.2s ease;
     }
     .user-chip:hover {
-      background: rgba(255,255,255,0.12);
-      border-color: rgba(255,255,255,0.18);
+      background: rgba(var(--rc-ink),0.12);
+      border-color: rgba(var(--rc-ink),0.18);
     }
     .user-chip svg {
       width: 14px;
       height: 14px;
-      stroke: rgba(255,255,255,0.5);
+      stroke: rgba(var(--rc-ink),0.5);
       fill: none;
       stroke-width: 2;
       flex-shrink: 0;
     }
     .user-chip .chip-value {
-      color: #ffffff;
+      color: var(--rc-text);
       font-weight: 600;
       font-size: 0.88rem;
     }
     .user-chip.chip-saldo .chip-value {
-      color: #59d499;
+      color: var(--rc-green);
     }
     .user-chip.chip-saldo svg {
-      stroke: #59d499;
+      stroke: var(--rc-green);
     }
 
     .dashboard-info-section {
@@ -1081,7 +1081,7 @@
   <header class="header">
     <div class="hamburger" onclick="toggleMenu()">
       <svg class="icon" viewBox="0 0 24 24">
-        <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <div id="menu-juegos" class="menu-juegos" onclick="event.stopPropagation()">
         {% set n_id = (dynamic_games_id_menu|length) %}
@@ -1128,11 +1128,11 @@
     </div>
 
     <div class="icon-container">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" onclick="window.location.href='/'" style="cursor: pointer;"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" onclick="window.location.href='/'" style="cursor: pointer;"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
       
       <!-- Botón de Dashboard (para usuarios normales y admin) -->
       <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="{% if session.get('is_admin') %}Dashboard Administrativo{% else %}Mi Dashboard{% endif %}">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5"/>
           <rect x="14" y="3" width="7" height="7" rx="1.5"/>
           <rect x="3" y="14" width="7" height="7" rx="1.5"/>
@@ -1143,7 +1143,7 @@
       <!-- Botón de Noticias (siempre visible para usuarios normales; solo el badge depende del contador) -->
       {% if not session.get('is_admin') %}
       <div class="news-icon-container" onclick="window.location.href='/noticias'">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         {% if news_notification_count > 0 %}
         <div class="news-notification-badge">{{ news_notification_count }}</div>
         {% endif %}
@@ -1152,14 +1152,14 @@
       
       <!-- Icono de billetera para todos los usuarios (admin y normales) -->
       <div class="wallet-icon-container" onclick="window.location.href='/billetera'">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
         {% if not session.get('is_admin') and wallet_notification_count > 0 %}
         <div class="wallet-notification-badge">{{ wallet_notification_count }}</div>
         {% endif %}
       </div>
 
       <div class="user-icon" onclick="toggleUserBox()">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">
           <p><strong>Correo:</strong> {{ session.get('usuario', '---') }}</p>
           <label class="price-toggle" onclick="event.stopPropagation()">
@@ -1189,18 +1189,18 @@
 
   <!-- Popup modal de noticias -->
   <div id="news-popup-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:10000; align-items:center; justify-content:center; padding:20px;">
-    <div id="news-popup" style="background:linear-gradient(135deg, #07080a, #1b1c1e); color:#e6e6e6; border-radius:16px; max-width:480px; width:100%; box-shadow:0 8px 40px rgba(0,0,0,0.6); overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.1);">
+    <div id="news-popup" style="background:linear-gradient(135deg, var(--rc-card), var(--rc-graphite)); color:var(--rc-mist); border-radius:16px; max-width:480px; width:100%; box-shadow:0 8px 40px rgba(0,0,0,0.6); overflow:hidden; position:relative; border:1px solid rgba(var(--rc-ink),0.1);">
       <!-- X arriba a la derecha del popup -->
-      <button onclick="hideNewsPopupTemporarily()" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.45); border:none; color:#ffffff; border-radius:50%; width:32px; height:32px; font-size:1em; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2; line-height:1;">✕</button>
+      <button onclick="hideNewsPopupTemporarily()" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.45); border:none; color:var(--rc-text); border-radius:50%; width:32px; height:32px; font-size:1em; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2; line-height:1;">✕</button>
       <!-- Imagen manteniendo relación de aspecto -->
       <div id="news-popup-img-wrap" style="display:none; width:100%;">
-        <img id="news-popup-img" src="" alt="" style="width:100%; height:auto; display:block; max-height:260px; object-fit:contain; background:#111214;">
+        <img id="news-popup-img" src="" alt="" style="width:100%; height:auto; display:block; max-height:260px; object-fit:contain; background:var(--rc-recess);">
       </div>
       <!-- Contenido -->
       <div style="padding:18px 20px 20px;">
-        <div style="font-size:0.95em; line-height:1.65; color:#e6e6e6;" id="news-popup-content"></div>
-        <label style="display:flex; align-items:center; gap:10px; margin-top:16px; cursor:pointer; font-size:0.87em; color:#9c9c9d; user-select:none;">
-          <input type="checkbox" id="news-popup-dismiss" style="width:18px; height:18px; accent-color:#59d499; cursor:pointer;" onchange="onDismissChange(this)">
+        <div style="font-size:0.95em; line-height:1.65; color:var(--rc-mist);" id="news-popup-content"></div>
+        <label style="display:flex; align-items:center; gap:10px; margin-top:16px; cursor:pointer; font-size:0.87em; color:var(--rc-ash); user-select:none;">
+          <input type="checkbox" id="news-popup-dismiss" style="width:18px; height:18px; accent-color:var(--rc-green); cursor:pointer;" onchange="onDismissChange(this)">
           No volver a mostrar
         </label>
       </div>
@@ -1281,7 +1281,7 @@
             {% endfor %}
             {% if compras_paquete|length == 0 %}
             <tr>
-              <td colspan="4" style="text-align:center; color:#9c9c9d; padding:14px;">Sin compras en el día seleccionado</td>
+              <td colspan="4" style="text-align:center; color:var(--rc-ash); padding:14px;">Sin compras en el día seleccionado</td>
             </tr>
             {% endif %}
           </tbody>
@@ -1497,7 +1497,7 @@
               const rowsData = (comprasPorDiaDetalle && comprasPorDiaDetalle[dateSel]) ? comprasPorDiaDetalle[dateSel] : [];
               if (tbody) {
                 if (!rowsData.length) {
-                  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#9c9c9d; padding:14px;">Sin compras en el día seleccionado</td></tr>';
+                  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--rc-ash); padding:14px;">Sin compras en el día seleccionado</td></tr>';
                 } else {
                   tbody.innerHTML = rowsData.map(row => {
                     const itemDesktop = row.item || '';

@@ -13,8 +13,8 @@
         }
         
         .sales-header {
-            background: linear-gradient(135deg, #0f2233 0%, #13261d 100%);
-            color: #ffffff;
+            background: linear-gradient(135deg, var(--rc-blue-bg) 0%, var(--rc-green-bg) 100%);
+            color: var(--rc-text);
             padding: 30px;
             border-radius: 15px;
             margin-bottom: 30px;
@@ -34,7 +34,7 @@
         }
         
         .controls-section {
-            background: #07080a;
+            background: var(--rc-card);
             padding: 25px;
             border-radius: 15px;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
@@ -47,8 +47,8 @@
         }
         
         .cleanup-button {
-            background: linear-gradient(135deg, #452324, #2e2612);
-            color: #ffffff;
+            background: linear-gradient(135deg, var(--rc-ember), var(--rc-yellow-bg));
+            color: var(--rc-text);
             border: none;
             padding: 12px 25px;
             border-radius: 25px;
@@ -72,7 +72,7 @@
         
         .week-selector select {
             padding: 8px 15px;
-            border: 2px solid #2a2b2d;
+            border: 2px solid var(--rc-border);
             border-radius: 8px;
             font-size: 1em;
         }
@@ -85,43 +85,43 @@
         }
         
         .summary-card {
-            background: #07080a;
+            background: var(--rc-card);
             padding: 25px;
             border-radius: 15px;
             text-align: center;
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            border-top: 4px solid #56c2ff;
+            border-top: 4px solid var(--rc-blue);
         }
         
         .summary-card.revenue {
-            border-top-color: #59d499;
+            border-top-color: var(--rc-green);
         }
         
         .summary-card.units {
-            border-top-color: #56c2ff;
+            border-top-color: var(--rc-blue);
         }
         
         .summary-card.profit {
-            border-top-color: #ffc531;
+            border-top-color: var(--rc-yellow);
         }
         
         .summary-value {
             font-size: 2.2em;
             font-weight: 700;
-            color: #ffffff;
+            color: var(--rc-text);
             margin-bottom: 8px;
         }
         
         .summary-label {
-            color: #9c9c9d;
+            color: var(--rc-ash);
             font-size: 1em;
             font-weight: 500;
         }
         
         .back-button {
             display: inline-block;
-            background: linear-gradient(135deg, #2f3031, #2f3031);
-            color: #ffffff;
+            background: linear-gradient(135deg, var(--rc-slate), var(--rc-slate));
+            color: var(--rc-text);
             padding: 12px 25px;
             text-decoration: none;
             border-radius: 25px;
@@ -134,11 +134,11 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             text-decoration: none;
-            color: #ffffff;
+            color: var(--rc-text);
         }
         
         .game-section {
-            background: #07080a;
+            background: var(--rc-card);
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             margin-bottom: 30px;
@@ -149,22 +149,22 @@
             padding: 20px 30px;
             font-size: 1.4em;
             font-weight: 600;
-            color: #ffffff;
+            color: var(--rc-text);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         
         .freefire-latam .game-header {
-            background: linear-gradient(135deg, #452324, #2e2612);
+            background: linear-gradient(135deg, var(--rc-ember), var(--rc-yellow-bg));
         }
         
         .freefire-global .game-header {
-            background: linear-gradient(135deg, #1b1c1e, #1b1c1e);
+            background: linear-gradient(135deg, var(--rc-graphite), var(--rc-graphite));
         }
         
         .bloodstriker .game-header {
-            background: linear-gradient(135deg, #1b1c1e, #1b1c1e);
+            background: linear-gradient(135deg, var(--rc-graphite), var(--rc-graphite));
         }
         
         .game-stats {
@@ -179,62 +179,62 @@
         }
         
         .sales-table th {
-            background: #07080a;
+            background: var(--rc-card);
             padding: 15px;
             text-align: left;
             font-weight: 600;
-            color: #ffffff;
-            border-bottom: 2px solid #2a2b2d;
+            color: var(--rc-text);
+            border-bottom: 2px solid var(--rc-border);
         }
         
         .sales-table td {
             padding: 12px 15px;
-            border-bottom: 1px solid #2a2b2d;
+            border-bottom: 1px solid var(--rc-border);
         }
         
         .sales-table tr:hover {
-            background: #07080a;
+            background: var(--rc-card);
         }
         
         .package-name {
             font-weight: 600;
-            color: #ffffff;
+            color: var(--rc-text);
         }
         
         .price-cell {
             font-weight: 600;
-            color: #59d499;
+            color: var(--rc-green);
         }
         
         .units-cell {
             font-weight: 600;
-            color: #56c2ff;
+            color: var(--rc-blue);
         }
         
         .profit-cell {
             font-weight: 600;
-            color: #ffc531;
+            color: var(--rc-yellow);
         }
         
         .week-cell {
             font-size: 0.9em;
-            color: #9c9c9d;
+            color: var(--rc-ash);
         }
         
         .no-data {
             text-align: center;
             padding: 40px;
-            color: #9c9c9d;
+            color: var(--rc-ash);
         }
         
         .no-data h3 {
             margin-bottom: 10px;
-            color: #9c9c9d;
+            color: var(--rc-ash);
         }
         
         .automation-info {
-            background: linear-gradient(135deg, #1b1c1e, #1b1c1e);
-            color: #ffffff;
+            background: linear-gradient(135deg, var(--rc-graphite), var(--rc-graphite));
+            color: var(--rc-text);
             padding: 20px;
             border-radius: 15px;
             margin-bottom: 30px;
@@ -255,7 +255,7 @@
         }
         
         .week-filter {
-            background: #07080a;
+            background: var(--rc-card);
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
@@ -263,7 +263,7 @@
         
         .week-filter h4 {
             margin: 0 0 15px 0;
-            color: #ffffff;
+            color: var(--rc-text);
         }
         
         .filter-options {
@@ -274,8 +274,8 @@
         }
         
         .filter-button {
-            background: #0f2233;
-            color: #ffffff;
+            background: var(--rc-blue-bg);
+            color: var(--rc-text);
             border: none;
             padding: 8px 16px;
             border-radius: 20px;
@@ -286,12 +286,12 @@
         }
         
         .filter-button:hover {
-            background: #0f2233;
+            background: var(--rc-blue-bg);
             transform: translateY(-1px);
         }
         
         .filter-button.active {
-            background: #13261d;
+            background: var(--rc-green-bg);
         }
     </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -397,7 +397,7 @@
                             {% if sale.ganancia_estimada %}
                                 ${{ "%.2f"|format(sale.ganancia_estimada) }}
                             {% else %}
-                                <span style="color: #9c9c9d;">N/A</span>
+                                <span style="color: var(--rc-ash);">N/A</span>
                             {% endif %}
                         </td>
                     </tr>

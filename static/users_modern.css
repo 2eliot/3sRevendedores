@@ -185,7 +185,7 @@
   letter-spacing: 0.02em;
 }
 /* Contenedor circular neutro (un solo acento en todo el sistema) */
-.um-avatar { background: #1b1c1e; color: #e6e6e6; box-shadow: rgba(255,255,255,0.08) 0 0 0 1px inset; }
+.um-avatar { background: var(--rc-graphite); color: var(--rc-mist); box-shadow: rgba(var(--rc-ink),0.08) 0 0 0 1px inset; }
 
 .um-ident { flex: 1; min-width: 0; }
 .um-name {
@@ -359,7 +359,7 @@
 .um-btn-warning:hover { background: var(--um-warning); color: var(--um-on-solid); }
 .um-btn-accent:hover  { background: var(--um-accent);  color: var(--um-on-solid); }
 .um-btn-success { background: var(--um-accent) !important; color: var(--um-on-solid) !important; }
-.um-btn-success:hover { background: #ffffff !important; }
+.um-btn-success:hover { background: var(--rc-text) !important; }
 
 /* Estado de carga */
 .um-section button.is-loading { color: transparent !important; pointer-events: none; }
@@ -514,9 +514,9 @@
   cursor: pointer; transition: background-color 0.15s, border-color 0.15s;
 }
 .um-action svg { width: 14px; height: 14px; flex-shrink: 0; }
-.um-action:hover { background: #1b1c1e; border-color: var(--um-border-strong); }
-.um-action-primary { background: #e6e6e6; color: #07080a; border-color: transparent; }
-.um-action-primary:hover { background: #ffffff; }
+.um-action:hover { background: var(--rc-graphite); border-color: var(--um-border-strong); }
+.um-action-primary { background: var(--rc-mist); color: var(--rc-card); border-color: transparent; }
+.um-action-primary:hover { background: var(--rc-text); }
 @media (max-width: 720px) { .um-action { min-height: 40px; } }
 @media (max-width: 380px) { .um-actions { grid-template-columns: 1fr; } }
 
@@ -527,7 +527,7 @@
   border-radius: 16px;
   background: #0c0d0f;
   color: var(--um-text);
-  box-shadow: rgba(255, 255, 255, 0.06) 0 1px 0 0 inset, rgba(0, 0, 0, 0.6) 0 24px 64px -12px;
+  box-shadow: rgba(var(--rc-ink), 0.06) 0 1px 0 0 inset, rgba(0, 0, 0, 0.6) 0 24px 64px -12px;
   font-family: 'Inter', system-ui, sans-serif;
 }
 .um-dialog[open] { animation: um-dlg-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -558,8 +558,8 @@
 }
 .um-dlg-cancel { background: transparent; color: var(--um-text); border: 1px solid var(--um-border-strong); }
 .um-dlg-cancel:hover { background: var(--um-surface-2); }
-.um-dlg-submit { background: #e6e6e6; color: #07080a; border: 1px solid transparent; }
-.um-dlg-submit:hover { background: #ffffff; }
+.um-dlg-submit { background: var(--rc-mist); color: var(--rc-card); border: 1px solid transparent; }
+.um-dlg-submit:hover { background: var(--rc-text); }
 @media (prefers-reduced-motion: reduce) { .um-dialog[open] { animation: none; } }
 /* Centrado explícito: un reset global anula el margin:auto nativo de <dialog> */
 .um-dialog { position: fixed; inset: 0; margin: auto !important; height: fit-content; max-height: calc(100vh - 32px); overflow: auto; }

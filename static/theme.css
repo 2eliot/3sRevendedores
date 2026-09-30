@@ -23,6 +23,13 @@
   --rc-green: #59d499;
   --rc-blue: #56c2ff;
   --rc-yellow: #ffc531;
+  --rc-green-bg: #13261d;
+  --rc-yellow-bg: #2e2612;
+  --rc-blue-bg: #0f2233;
+  --rc-ink: 255, 255, 255;       /* rgb del texto, para rgba(var(--rc-ink), a) */
+  --rc-canvas-rgb: 4, 5, 6;
+  --rc-accent: #ff6363;          /* color de acento (elegible en Tema) */
+  --rc-accent-ink: #07080a;      /* texto sobre el acento */
   --rc-key-shadow: rgba(255, 255, 255, 0.05) 0 1px 0 0 inset, rgba(255, 255, 255, 0.08) 0 0 0 1px, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
   --rc-lift: rgba(0, 0, 0, 0.03) 0 7px 3px 0, rgba(0, 0, 0, 0.25) 0 4px 4px 0;
   --rc-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -45,7 +52,7 @@ p, li, td, label, small { font-family: inherit; }
 a { color: var(--rc-text); text-decoration-color: var(--rc-border-strong); text-underline-offset: 3px; }
 a:hover { color: var(--rc-text); text-decoration-color: var(--rc-ash); }
 hr { border: 0; border-top: 1px solid var(--rc-border); }
-::selection { background: rgba(255, 99, 99, 0.35); color: #fff; }
+::selection { background: rgba(255, 99, 99, 0.35); color: var(--rc-text); }
 code, kbd, pre, samp { font-family: var(--rc-mono); }
 
 /* Barra de desplazamiento discreta */
@@ -57,7 +64,7 @@ code, kbd, pre, samp { font-family: var(--rc-mono); }
 /* ---------- Campos (pozo hundido) ---------- */
 input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
 select, textarea {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(var(--rc-ink), 0.05) !important;
   color: var(--rc-text) !important;
   border: 1px solid var(--rc-border) !important;
   border-radius: 8px;
@@ -68,7 +75,7 @@ input::placeholder, textarea::placeholder { color: var(--rc-smoke) !important; o
 input:focus, select:focus, textarea:focus {
   outline: none !important;
   border-color: var(--rc-ash) !important;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 0 0 3px rgba(var(--rc-ink), 0.08) !important;
 }
 select option { background: var(--rc-recess); color: var(--rc-text); }
 input:disabled, select:disabled, textarea:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -97,7 +104,7 @@ button:disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .recarga-btn:not(.recarga-btn-secondary), .save-btn, .btn-save, .gc-btn-save, .btn-approve, .block-btn.approve {
   background: var(--rc-mist) !important;
   background-image: none !important;
-  color: #07080a !important;
+  color: var(--rc-card) !important;
   border: 1px solid transparent !important;
   box-shadow: var(--rc-lift) !important;
   font-weight: 600 !important;
@@ -106,7 +113,7 @@ button:disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .submit-btn:hover, .juego-form button:hover, .btn-primary:hover, .btn-create-news:hover,
 .btn-update-price:hover, .btn-update-name:hover, .btn-admin-manual:hover,
 .btn-external-api:hover, .btn-test-api:hover {
-  background: #ffffff !important;
+  background: var(--rc-text) !important;
   transform: none !important;
 }
 
@@ -139,7 +146,7 @@ button:disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-local.active, .btn-api.active, .day-btn.active, .day-btn-admin.active,
 .profit-switch-btn.active, .costo-subtab.active {
   background: var(--rc-mist) !important;
-  color: #07080a !important;
+  color: var(--rc-card) !important;
   border-color: transparent !important;
 }
 .btn-reject, .block-btn.reject {
@@ -157,10 +164,10 @@ button:disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 /* Estados: tinte oscuro + texto de color (legible, no chillón) */
-.btn-success { background: #13261d !important; color: var(--rc-green) !important; border: 1px solid rgba(89, 212, 153, 0.25) !important; }
-.btn-warning { background: #2e2612 !important; color: var(--rc-yellow) !important; border: 1px solid rgba(255, 197, 49, 0.25) !important; }
+.btn-success { background: var(--rc-green-bg) !important; color: var(--rc-green) !important; border: 1px solid rgba(89, 212, 153, 0.25) !important; }
+.btn-warning { background: var(--rc-yellow-bg) !important; color: var(--rc-yellow) !important; border: 1px solid rgba(255, 197, 49, 0.25) !important; }
 .btn-danger  { background: var(--rc-ember) !important; color: var(--rc-coral) !important; border: 1px solid rgba(255, 99, 99, 0.3) !important; }
-.btn-info    { background: #0f2233 !important; color: var(--rc-blue) !important; border: 1px solid rgba(86, 194, 255, 0.25) !important; }
+.btn-info    { background: var(--rc-blue-bg) !important; color: var(--rc-blue) !important; border: 1px solid rgba(86, 194, 255, 0.25) !important; }
 .btn-success:hover, .btn-warning:hover, .btn-danger:hover, .btn-info:hover { filter: brightness(1.25); }
 
 /* Foco visible para teclado (skill: accesibilidad #1) */
@@ -180,7 +187,7 @@ th {
 }
 thead, thead tr, thead th { background: var(--rc-card) !important; }
 td, th { border-color: var(--rc-border) !important; }
-tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+tbody tr:hover { background: rgba(var(--rc-ink), 0.02); }
 
 /* ---------- Superficies con sombra tipo "tecla" ---------- */
 .juego-container, .stat-card, .stats-admin-section, .tabs-container, .admin-sidebar,
@@ -214,7 +221,7 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
 /* Globo de notificación = uso de marca del coral (texto oscuro: 6.9:1) */
 .wallet-notification-badge, .notification-badge, .notif-badge, .badge-count {
   background: var(--rc-coral) !important;
-  color: #07080a !important;
+  color: var(--rc-card) !important;
   border-color: var(--rc-canvas) !important;
   box-shadow: none !important;
 }

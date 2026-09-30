@@ -10,7 +10,7 @@
                 max-width: 600px;
                 margin: 0 auto;
                 padding: 16px;
-                background: #07080a;
+                background: var(--rc-card);
                 border-radius: 18px;
                 box-shadow: 0 4px 24px rgba(0,0,0,0.08);
             }
@@ -24,11 +24,11 @@
             .profit-panel-header .profit-title {
                 font-size: 1.3rem;
                 font-weight: 600;
-                color: #ffffff;
+                color: var(--rc-text);
             }
             .profit-panel-header .profit-total {
                 font-size: 1.1rem;
-                color: #59d499;
+                color: var(--rc-green);
                 font-weight: 500;
             }
             .profit-panel-header .profit-switches {
@@ -39,19 +39,19 @@
                 padding: 7px 18px;
                 border-radius: 20px;
                 border: none;
-                background: #07080a;
-                color: #ffffff;
+                background: var(--rc-card);
+                color: var(--rc-text);
                 font-weight: 500;
                 cursor: pointer;
                 transition: background 0.2s;
             }
             .profit-switch-btn.active {
-                background: #0f2233;
-                color: #ffffff;
+                background: var(--rc-blue-bg);
+                color: var(--rc-text);
             }
             .profit-panel-body {
                 margin-top: 10px;
-                background: #07080a;
+                background: var(--rc-card);
                 border-radius: 12px;
                 padding: 12px 8px;
                 min-height: 180px;
@@ -68,14 +68,14 @@
             .profit-day {
                 min-width: 32px;
                 height: 32px;
-                background: #07080a;
+                background: var(--rc-card);
                 border-radius: 8px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 font-size: 0.95em;
-                color: #9c9c9d;
-                border: 1px solid #2a2b2d;
+                color: var(--rc-ash);
+                border: 1px solid var(--rc-border);
                 margin-bottom: 2px;
             }
             @media (max-width: 700px) {
@@ -179,7 +179,7 @@
         {% if not profit_data %}
         <div class="game-section">
             <div class="game-header">📋 Sin Datos</div>
-            <div style="padding: 30px; text-align: center; color: #9c9c9d;">
+            <div style="padding: 30px; text-align: center; color: var(--rc-ash);">
                 <p>No hay datos de rentabilidad disponibles.</p>
                 <p>Los datos se generarán automáticamente cuando se configuren los precios de compra.</p>
             </div>
@@ -199,8 +199,8 @@
                         {% set value = daily_profit[day] if daily_profit is defined and day in daily_profit else 0 %}
                         <div class="profit-day" style="flex-direction:column;justify-content:flex-end;align-items:center;display:flex;">
                             <div style="width:16px;height:{{ 8 + (value/10)|int }}px;background:{{ '#28a745' if value > 0 else '#dc3545' }};border-radius:4px;margin-bottom:2px;"></div>
-                            <span style="font-size:0.8em;color:#ffffff;">{{ day }}</span>
-                            <span style="font-size:0.7em;color:#9c9c9d;">${{ value }}</span>
+                            <span style="font-size:0.8em;color:var(--rc-text);">{{ day }}</span>
+                            <span style="font-size:0.7em;color:var(--rc-ash);">${{ value }}</span>
                         </div>
                     {% endfor %}
                 </div>

@@ -21,18 +21,18 @@
       padding: 0.75rem 1rem;
       font-size: 1rem;
       border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(var(--rc-ink),0.12);
       width: 100%;
       margin-bottom: 0;
-      background: rgba(255,255,255,0.08);
-      color: #e6e6e6;
+      background: rgba(var(--rc-ink),0.08);
+      color: var(--rc-mist);
       transition: all 0.3s ease;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .juego-form input.form-control:focus {
       outline: none;
       border-color: var(--dg-accent) !important;
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.08) !important;
+      box-shadow: 0 0 0 3px rgba(var(--rc-ink),0.08) !important;
       transform: translateY(-1px);
     }
     @media (max-width: 600px) {
@@ -53,7 +53,7 @@
     .juego-form select:focus,
     .juego-form input:focus {
       border-color: var(--dg-accent) !important;
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.08) !important;
+      box-shadow: 0 0 0 3px rgba(var(--rc-ink),0.08) !important;
     }
     .juego-descripcion { border-left: 4px solid var(--dg-accent); }
   </style>
@@ -81,7 +81,7 @@
   <header class="header">
     <div class="hamburger" onclick="toggleMenu()">
       <svg class="icon" viewBox="0 0 24 24">
-        <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <div id="menu-juegos" class="menu-juegos" onclick="event.stopPropagation()">
         {% set n_id = (dynamic_games_id_menu|length) %}
@@ -127,13 +127,13 @@
       </div>
     </div>
     <div class="icon-container">
-      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
       <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="Mi Dashboard">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       </div>
-      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
       <div class="user-icon" onclick="toggleUserBox()">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">
           <p><strong>Correo:</strong> {{ session.get('usuario', '---') }}</p>
           <label class="price-toggle" onclick="event.stopPropagation()">
@@ -280,7 +280,7 @@
       <div class="solicitud-container">
         <div class="solicitud-info">
           <p class="solicitud-label">Estado:</p>
-          <p class="solicitud-estado" style="color: #59d499;">✅ COMPLETADO</p>
+          <p class="solicitud-estado" style="color: var(--rc-green);">✅ COMPLETADO</p>
         </div>
         <div class="detalles-info">
           <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
@@ -291,7 +291,7 @@
           <p class="dx-control"><strong>Número de Control:</strong> {{ numero_control }}</p>
           {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
-          <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(var(--rc-ink),0.1);color:var(--rc-ash);font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
           {% if serial_key %}<div class="dx-code"><span class="dx-code-label">Código</span><span class="dx-code-value">{{ serial_key }}</span><button type="button" class="dx-copy" data-copy="{{ serial_key }}" aria-label="Copiar código" title="Copiar código"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>{% endif %}
         </div>
       </div>
@@ -300,30 +300,30 @@
       <div class="solicitud-container">
         <div class="solicitud-info">
           <p class="solicitud-label">Estado:</p>
-          <p class="solicitud-estado" style="color: #ffc531;">⏳ GENERANDO CÓDIGO</p>
+          <p class="solicitud-estado" style="color: var(--rc-yellow);">⏳ GENERANDO CÓDIGO</p>
         </div>
         <div class="detalles-info">
           <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
           <p><strong>Paquete:</strong> {{ paquete_nombre }}</p>
-          <div style="margin:10px 0;padding:12px 14px;background:rgba(255, 197, 49, 0.12);border:1px solid #ffc531;border-radius:10px;">
-            <p style="color:#ffc531;font-size:0.9em;">⏳ Tu código está siendo generado. Aparecerá automáticamente en tu historial cuando esté listo.</p>
+          <div style="margin:10px 0;padding:12px 14px;background:rgba(255, 197, 49, 0.12);border:1px solid var(--rc-yellow);border-radius:10px;">
+            <p style="color:var(--rc-yellow);font-size:0.9em;">⏳ Tu código está siendo generado. Aparecerá automáticamente en tu historial cuando esté listo.</p>
           </div>
           <p class="dx-control"><strong>Número de Control:</strong> {{ numero_control }}</p>
           {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
-          <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(var(--rc-ink),0.1);color:var(--rc-ash);font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
           {% if serial_key %}<div class="dx-code"><span class="dx-code-label">Código</span><span class="dx-code-value">{{ serial_key }}</span><button type="button" class="dx-copy" data-copy="{{ serial_key }}" aria-label="Copiar código" title="Copiar código"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>{% endif %}
         </div>
       </div>
       <div class="entrega-info">
-        <p>📋 Ve a tu <a href="/" style="color:#ffffff;">historial de transacciones</a> para ver el código cuando esté disponible.</p>
+        <p>📋 Ve a tu <a href="/" style="color:var(--rc-text);">historial de transacciones</a> para ver el código cuando esté disponible.</p>
       </div>
       {% elif estado == 'procesando' %}
       <h3>🎯 ¡Recarga Enviada!</h3>
       <div class="solicitud-container">
         <div class="solicitud-info">
           <p class="solicitud-label">Estado:</p>
-          <p class="solicitud-estado" style="color: #ffc531;">⏳ PROCESANDO</p>
+          <p class="solicitud-estado" style="color: var(--rc-yellow);">⏳ PROCESANDO</p>
         </div>
         <div class="detalles-info">
           <p><strong>{{ game.icono }} {{ game.nombre }}</strong></p>
@@ -334,7 +334,7 @@
           <p class="dx-control"><strong>Número de Control:</strong> {{ numero_control }}</p>
           {% if gamepoint_ref %}<p class="dx-ref"><strong>Ref:</strong> {{ gamepoint_ref }}</p>{% endif %}
           <p><strong>Fecha:</strong> {{ ahora_local() }}</p>
-          <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.1);color:#9c9c9d;font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          <p style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(var(--rc-ink),0.1);color:var(--rc-ash);font-size:0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
           {% if serial_key %}<div class="dx-code"><span class="dx-code-label">Código</span><span class="dx-code-value">{{ serial_key }}</span><button type="button" class="dx-copy" data-copy="{{ serial_key }}" aria-label="Copiar código" title="Copiar código"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>{% endif %}
         </div>
       </div>

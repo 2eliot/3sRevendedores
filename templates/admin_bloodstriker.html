@@ -8,8 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .bloodstriker-header {
-            background: linear-gradient(90deg, #452324, #452324);
-            color: #ffffff;
+            background: linear-gradient(90deg, var(--rc-ember), var(--rc-ember));
+            color: var(--rc-text);
             padding: 20px;
             text-align: center;
             margin-bottom: 30px;
@@ -17,18 +17,18 @@
         }
         
         .transaction-card {
-            background: #07080a;
+            background: var(--rc-card);
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
             overflow: hidden;
-            border-left: 5px solid #ff6363;
+            border-left: 5px solid var(--rc-coral);
         }
         
         .transaction-header {
-            background: #07080a;
+            background: var(--rc-card);
             padding: 15px 20px;
-            border-bottom: 1px solid #2a2b2d;
+            border-bottom: 1px solid var(--rc-border);
         }
         
         .transaction-body {
@@ -36,17 +36,17 @@
         }
         
         .transaction-actions {
-            background: #07080a;
+            background: var(--rc-card);
             padding: 15px 20px;
-            border-top: 1px solid #2a2b2d;
+            border-top: 1px solid var(--rc-border);
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
         }
         
         .btn-approve {
-            background: #13261d;
-            color: #ffffff;
+            background: var(--rc-green-bg);
+            color: var(--rc-text);
             border: none;
             padding: 10px 20px;
             border-radius: 5px;
@@ -56,13 +56,13 @@
         }
         
         .btn-approve:hover {
-            background: #13261d;
+            background: var(--rc-green-bg);
             transform: translateY(-2px);
         }
         
         .btn-reject {
-            background: #452324;
-            color: #ffffff;
+            background: var(--rc-ember);
+            color: var(--rc-text);
             border: none;
             padding: 10px 20px;
             border-radius: 5px;
@@ -72,7 +72,7 @@
         }
         
         .btn-reject:hover {
-            background: #452324;
+            background: var(--rc-ember);
             transform: translateY(-2px);
         }
         
@@ -84,28 +84,28 @@
         }
         
         .info-item {
-            background: #07080a;
+            background: var(--rc-card);
             padding: 10px 15px;
             border-radius: 5px;
-            border-left: 3px solid #ff6363;
+            border-left: 3px solid var(--rc-coral);
         }
         
         .info-label {
             font-weight: 600;
-            color: #ff6363;
+            color: var(--rc-coral);
             font-size: 12px;
             text-transform: uppercase;
             margin-bottom: 5px;
         }
         
         .info-value {
-            color: #ffffff;
+            color: var(--rc-text);
             font-size: 14px;
         }
         
         .status-pending {
-            background: #2e2612;
-            color: #ffc531;
+            background: var(--rc-yellow-bg);
+            color: var(--rc-yellow);
             padding: 5px 10px;
             border-radius: 15px;
             font-size: 12px;
@@ -116,7 +116,7 @@
         .notes-textarea {
             width: 100%;
             padding: 10px;
-            border: 1px solid #2a2b2d;
+            border: 1px solid var(--rc-border);
             border-radius: 5px;
             resize: vertical;
             min-height: 60px;
@@ -126,16 +126,16 @@
         .no-transactions {
             text-align: center;
             padding: 40px;
-            color: #9c9c9d;
-            background: #07080a;
+            color: var(--rc-ash);
+            background: var(--rc-card);
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
         
         .back-btn {
             display: inline-block;
-            background: #2f3031;
-            color: #ffffff;
+            background: var(--rc-slate);
+            color: var(--rc-text);
             padding: 12px 25px;
             border-radius: 8px;
             text-decoration: none;
@@ -145,7 +145,7 @@
         }
         
         .back-btn:hover {
-            background: #2f3031;
+            background: var(--rc-slate);
             transform: translateY(-2px);
         }
     </style>
