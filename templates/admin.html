@@ -693,13 +693,7 @@
               <label style="color:#e6e6e6;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
                 <input type="checkbox" id="cj-local-stock"> Etiqueta tarjeta (stock local)
               </label>
-              <label style="color:#e6e6e6;font-size:12px;display:flex;align-items:center;gap:6px;">
-                Tipo en menú:
-                <select id="cj-categoria" style="padding:4px 6px;font-size:12px;">
-                  <option value="giftcard">Gift Card</option>
-                  <option value="pin">Juego PIN</option>
-                </select>
-              </label>
+
             </div>
             <div id="cj-server-opts-row" style="display:none;margin-top:6px;">
               <label style="color:#9c9c9d;font-size:11px;display:block;">Opciones de servidor (separadas por coma)</label>
@@ -1509,7 +1503,6 @@
       document.getElementById('cj-dual-id').checked = false;
       document.getElementById('cj-server-select').checked = false;
       document.getElementById('cj-local-stock').checked = false;
-      document.getElementById('cj-categoria').value = 'giftcard';
       document.getElementById('cj-server-opciones').value = '';
       document.getElementById('cj-server-opts-row').style.display = 'none';
       document.getElementById('cj-status').innerHTML = '';
@@ -1530,7 +1523,6 @@
       document.getElementById('cj-dual-id').checked = !!game.dual_id;
       document.getElementById('cj-server-select').checked = !!game.server_enabled;
       document.getElementById('cj-local-stock').checked = !!game.usa_stock_local;
-      document.getElementById('cj-categoria').value = game.categoria || 'giftcard';
       document.getElementById('cj-server-opciones').value = game.server_options || '';
       document.getElementById('cj-server-opts-row').style.display = game.server_enabled ? 'block' : 'none';
       document.getElementById('cj-status').innerHTML = '';
@@ -1561,7 +1553,6 @@
         gamepoint_product_id: productId || 0,
         modo,
         usa_stock_local: localStock,
-        categoria: document.getElementById('cj-categoria').value,
         campo_id_label: 'ID de Jugador',
         campo_id_placeholder: 'Ingresa tu ID'
       };

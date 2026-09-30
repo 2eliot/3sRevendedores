@@ -74,16 +74,23 @@
       <svg class="icon" viewBox="0 0 24 24">
         <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
       </svg>
-      <div id="menu-juegos" class="menu-juegos" style="text-align:left;">
-        <p class="menu-title">Juegos ID</p>
+      <div id="menu-juegos" class="menu-juegos" onclick="event.stopPropagation()">
+        <p class="menu-title">
+          <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/></svg>
+          Juegos ID
+        </p>
         <ul>
+          {% if (games_active and games_active.freefire_id) or session.get('is_admin') %}
+          <li><a href="/juego/freefire_id">Free Fire ID</a></li>
+          {% endif %}
           {% for dg in dynamic_games_id_menu %}
           <li><a href="/juego/d/{{ dg.slug }}">{{ dg.nombre }}</a></li>
           {% endfor %}
         </ul>
-
-        <li style="border-top:1px solid rgba(255,255,255,0.12); margin:6px 0; list-style:none;"></li>
-        <p class="menu-title">Juegos PIN</p>
+        <p class="menu-title">
+          <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M13 6v2M13 11v2M13 16v2"/></svg>
+          Códigos
+        </p>
         <ul>
           {% if (games_active and games_active.freefire_global) or session.get('is_admin') %}
           <li><a href="/juego/freefire">Free Fire</a></li>
@@ -91,19 +98,15 @@
           {% for dg in dynamic_games_pinjuego_menu %}
           <li><a href="/juego/d/{{ dg.slug }}">{{ dg.nombre }}</a></li>
           {% endfor %}
-        </ul>
-
-        <li style="border-top:1px solid rgba(255,255,255,0.12); margin:6px 0; list-style:none;"></li>
-        <p class="menu-title">Gift Cards</p>
-        <ul>
           {% for dg in dynamic_games_pin_menu %}
           <li><a href="/juego/d/{{ dg.slug }}">{{ dg.nombre }}</a></li>
           {% endfor %}
         </ul>
-
-        <li style="border-top:1px solid #2a2b2d; margin:6px 0; list-style:none;"></li>
-        <ul>
-          <li><a href="/billetera">Recargar Usuario</a></li>
+        <ul class="menu-footer">
+          <li><a href="/billetera" class="menu-recargar">
+            <svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h2"/><path d="M2 9h20"/></svg>
+            Recargar saldo
+          </a></li>
         </ul>
       </div>
     </div>

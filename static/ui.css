@@ -733,3 +733,80 @@ tbody tr:last-child td { border-bottom: 0 !important; }
 
 /* La barra lateral se vuelve de solo iconos por debajo de 992px: sin marca de texto */
 @media (max-width: 992px) { .admin-sidebar::before { display: none !important; } }
+
+/* ============================================================
+   MENÚ DE JUEGOS: columna lateral desplegable desde ☰
+   ============================================================ */
+.menu-juegos {
+  display: flex !important;
+  flex-direction: column;
+  gap: 4px;
+  position: fixed !important;
+  top: var(--ui-header-h) !important;
+  left: 0 !important;
+  width: min(300px, 86vw) !important;
+  height: calc(100vh - var(--ui-header-h));
+  height: calc(100dvh - var(--ui-header-h));
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 16px 12px !important;
+  border-radius: 0 !important;
+  background: var(--rc-card) !important;
+  border: 0 !important;
+  border-right: 1px solid var(--rc-border) !important;
+  box-shadow: none !important;
+  overflow-y: auto;
+  text-align: left !important;
+  z-index: 40;
+  transform: translateX(-100%);
+  visibility: hidden;
+  animation: none !important;
+  transition: transform 0.22s var(--ui-ease), visibility 0s linear 0.22s;
+}
+.menu-juegos.visible {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.22s var(--ui-ease), visibility 0s;
+}
+/* Fondo oscurecido bajo la cabecera mientras el menú está abierto */
+body:has(#menu-juegos.visible)::after {
+  content: '';
+  position: fixed;
+  inset: var(--ui-header-h) 0 0 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 45;
+  animation: ui-fade 0.2s ease both;
+}
+@keyframes ui-fade { from { opacity: 0; } to { opacity: 1; } }
+.hamburger:has(.menu-juegos.visible) { background: rgba(255, 255, 255, 0.08); }
+
+/* Títulos de sección con icono */
+.menu-juegos .menu-title {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 8px 4px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rc-ash) !important;
+}
+.menu-juegos .menu-title:first-child { margin-top: 0 !important; }
+.menu-ico { width: 18px; height: 18px; flex-shrink: 0; color: var(--rc-mist); }
+.menu-juegos ul { list-style: none; margin: 0 !important; padding: 0 !important; }
+.menu-juegos ul a { padding-left: 36px !important; }
+.menu-juegos ul:empty { display: none; }
+
+/* "Recargar saldo" fijo al pie de la columna */
+.menu-juegos .menu-footer {
+  margin-top: auto !important;
+  padding-top: 12px !important;
+  border-top: 1px solid var(--rc-border);
+}
+.menu-juegos .menu-footer a.menu-recargar {
+  gap: 10px;
+  padding-left: 8px !important;
+  color: var(--rc-text) !important;
+  font-weight: 600 !important;
+}
