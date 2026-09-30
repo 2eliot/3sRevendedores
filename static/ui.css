@@ -1801,3 +1801,12 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .user-box .ub-theme-text small { font-size: 12px; color: var(--rc-ash); font-weight: 400; }
 .user-box .ub-chev { width: 16px; height: 16px; color: var(--rc-smoke); }
 .user-box .logout-btn { border-top: 1px solid var(--rc-border) !important; }
+
+/* ---------- Juegos con Zone ID: el ID de jugador ocupa casi todo, Zone ID estrecho (4 dígitos) ---------- */
+.juego-form .form-row:has(#player_id2) { flex-direction: row !important; align-items: flex-start; }
+.juego-form .form-row:has(#player_id2) > .form-col:has(#player_id) { flex: 1 1 auto !important; min-width: 0; }
+.juego-form .form-row:has(#player_id2) > .form-col:has(#player_id2) { flex: 0 0 96px !important; }
+@media (max-width: 420px) {
+  .juego-form .form-row:has(#player_id2) { flex-direction: column !important; }
+  .juego-form .form-row:has(#player_id2) > .form-col:has(#player_id2) { flex-basis: auto !important; width: 96px; }
+}
