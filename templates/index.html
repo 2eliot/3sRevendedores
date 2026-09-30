@@ -279,7 +279,7 @@
                 <div class="ffid-voucher-line"><strong>Jugador:</strong> <span class="ffid-player-name">{{ transaction.player_name }}</span></div>
                 {% endif %}
                 {% if transaction.get('player_id') %}
-                <div class="ffid-voucher-line"><strong>ID de Jugador:</strong> {{ transaction.player_id }}</div>
+                <div class="ffid-voucher-line"><strong>ID de Jugador:</strong> <span class="ffid-player-name">{{ transaction.player_id }}</span></div>
                 {% endif %}
                 <div class="ffid-voucher-line"><strong>Número de Control:</strong> {{ transaction.numero_control }}</div>
                 {% if transaction.get('gamepoint_ref') %}
