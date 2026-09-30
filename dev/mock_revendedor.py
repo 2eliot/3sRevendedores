@@ -43,6 +43,10 @@ def recharge():
     ref = 'MOCK-' + secrets.token_hex(4).upper()
     name = f'Jugador_{player[-4:] or "0000"}'
 
+    if str(data.get('package_id')) == '2013':
+        orders[order_id] = {'status': 'fallida', 'error': 'Paquete sin stock (simulado)'}
+        return jsonify(ok=False, error='Paquete sin stock (simulado)'), 400
+
     if player.endswith('0000'):
         orders[order_id] = {'status': 'fallida', 'error': 'ID de jugador no encontrado (simulado)'}
         return jsonify(ok=False, error='ID de jugador no encontrado (simulado)'), 400
@@ -88,6 +92,26 @@ def order_status():
     if order['status'] == 'procesando' and time.time() - order['created'] >= PENDING_SECONDS:
         order['status'] = 'completada'
     return jsonify(ok=True, found=True, status=order['status'], order=order)
+
+
+CATALOG = [
+    {'game_id': 201, 'name': 'free fire 20%', 'packages': [
+        {'package_id': 2011, 'name': 'Recarga Free Fire Razer - 100 Diamantes + 10 Bono', 'price': 0.70},
+        {'package_id': 2012, 'name': 'Recarga Free Fire Razer - 310 Diamantes + 31 Bono', 'price': 2.10},
+        {'package_id': 2013, 'name': 'Recarga Free Fire Razer - 520 Diamantes + 52 Bono', 'price': 3.50}]},
+    {'game_id': 101, 'name': 'Mobile Legends', 'packages': [
+        {'package_id': 1, 'name': '86 Diamantes', 'price': 1.40}, {'package_id': 2, 'name': '172 Diamantes', 'price': 2.80},
+        {'package_id': 3, 'name': '257 Diamantes', 'price': 4.10}, {'package_id': 4, 'name': '706 Diamantes', 'price': 11.00}]},
+    {'game_id': 'GC-NETFLIX', 'name': 'Netflix Gift Card', 'packages': [
+        {'package_id': 26, 'name': 'Netflix $10', 'price': 9.50}, {'package_id': 27, 'name': 'Netflix $25', 'price': 23.50}]},
+]
+
+
+@app.get('/api/v1/products')
+def products():
+    if not _auth_ok():
+        return jsonify(ok=False, error='API key inválida (mock)'), 401
+    return jsonify(ok=True, games=CATALOG)
 
 
 @app.route('/api/v1/verify-name', methods=['POST'])

@@ -1111,6 +1111,24 @@ def init_db():
         ''')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_rev_mappings_paquete ON rev_item_mappings(paquete_id)')
 
+        # Pasos del mapeo: un paquete local puede ejecutar varias recargas remotas en orden
+        # (paquetes distintos y/o el mismo paquete N veces). rev_item_mappings sigue siendo
+        # la cabecera (auto_enabled/active) y guarda el primer ítem por compatibilidad.
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS rev_item_mapping_steps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                juego_id INTEGER NOT NULL,
+                paquete_id INTEGER NOT NULL,
+                orden INTEGER NOT NULL DEFAULT 0,
+                remote_product_id TEXT NOT NULL,
+                remote_package_id TEXT NOT NULL,
+                remote_label TEXT DEFAULT '',
+                cantidad INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_rev_steps_paquete ON rev_item_mapping_steps(juego_id, paquete_id)')
+
         # Tablas para API de marca blanca (WebService accounts + órdenes)
         init_whitelabel_tables(cursor)
 
@@ -2328,6 +2346,11 @@ def _dyngame_serial_poll_loop():
             poll_pending_reseller_transactions()
         except Exception as e:
             logger.error(f"[Reseller Recon Loop] Error: {e}")
+        try:
+            from dynamic_games import poll_pending_reseller_multi
+            poll_pending_reseller_multi()
+        except Exception as e:
+            logger.error(f"[Reseller Multi Loop] Error: {e}")
         time_module.sleep(60)
 
 _dyngame_poll_thread = threading.Thread(target=_dyngame_serial_poll_loop, daemon=True)
@@ -7933,7 +7956,120 @@ def admin_revendedores_mapping_data():
     catalog = [dict(r) for r in catalog_rows]
     mappings = [dict(r) for r in mappings_rows]
 
-    return jsonify({'games': games_out, 'catalog': catalog, 'mappings': mappings})
+    conn = get_db_connection()
+    price_rows = conn.execute('SELECT id, raw_json FROM rev_catalog_items WHERE active = TRUE').fetchall()
+    steps_rows = conn.execute(
+        'SELECT juego_id, paquete_id, orden, remote_product_id, remote_package_id, remote_label, cantidad '
+        'FROM rev_item_mapping_steps ORDER BY juego_id, paquete_id, orden'
+    ).fetchall()
+    conn.close()
+    prices = {}
+    for r in price_rows:
+        try:
+            prices[r['id']] = float((json.loads(r['raw_json'] or '{}') or {}).get('price') or 0)
+        except Exception:
+            prices[r['id']] = 0
+    for c in catalog:
+        c['price'] = prices.get(c['id'], 0)
+    steps = {}
+    for r in steps_rows:
+        steps.setdefault(f"{r['juego_id']}:{r['paquete_id']}", []).append({
+            'remote_product_id': r['remote_product_id'], 'remote_package_id': r['remote_package_id'],
+            'remote_label': r['remote_label'], 'cantidad': r['cantidad']})
+    # Mapeos antiguos (un solo ítem, sin pasos) se muestran como 1 ítem × 1
+    for m in mappings:
+        steps.setdefault(f"{m['juego_id']}:{m['paquete_id']}", [{
+            'remote_product_id': m['remote_product_id'], 'remote_package_id': m['remote_package_id'],
+            'remote_label': m['remote_label'], 'cantidad': 1}])
+
+    return jsonify({'games': games_out, 'catalog': catalog, 'mappings': mappings, 'steps': steps})
+
+
+MAX_MAPPING_UNITS = 50  # tope de recargas remotas por compra
+
+
+@app.route('/admin/revendedores/mapping-steps', methods=['POST'])
+def admin_revendedores_mapping_steps():
+    """Guarda el mapeo de UN paquete local como lista ordenada de ítems remotos.
+
+    JSON: {juego_id, paquete_id, auto_enabled, items: [{remote_product_id, remote_package_id, cantidad}]}
+    items vacío → elimina el mapeo del paquete.
+    """
+    if not session.get('is_admin'):
+        return jsonify({'error': 'Acceso denegado'}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        juego_id = int(data.get('juego_id'))
+        paquete_id = int(data.get('paquete_id'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Juego o paquete no válido'}), 400
+    items = data.get('items') or []
+    if not isinstance(items, list):
+        return jsonify({'error': 'Formato de ítems no válido'}), 400
+    auto_en = bool(data.get('auto_enabled'))
+
+    conn = get_db_connection()
+    try:
+        pkg = conn.execute('SELECT id FROM paquetes_dinamicos WHERE id = ? AND juego_id = ?', (paquete_id, juego_id)).fetchone()
+        if not pkg:
+            conn.close()
+            return jsonify({'error': 'El paquete no pertenece a ese juego'}), 400
+        clean = []
+        for it in items:
+            r_prod = str((it or {}).get('remote_product_id') or '').strip()
+            r_pkg = str((it or {}).get('remote_package_id') or '').strip()
+            try:
+                cant = int((it or {}).get('cantidad') or 1)
+            except (TypeError, ValueError):
+                cant = 0
+            if not r_prod or not r_pkg:
+                conn.close()
+                return jsonify({'error': 'Cada ítem necesita producto y paquete remoto'}), 400
+            if cant < 1 or cant > MAX_MAPPING_UNITS:
+                conn.close()
+                return jsonify({'error': f'La cantidad debe estar entre 1 y {MAX_MAPPING_UNITS}'}), 400
+            cat = conn.execute(
+                'SELECT remote_product_name, remote_package_name FROM rev_catalog_items WHERE remote_product_id = ? AND remote_package_id = ?',
+                (r_prod, r_pkg)).fetchone()
+            label = f"{cat['remote_product_name']} – {cat['remote_package_name']}" if cat else ''
+            clean.append((r_prod, r_pkg, label, cant))
+        if sum(c[3] for c in clean) > MAX_MAPPING_UNITS:
+            conn.close()
+            return jsonify({'error': f'Máximo {MAX_MAPPING_UNITS} recargas por paquete'}), 400
+
+        conn.execute('DELETE FROM rev_item_mapping_steps WHERE juego_id = ? AND paquete_id = ?', (juego_id, paquete_id))
+        if not clean:
+            conn.execute('DELETE FROM rev_item_mappings WHERE juego_id = ? AND paquete_id = ?', (juego_id, paquete_id))
+        else:
+            first = clean[0]
+            existing = conn.execute('SELECT id FROM rev_item_mappings WHERE juego_id = ? AND paquete_id = ?',
+                                    (juego_id, paquete_id)).fetchone()
+            if existing:
+                conn.execute('''
+                    UPDATE rev_item_mappings
+                    SET remote_product_id = ?, remote_package_id = ?, remote_label = ?,
+                        auto_enabled = ?, active = TRUE, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                ''', (first[0], first[1], first[2], auto_en, existing['id']))
+            else:
+                conn.execute('''
+                    INSERT INTO rev_item_mappings
+                    (juego_id, paquete_id, remote_product_id, remote_package_id, remote_label, auto_enabled)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (juego_id, paquete_id, first[0], first[1], first[2], auto_en))
+            for i, (r_prod, r_pkg, label, cant) in enumerate(clean):
+                conn.execute('''
+                    INSERT INTO rev_item_mapping_steps
+                    (juego_id, paquete_id, orden, remote_product_id, remote_package_id, remote_label, cantidad)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (juego_id, paquete_id, i, r_prod, r_pkg, label, cant))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+    conn.close()
+    return jsonify({'ok': True, 'items': len(clean), 'units': sum(c[3] for c in clean)})
 
 
 @app.route('/admin/revendedores/mappings/bulk', methods=['POST'])
@@ -7960,6 +8096,8 @@ def admin_revendedores_bulk_save():
             if not juego_id or not paquete_id:
                 continue
 
+            conn.execute('DELETE FROM rev_item_mapping_steps WHERE juego_id = ? AND paquete_id = ?',
+                         (juego_id, paquete_id))
             # Si remote_product_id/remote_package_id vacíos → eliminar mapping
             if not r_prod or not r_pkg:
                 conn.execute('DELETE FROM rev_item_mappings WHERE juego_id = ? AND paquete_id = ?',

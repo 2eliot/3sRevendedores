@@ -1028,6 +1028,13 @@ def validar_dinamico(slug):
         pass
 
     if _rev_mapping:
+        _steps = _load_mapping_units(game['id'], package_id)
+        if len(_steps) > 1:
+            # ──── RESELLER API PATH: varias recargas en orden ────
+            return _purchase_via_reseller_multi(
+                game, pkg, _steps, slug, user_id, is_admin, precio, package_id,
+                player_id, player_id2, servidor, redirect_url, _start
+            )
         # ──── RESELLER API PATH ────
         return _purchase_via_reseller(
             game, pkg, _rev_mapping, slug, user_id, is_admin, precio, package_id,
@@ -1742,6 +1749,367 @@ def _purchase_via_local_stock(game, pkg, slug, user_id, is_admin, precio,
 # ---------------------------------------------------------------------------
 # Auto-recharge via Reseller API
 # ---------------------------------------------------------------------------
+
+# ════════════════════════════════════════════════════════════════════
+# Mapeo secuencial: un paquete local = varias recargas remotas en orden
+# ════════════════════════════════════════════════════════════════════
+# Estado de la compra (JSON en transacciones_dinamicas.notas, prefijo 'reseller_multi:'):
+#   {"phase": "running"|"pending", "ts": epoch, "units": [
+#       {"ext": "<merchant>-1", "prod": "...", "pkg": "...", "label": "...", "w": peso,
+#        "st": "todo"|"sent"|"ok"|"pend"|"fail"|"skip", "ref": "", "pin": "", "name": "", "err": ""}]}
+# Al terminar: si ninguna unidad se entregó → rechazado y reembolso total; si alguna falló
+# → aprobado con reembolso proporcional (por precio remoto) de lo no entregado.
+
+MULTI_PREFIX = 'reseller_multi:'
+
+
+def _load_mapping_units(juego_id, paquete_id):
+    """Lista expandida de recargas remotas (una por unidad) del mapeo con pasos."""
+    try:
+        conn = _get_conn()
+        rows = conn.execute(
+            'SELECT remote_product_id, remote_package_id, remote_label, cantidad FROM rev_item_mapping_steps '
+            'WHERE juego_id = ? AND paquete_id = ? ORDER BY orden', (juego_id, paquete_id)).fetchall()
+        units = []
+        for r in rows:
+            peso = 0.0
+            cat = conn.execute('SELECT raw_json FROM rev_catalog_items WHERE remote_product_id = ? AND remote_package_id = ?',
+                               (r['remote_product_id'], r['remote_package_id'])).fetchone()
+            if cat:
+                try:
+                    peso = float((json.loads(cat['raw_json'] or '{}') or {}).get('price') or 0)
+                except Exception:
+                    peso = 0.0
+            for _ in range(max(1, int(r['cantidad'] or 1))):
+                units.append({'prod': str(r['remote_product_id']), 'pkg': str(r['remote_package_id']),
+                              'label': r['remote_label'] or '', 'w': peso})
+        conn.close()
+        # Sin precio remoto en alguna unidad → todas pesan igual
+        if any(u['w'] <= 0 for u in units):
+            for u in units:
+                u['w'] = 1.0
+        return units
+    except Exception as e:
+        logger.error(f"[Reseller Multi] No se pudieron leer los pasos del mapeo {juego_id}/{paquete_id}: {e}")
+        return []
+
+
+def _reseller_call(path, payload=None, query=None):
+    """POST/GET al revendedor. Devuelve dict (nunca lanza)."""
+    import urllib.request, urllib.error, urllib.parse
+    base_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip().rstrip('/')
+    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
+    url = f"{base_url}{path}" + (('?' + urllib.parse.urlencode(query)) if query else '')
+    headers = {'X-API-Key': api_key, 'Accept': 'application/json', 'User-Agent': '3sRecargas-AutoRecharge/1.0'}
+    data = None
+    if payload is not None:
+        data = json.dumps(payload).encode('utf-8')
+        headers['Content-Type'] = 'application/json'
+    try:
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST' if data else 'GET')
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as he:
+        body = ''
+        try:
+            body = he.read().decode()
+            return json.loads(body)
+        except Exception:
+            return {'ok': False, 'error': f'HTTP {he.code}: {body[:200]}'}
+    except Exception as e:
+        return {'ok': False, 'error': str(e), 'network_error': True}
+
+
+def _multi_save_state(tx_id, state):
+    state['ts'] = time_module.time()
+    conn = _get_conn()
+    conn.execute("UPDATE transacciones_dinamicas SET notas = ? WHERE id = ? AND estado = 'procesando'",
+                 (MULTI_PREFIX + json.dumps(state), tx_id))
+    conn.commit()
+    conn.close()
+
+
+def _multi_finalize(tx, state, refund_allowed):
+    """Cierra una compra secuencial sin unidades pendientes. Idempotente (claim atómico).
+
+    tx: dict con id, usuario_id, monto, numero_control, transaccion_id, player_id, player_id2,
+        paquete_id, juego_nombre, slug, paquete_nombre, duracion.
+    Devuelve dict con resultado o None si otro proceso ya la cerró.
+    """
+    units = state['units']
+    for u in units:
+        if u['st'] in ('todo', 'sent'):
+            u['st'] = 'skip' if u['st'] == 'todo' else 'fail'
+    ok_units = [u for u in units if u['st'] == 'ok']
+    bad_units = [u for u in units if u['st'] in ('fail', 'skip')]
+    precio = abs(float(tx['monto'] or 0))
+    w_total = sum(u['w'] for u in units) or 1.0
+    if not ok_units:
+        refund = precio
+    else:
+        refund = round(precio * sum(u['w'] for u in bad_units) / w_total, 2) if bad_units else 0.0
+    cobrado = round(precio - refund, 2)
+    first_err = next((u.get('err') for u in bad_units if u.get('err')), '')
+
+    conn = _get_conn()
+    if not ok_units:
+        claim = conn.execute('''
+            UPDATE transacciones_dinamicas SET estado = 'rechazado', notas = ?, fecha_procesado = CURRENT_TIMESTAMP
+            WHERE id = ? AND estado = 'procesando'
+        ''', (MULTI_PREFIX + json.dumps(dict(state, phase='done')), tx['id']))
+        if claim.rowcount == 0:
+            conn.close()
+            return None
+        if refund_allowed:
+            conn.execute('UPDATE usuarios SET saldo = saldo + ? WHERE id = ?', (precio, tx['usuario_id']))
+        conn.commit()
+        conn.close()
+        logger.info(f"[Reseller Multi] ❌ {tx['transaccion_id']} rechazada ({first_err}) — reembolso ${precio:.2f}")
+        return {'estado': 'rechazado', 'refund': precio, 'cobrado': 0.0, 'error': first_err or 'La recarga falló'}
+
+    refs = [u['ref'] for u in ok_units if u.get('ref')]
+    pins = [u['pin'] for u in ok_units if u.get('pin')]
+    name = next((u['name'] for u in ok_units if u.get('name')), '')
+    ref_txt = ', '.join(refs)
+    claim = conn.execute('''
+        UPDATE transacciones_dinamicas
+        SET estado = 'aprobado', monto = ?, gamepoint_referenceno = ?, ingame_name = ?, pin_entregado = ?,
+            notas = ?, fecha_procesado = CURRENT_TIMESTAMP
+        WHERE id = ? AND estado = 'procesando'
+    ''', (cobrado, ref_txt[:250], name, ' | '.join(pins) or None,
+          MULTI_PREFIX + json.dumps(dict(state, phase='done', refund=refund)), tx['id']))
+    if claim.rowcount == 0:
+        conn.close()
+        return None
+    if refund and refund_allowed:
+        conn.execute('UPDATE usuarios SET saldo = saldo + ? WHERE id = ?', (refund, tx['usuario_id']))
+
+    parcial = f" ({len(ok_units)}/{len(units)} recargas)" if bad_units else ''
+    if pins:
+        pin_info = f"Código: {' | '.join(pins)} - Ref: {ref_txt}"
+    elif name:
+        pin_info = f"ID: {tx['player_id']} - Jugador: {name} - Ref: {ref_txt}"
+    else:
+        pin_info = f"ID: {tx['player_id']} - Ref: {ref_txt} (reseller)"
+    if tx.get('player_id2') and not pins:
+        pin_info = f"ID: {tx['player_id']} / {tx['player_id2']} - " + pin_info.split(' - ', 1)[1]
+    pin_info += parcial
+    paquete_display = f"{tx['juego_nombre']} - {tx['paquete_nombre']}"
+    conn.execute('''
+        INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto, duracion_segundos)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (tx['usuario_id'], tx['numero_control'], pin_info, tx['transaccion_id'], paquete_display, -cobrado, tx.get('duracion', 0)))
+    _saldo_row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (tx['usuario_id'],)).fetchone()
+    _saldo = _saldo_row['saldo'] if _saldo_row else 0
+    conn.execute('''
+        INSERT INTO historial_compras (usuario_id, monto, paquete_nombre, pin, tipo_evento, duracion_segundos, saldo_antes, saldo_despues)
+        VALUES (?, ?, ?, ?, 'compra', ?, ?, ?)
+    ''', (tx['usuario_id'], cobrado, paquete_display, pin_info, tx.get('duracion', 0), _saldo + cobrado, _saldo))
+    try:
+        juego_key = f"dyn_{tx['slug']}"
+        costo_row = conn.execute('SELECT precio_compra FROM precios_compra WHERE juego=? AND paquete_id=?',
+                                 (juego_key, tx['paquete_id'])).fetchone()
+        costo_unit = (costo_row['precio_compra'] if costo_row else 0) * (cobrado / precio if precio else 1)
+        profit_unit = round(cobrado - costo_unit, 4)
+        conn.execute('''
+            INSERT INTO profit_ledger (usuario_id, juego, paquete_id, cantidad, precio_venta_unit, costo_unit, profit_unit, profit_total, transaccion_id)
+            VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+        ''', (tx['usuario_id'], juego_key, tx['paquete_id'], cobrado, costo_unit, profit_unit, profit_unit, tx['transaccion_id']))
+    except Exception:
+        pass
+    if refund_allowed:
+        try:
+            from update_monthly_spending import update_monthly_spending
+            update_monthly_spending(conn, tx['usuario_id'], cobrado)
+        except Exception:
+            pass
+    conn.commit()
+    conn.close()
+    logger.info(f"[Reseller Multi] ✅ {tx['transaccion_id']} aprobada {len(ok_units)}/{len(units)} — cobrado ${cobrado:.2f}, reembolso ${refund:.2f}")
+    return {'estado': 'aprobado', 'refund': refund, 'cobrado': cobrado, 'pins': pins, 'name': name,
+            'refs': refs, 'ok': len(ok_units), 'total': len(units), 'error': first_err}
+
+
+def _purchase_via_reseller_multi(game, pkg, units, slug, user_id, is_admin, precio,
+                                 package_id, player_id, player_id2, servidor, redirect_url, _start):
+    """Ejecuta varias recargas remotas en orden para un solo paquete local."""
+    base_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip()
+    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
+    if not base_url or not api_key:
+        flash('El revendedor no está configurado. Contacta al administrador.', 'error')
+        return redirect(redirect_url)
+
+    merchant_code = f"DG{game['id']}-" + secrets.token_hex(6).upper()
+    numero_control = f"DGR-{secrets.token_hex(4).upper()}"
+    state = {'phase': 'running', 'units': [dict(u, ext=f"{merchant_code}-{i + 1}", st='todo', ref='', pin='', name='', err='')
+                                           for i, u in enumerate(units)]}
+
+    # 1. Descontar saldo una sola vez
+    if not is_admin:
+        conn = _get_conn()
+        cursor = conn.execute('UPDATE usuarios SET saldo = saldo - ? WHERE id = ? AND saldo >= ?', (precio, user_id, precio))
+        if cursor.rowcount == 0:
+            conn.close()
+            flash('Saldo insuficiente al momento de procesar.', 'error')
+            return redirect(redirect_url)
+        conn.commit()
+        conn.close()
+
+    # 2. Registro 'procesando' con el plan completo
+    try:
+        conn = _get_conn()
+        cur = conn.execute('''
+            INSERT INTO transacciones_dinamicas
+            (juego_id, usuario_id, player_id, player_id2, servidor, paquete_id,
+             numero_control, transaccion_id, monto, estado, notas)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'procesando', ?)
+            RETURNING id
+        ''', (game['id'], user_id, player_id, player_id2 or None, servidor or None,
+              package_id, numero_control, merchant_code, precio, MULTI_PREFIX + json.dumps(state)))
+        tx_id = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"[DynGame:{slug}][Reseller Multi] Error insertando procesando: {e}")
+        _refund(user_id, precio, is_admin)
+        flash('Error al procesar. Tu saldo ha sido devuelto.', 'error')
+        return redirect(redirect_url)
+
+    # 3. Recargas en orden; se detiene en el primer fallo
+    for u in state['units']:
+        u['st'] = 'sent'
+        _multi_save_state(tx_id, state)
+        r_prod, r_pkg = u['prod'], u['pkg']
+        resp = _reseller_call('/api/v1/recharge', {
+            'product_id': int(r_prod) if r_prod.isdigit() else r_prod,
+            'package_id': int(r_pkg) if r_pkg.isdigit() else r_pkg,
+            'player_id': player_id, 'player_id2': player_id2 or '', 'external_order_id': u['ext']})
+        api_status = str(resp.get('status') or '').strip().lower()
+        if resp.get('ok'):
+            u.update(st='ok', ref=str(resp.get('reference_no', resp.get('order_id', '')) or ''),
+                     pin=str(resp.get('pin', resp.get('serial_key', '')) or ''),
+                     name=str(resp.get('player_name', resp.get('ingame_name', '')) or ''))
+        elif resp.get('pending') or api_status in ('procesando', 'processing', 'pendiente', 'pending', 'queued'):
+            u['st'] = 'pend'  # el proveedor la aceptó: la cierra el reconciliador
+        elif resp.get('network_error'):
+            break  # no sabemos si llegó: queda 'sent' y el reconciliador consulta su estado
+        else:
+            u.update(st='fail', err=str(resp.get('error') or 'Error del revendedor')[:200])
+            break
+        logger.info(f"[DynGame:{slug}][Reseller Multi] {u['ext']} → {u['st']}")
+    _duration = round(time_module.time() - _start, 1)
+
+    tx = {'id': tx_id, 'usuario_id': user_id, 'monto': precio, 'numero_control': numero_control,
+          'transaccion_id': merchant_code, 'player_id': player_id, 'player_id2': player_id2,
+          'paquete_id': package_id, 'juego_nombre': game['nombre'], 'slug': slug,
+          'paquete_nombre': pkg['nombre'], 'duracion': _duration}
+
+    # Si queda alguna en proceso (o sin respuesta) no se toca el saldo todavía
+    if any(u['st'] in ('pend', 'sent') for u in state['units']):
+        for u in state['units']:
+            if u['st'] == 'todo':
+                u['st'] = 'skip'
+        state['phase'] = 'pending'
+        _multi_save_state(tx_id, state)
+        _sync_session_saldo(user_id)
+        session[f'compra_dyn_{slug}_exitosa'] = {
+            'paquete_nombre': pkg['nombre'], 'monto_compra': precio, 'numero_control': numero_control,
+            'transaccion_id': merchant_code, 'player_id': player_id, 'player_id2': player_id2,
+            'servidor': servidor, 'player_name': next((u['name'] for u in state['units'] if u['name']), ''),
+            'estado': 'procesando', 'gamepoint_ref': '', 'serial_key': '',
+        }
+        return redirect(f'/juego/d/{slug}?compra=exitosa')
+
+    res = _multi_finalize(tx, state, refund_allowed=not is_admin)
+    _sync_session_saldo(user_id)
+    if not res or res['estado'] == 'rechazado':
+        err = (res or {}).get('error') or 'Error del revendedor'
+        flash(f'La recarga falló: {err}. Tu saldo ha sido devuelto.', 'error')
+        return redirect(redirect_url)
+    if res['refund']:
+        flash(f"Se completaron {res['ok']} de {res['total']} recargas. Se devolvieron ${res['refund']:.2f} a tu saldo.", 'error')
+    session[f'compra_dyn_{slug}_exitosa'] = {
+        'paquete_nombre': pkg['nombre'], 'monto_compra': res['cobrado'], 'numero_control': numero_control,
+        'transaccion_id': merchant_code, 'player_id': player_id, 'player_id2': player_id2,
+        'servidor': servidor, 'player_name': res['name'], 'estado': 'completado',
+        'gamepoint_ref': ', '.join(res['refs']), 'serial_key': ' | '.join(res['pins']),
+    }
+    return redirect(f'/juego/d/{slug}?compra=exitosa')
+
+
+def _sync_session_saldo(user_id):
+    try:
+        conn = _get_conn()
+        row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user_id,)).fetchone()
+        conn.close()
+        session['saldo'] = row['saldo'] if row else 0
+    except Exception:
+        pass
+
+
+def poll_pending_reseller_multi():
+    """Cierra compras secuenciales con recargas en proceso (o interrumpidas)."""
+    base_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip()
+    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
+    if not base_url or not api_key:
+        return
+    try:
+        conn = _get_conn()
+        rows = conn.execute('''
+            SELECT td.id, td.transaccion_id, td.usuario_id, td.monto, td.numero_control, td.notas,
+                   td.player_id, td.player_id2, td.paquete_id, td.fecha,
+                   jd.nombre AS juego_nombre, jd.slug, pd.nombre AS paquete_nombre
+            FROM transacciones_dinamicas td
+            JOIN juegos_dinamicos jd ON td.juego_id = jd.id
+            JOIN paquetes_dinamicos pd ON pd.id = td.paquete_id
+            WHERE td.estado = 'procesando' AND td.notas LIKE 'reseller_multi:%'
+              AND td.fecha >= (NOW() - INTERVAL '72 hours')
+            ORDER BY td.fecha
+            LIMIT 30
+        ''').fetchall()
+        conn.close()
+    except Exception as e:
+        logger.error(f"[Reseller Multi Recon] Error consultando pendientes: {e}")
+        return
+
+    admin_ids = [int(x.strip()) for x in os.environ.get('ADMIN_USER_IDS', '').split(',') if x.strip().isdigit()]
+    for row in rows:
+        try:
+            state = json.loads(row['notas'][len(MULTI_PREFIX):])
+        except Exception:
+            continue
+        # Compra aún en curso en otro proceso: darle margen
+        if state.get('phase') == 'running' and time_module.time() - float(state.get('ts') or 0) < 600:
+            continue
+        old = _reseller_row_older_than(row['fecha'], hours=2)
+        for u in state['units']:
+            if u['st'] not in ('pend', 'sent'):
+                continue
+            data = _reseller_call('/api/v1/order-status', query={'external_order_id': u['ext']})
+            if not data.get('ok'):
+                continue
+            est = str(data.get('status') or '').strip().lower()
+            found = bool(data.get('found', True))
+            order = data.get('order') or {}
+            if found and est == 'completada':
+                u.update(st='ok', ref=str(order.get('reference_no') or ''), name=str(order.get('player_name') or ''),
+                         pin=str(order.get('pin') or ''))
+            elif (found and est == 'fallida') or (not found and old):
+                u.update(st='fail', err=str(order.get('error') or 'Recarga fallida en el revendedor')[:200])
+            time_module.sleep(0.2)
+        if state.get('phase') == 'running':
+            # Proceso interrumpido: lo que no se llegó a enviar no se enviará
+            for u in state['units']:
+                if u['st'] == 'todo':
+                    u['st'] = 'skip'
+            state['phase'] = 'pending'
+        if any(u['st'] in ('pend', 'sent') for u in state['units']):
+            _multi_save_state(row['id'], state)
+            continue
+        tx = dict(row)
+        tx['duracion'] = 0
+        _multi_finalize(tx, state, refund_allowed=row['usuario_id'] not in admin_ids)
+
 
 def _purchase_via_reseller(game, pkg, mapping, slug, user_id, is_admin, precio,
                            package_id, player_id, player_id2, servidor, redirect_url, _start):

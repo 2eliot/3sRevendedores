@@ -942,30 +942,48 @@
 
       <!-- ───── TAB MAPEO REVENDEDORES ───── -->
       <div id="tab-mapeo" class="tab-content">
-        <section class="admin-section">
-          <h2 style="margin-bottom:18px;">🔗 Mapeo de Paquetes – Revendedores</h2>
+        <section class="admin-section mp-wrap">
+          <div class="mp-head">
+            <div>
+              <h2>Mapeo de paquetes</h2>
+              <p>Conecta cada paquete de tu tienda con uno o varios paquetes del revendedor. Se recargan en el orden de la lista.</p>
+            </div>
+            <div class="mp-head-actions">
+              <button type="button" id="btn-sync-catalog" class="mp-btn" onclick="syncRevCatalog()">Sincronizar Catálogo</button>
+              <button type="button" class="mp-btn mp-btn-ghost" onclick="loadMappingData()">Refrescar</button>
+            </div>
+          </div>
+          <p id="sync-status" class="mp-status" aria-live="polite"></p>
 
-          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
-            <button id="btn-sync-catalog" onclick="syncRevCatalog()" style="background:#1b1c1e;color:#ffffff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600;">
-              🔄 Sincronizar Catálogo
-            </button>
-            <span id="sync-status" style="font-size:0.85rem;color:#9c9c9d;"></span>
+          <div class="mp-steps">
+            <label class="mp-field">
+              <span>1. Elige el juego</span>
+              <select id="mapeo-game-select" onchange="mpGameChanged()">
+                <option value="">— Seleccionar juego —</option>
+              </select>
+            </label>
+            <label class="mp-field">
+              <span>2. Elige el paquete</span>
+              <select id="mapeo-pkg-select" onchange="mpRenderEditor()" disabled>
+                <option value="">— Primero elige un juego —</option>
+              </select>
+            </label>
           </div>
 
-          <div style="margin-bottom:16px;">
-            <label style="font-weight:600;margin-right:8px;">Juego:</label>
-            <select id="mapeo-game-select" onchange="loadMappingUI()" style="padding:8px 16px;border-radius:8px;background:#1b1c1e;color:#ffffff;border:1px solid #2a2b2d;min-width:220px;">
-              <option value="">— Seleccionar juego —</option>
-            </select>
-          </div>
-
-          <div id="mapeo-table-container" style="margin-top:12px;"></div>
-
-          <div id="mapeo-save-bar" style="display:none;margin-top:18px;padding:14px;background:#1b1c1e;border-radius:10px;text-align:right;">
-            <button onclick="saveMappingsBulk()" style="background:#13261d;color:#ffffff;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;">
-              💾 Guardar Mappings
-            </button>
-            <span id="save-status" style="margin-left:12px;font-size:0.85rem;color:#9c9c9d;"></span>
+          <div id="mp-editor" class="mp-editor" hidden>
+            <div class="mp-card-head">
+              <strong id="mp-title"></strong>
+              <span id="mp-sub"></span>
+            </div>
+            <div class="mp-cols" aria-hidden="true"><span>Item</span><span>Paquete</span><span>Cantidad</span><span></span></div>
+            <div id="mp-items"></div>
+            <button type="button" class="mp-add" onclick="mpAddRow()">+ Agregar item</button>
+            <label class="mp-check"><input type="checkbox" id="mp-auto"> Recarga automática secuencial</label>
+            <p id="mp-summary" class="mp-summary"></p>
+            <div class="mp-foot">
+              <button type="button" class="mp-save" onclick="mpSave()">Guardar mapeo de este paquete</button>
+              <span id="save-status" class="mp-status" aria-live="polite"></span>
+            </div>
           </div>
         </section>
       </div>
@@ -2890,106 +2908,168 @@
     }
 
     function loadMappingData() {
-      fetch('/admin/revendedores/mapping-data')
+      const st = document.getElementById('save-status');
+      return fetch('/admin/revendedores/mapping-data')
         .then(r => r.json())
         .then(d => {
           _mapeoData = d;
           const sel = document.getElementById('mapeo-game-select');
           const prev = sel.value;
           sel.innerHTML = '<option value="">— Seleccionar juego —</option>';
-          (d.games || []).forEach(g => {
+          (d.games || []).filter(g => g.packages && g.packages.length).forEach(g => {
             const opt = document.createElement('option');
             opt.value = g.id;
             opt.textContent = g.nombre + (g.activo ? '' : ' (inactivo)');
             sel.appendChild(opt);
           });
-          if (prev) { sel.value = prev; loadMappingUI(); }
+          if (prev) { sel.value = prev; mpGameChanged(true); }
         });
     }
 
-    function loadMappingUI() {
-      const gameId = parseInt(document.getElementById('mapeo-game-select').value);
-      const container = document.getElementById('mapeo-table-container');
-      const saveBar = document.getElementById('mapeo-save-bar');
-      if (!gameId) { container.innerHTML = ''; saveBar.style.display = 'none'; return; }
+    function mpGame() {
+      const id = parseInt(document.getElementById('mapeo-game-select').value);
+      return (_mapeoData.games || []).find(g => g.id === id);
+    }
+    function mpPkg() {
+      const g = mpGame(); if (!g) return null;
+      const id = parseInt(document.getElementById('mapeo-pkg-select').value);
+      return g.packages.find(p => p.id === id) || null;
+    }
+    function mpSteps(g, p) { return (_mapeoData.steps || {})[g.id + ':' + p.id] || []; }
+    function mpMoney(v) { return '$' + Number(v || 0).toFixed(2); }
 
-      const game = (_mapeoData.games || []).find(g => g.id === gameId);
-      if (!game || !game.packages.length) {
-        container.innerHTML = '<p style="color:#9c9c9d;">Este juego no tiene paquetes.</p>';
-        saveBar.style.display = 'none';
+    function mpGameChanged(keepPkg) {
+      const g = mpGame();
+      const sel = document.getElementById('mapeo-pkg-select');
+      const prev = keepPkg ? sel.value : '';
+      sel.innerHTML = '';
+      if (!g) {
+        sel.disabled = true;
+        sel.innerHTML = '<option value="">— Primero elige un juego —</option>';
+        mpRenderEditor();
         return;
       }
-
-      // Agrupar catálogo por producto
-      const catByProduct = {};
-      (_mapeoData.catalog || []).forEach(c => {
-        if (!catByProduct[c.remote_product_id]) catByProduct[c.remote_product_id] = {name: c.remote_product_name, items: []};
-        catByProduct[c.remote_product_id].items.push(c);
+      sel.disabled = false;
+      sel.appendChild(new Option('— Seleccionar paquete —', ''));
+      g.packages.forEach(p => {
+        const mapped = mpSteps(g, p).length > 0;
+        sel.appendChild(new Option(p.nombre + ' — ' + mpMoney(p.precio) + (mapped ? '   ✓ mapeado' : ''), p.id));
       });
-
-      let html = '<table style="width:100%;border-collapse:collapse;font-size:0.92rem;">';
-      html += '<thead><tr style="border-bottom:1px solid #2a2b2d;text-align:left;">';
-      html += '<th style="padding:8px;">Paquete local</th><th style="padding:8px;">Precio</th>';
-      html += '<th style="padding:8px;">Paquete remoto</th><th style="padding:8px;text-align:center;">Auto</th>';
-      html += '</tr></thead><tbody>';
-
-      game.packages.forEach(pkg => {
-        const mapping = (_mapeoData.mappings || []).find(m => m.juego_id === gameId && m.paquete_id === pkg.id);
-        const selVal = mapping ? (mapping.remote_product_id + '||' + mapping.remote_package_id) : '';
-        const autoChecked = mapping && mapping.auto_enabled ? 'checked' : '';
-
-        html += `<tr style="border-bottom:1px solid #2a2b2d;" data-juego="${gameId}" data-paquete="${pkg.id}">`;
-        html += `<td style="padding:8px;">${pkg.nombre}</td>`;
-        html += `<td style="padding:8px;">$${pkg.precio.toFixed(2)}</td>`;
-        html += `<td style="padding:8px;"><select class="mapeo-remote-sel" style="width:100%;padding:6px;background:#1b1c1e;color:#ffffff;border:1px solid #2a2b2d;border-radius:6px;">`;
-        html += `<option value="">— Sin mapear —</option>`;
-        Object.keys(catByProduct).forEach(pid => {
-          const grp = catByProduct[pid];
-          html += `<optgroup label="${grp.name}">`;
-          grp.items.forEach(c => {
-            const v = c.remote_product_id + '||' + c.remote_package_id;
-            const selected = v === selVal ? ' selected' : '';
-            html += `<option value="${v}"${selected}>${c.remote_package_name}</option>`;
-          });
-          html += '</optgroup>';
-        });
-        html += '</select></td>';
-        html += `<td style="padding:8px;text-align:center;"><input type="checkbox" class="mapeo-auto-chk" ${autoChecked} style="width:18px;height:18px;accent-color:#ffffff;cursor:pointer;"></td>`;
-        html += '</tr>';
-      });
-
-      html += '</tbody></table>';
-      container.innerHTML = html;
-      saveBar.style.display = 'block';
+      if (prev) sel.value = prev;
+      mpRenderEditor();
     }
 
-    function saveMappingsBulk() {
-      const rows = document.querySelectorAll('#mapeo-table-container tr[data-juego]');
-      const mappings = [];
-      rows.forEach(row => {
-        const juego_id = parseInt(row.dataset.juego);
-        const paquete_id = parseInt(row.dataset.paquete);
-        const sel = row.querySelector('.mapeo-remote-sel');
-        const chk = row.querySelector('.mapeo-auto-chk');
-        const val = sel ? sel.value : '';
-        let r_prod = '', r_pkg = '';
-        if (val) { const parts = val.split('||'); r_prod = parts[0]; r_pkg = parts[1]; }
-        mappings.push({juego_id, paquete_id, remote_product_id: r_prod, remote_package_id: r_pkg, auto_enabled: chk ? chk.checked : false});
+    function mpProducts() {
+      const byProd = {};
+      (_mapeoData.catalog || []).forEach(c => {
+        if (!byProd[c.remote_product_id]) byProd[c.remote_product_id] = {id: c.remote_product_id, name: c.remote_product_name, items: []};
+        byProd[c.remote_product_id].items.push(c);
       });
+      return byProd;
+    }
 
+    function mpFillPkgSelect(pkgSel, prodId, value) {
+      const prod = mpProducts()[prodId];
+      pkgSel.innerHTML = '';
+      pkgSel.appendChild(new Option(prod ? '— Seleccionar paquete —' : '— Elige un item —', ''));
+      pkgSel.disabled = !prod;
+      if (prod) prod.items.forEach(c => {
+        pkgSel.appendChild(new Option(c.remote_package_name + (c.price ? ' (' + mpMoney(c.price) + ')' : ''), c.remote_package_id));
+      });
+      if (value != null) pkgSel.value = String(value);
+    }
+
+    function mpAddRow(step) {
+      const wrap = document.getElementById('mp-items');
+      const row = document.createElement('div');
+      row.className = 'mp-row';
+      const prodSel = document.createElement('select'); prodSel.className = 'mp-prod'; prodSel.setAttribute('aria-label', 'Item del revendedor');
+      prodSel.appendChild(new Option('— Seleccionar item —', ''));
+      Object.values(mpProducts()).forEach(pr => prodSel.appendChild(new Option(pr.name, pr.id)));
+      const pkgSel = document.createElement('select'); pkgSel.className = 'mp-pkg'; pkgSel.setAttribute('aria-label', 'Paquete del revendedor');
+      const qty = document.createElement('input'); qty.type = 'number'; qty.min = 1; qty.max = 50; qty.value = (step && step.cantidad) || 1;
+      qty.className = 'mp-qty'; qty.setAttribute('aria-label', 'Cantidad');
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'mp-del'; del.textContent = '×';
+      del.setAttribute('aria-label', 'Quitar item');
+      if (step) prodSel.value = String(step.remote_product_id);
+      mpFillPkgSelect(pkgSel, prodSel.value, step ? step.remote_package_id : null);
+      prodSel.addEventListener('change', () => { mpFillPkgSelect(pkgSel, prodSel.value, null); mpSummary(); });
+      pkgSel.addEventListener('change', mpSummary);
+      qty.addEventListener('input', mpSummary);
+      del.addEventListener('click', () => { row.remove(); mpSummary(); });
+      row.append(prodSel, pkgSel, qty, del);
+      wrap.appendChild(row);
+      mpSummary();
+    }
+
+    function mpCollect() {
+      return [...document.querySelectorAll('#mp-items .mp-row')].map(r => ({
+        remote_product_id: r.querySelector('.mp-prod').value,
+        remote_package_id: r.querySelector('.mp-pkg').value,
+        cantidad: parseInt(r.querySelector('.mp-qty').value) || 0
+      }));
+    }
+
+    function mpSummary() {
+      const out = document.getElementById('mp-summary');
+      const p = mpPkg(); if (!p) { out.textContent = ''; return; }
+      const items = mpCollect().filter(i => i.remote_product_id && i.remote_package_id && i.cantidad > 0);
+      if (!items.length) { out.textContent = 'Sin items: este paquete no se recargará automáticamente.'; out.className = 'mp-summary'; return; }
+      let units = 0, cost = 0, known = true;
+      items.forEach(i => {
+        units += i.cantidad;
+        const c = (_mapeoData.catalog || []).find(x => String(x.remote_product_id) === String(i.remote_product_id) && String(x.remote_package_id) === String(i.remote_package_id));
+        if (c && c.price) cost += c.price * i.cantidad; else known = false;
+      });
+      let txt = 'Se ejecutarán ' + units + ' recarga' + (units === 1 ? '' : 's') + ' en orden';
+      if (known) {
+        txt += ' · costo ' + mpMoney(cost) + ' · precio de venta ' + mpMoney(p.precio);
+        out.className = 'mp-summary' + (cost > p.precio ? ' is-warn' : '');
+        if (cost > p.precio) txt += ' — ¡el costo supera el precio de venta!';
+      } else out.className = 'mp-summary';
+      out.textContent = txt + '.';
+    }
+
+    function mpRenderEditor() {
+      const ed = document.getElementById('mp-editor');
+      const g = mpGame(), p = mpPkg();
+      document.getElementById('save-status').textContent = '';
+      if (!g || !p) { ed.hidden = true; return; }
+      ed.hidden = false;
+      document.getElementById('mp-title').textContent = g.nombre + ' — ' + p.nombre;
+      document.getElementById('mp-sub').textContent = 'ID ' + p.id + ' · USD ' + Number(p.precio).toFixed(2);
+      const mapping = (_mapeoData.mappings || []).find(m => m.juego_id === g.id && m.paquete_id === p.id);
+      document.getElementById('mp-auto').checked = mapping ? !!mapping.auto_enabled : true;
+      document.getElementById('mp-items').innerHTML = '';
+      const steps = mpSteps(g, p);
+      if (steps.length) steps.forEach(s => mpAddRow(s)); else mpAddRow();
+    }
+
+    function mpSave() {
+      const g = mpGame(), p = mpPkg();
       const st = document.getElementById('save-status');
-      st.textContent = 'Guardando…';
-      fetch('/admin/revendedores/mappings/bulk', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({mappings})
+      if (!g || !p) return;
+      const items = mpCollect();
+      if (items.some(i => !i.remote_product_id || !i.remote_package_id)) {
+        st.className = 'mp-status is-err'; st.textContent = 'Completa el item y el paquete de cada fila (o quita las filas vacías).'; return;
+      }
+      if (items.some(i => i.cantidad < 1 || i.cantidad > 50)) {
+        st.className = 'mp-status is-err'; st.textContent = 'La cantidad debe estar entre 1 y 50.'; return;
+      }
+      st.className = 'mp-status'; st.textContent = 'Guardando…';
+      fetch('/admin/revendedores/mapping-steps', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({juego_id: g.id, paquete_id: p.id, auto_enabled: document.getElementById('mp-auto').checked, items})
       })
         .then(r => r.json())
         .then(d => {
-          if (d.error) { st.textContent = '❌ ' + d.error; }
-          else { st.textContent = `✅ ${d.saved} mappings guardados`; loadMappingData(); }
+          if (d.error) { st.className = 'mp-status is-err'; st.textContent = d.error; return; }
+          return loadMappingData().then(() => {
+            st.className = 'mp-status is-ok';
+            st.textContent = d.items ? '✓ Mapeo guardado · ' + d.units + ' recarga' + (d.units === 1 ? '' : 's') + ' en orden' : '✓ Mapeo eliminado';
+          });
         })
-        .catch(e => st.textContent = '❌ ' + e);
+        .catch(e => { st.className = 'mp-status is-err'; st.textContent = 'Error: ' + e; });
     }
 
     // Restaurar pestaña activa al cargar la página usando el hash de la URL
