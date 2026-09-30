@@ -185,8 +185,28 @@ def _gameclub_order_inquiry(token, reference_no):
     return data
 
 
+_rev_balance_cache = {'value': None, 'ts': 0.0}
+_REV_BALANCE_TTL = 30  # segundos: evita consultar al proveedor en cada carga
+
+
+def cached_revendedores_balance():
+    """Último saldo conocido del revendedor externo, sin llamar a la red (0.0 si aún no hay)."""
+    return _rev_balance_cache['value'] or 0.0
+
+
 def get_revendedores_balance():
-    """Consulta el saldo disponible en la cuenta del revendedor externo."""
+    """Saldo del revendedor externo; reutiliza la última consulta durante _REV_BALANCE_TTL segundos."""
+    if time_module.time() - _rev_balance_cache['ts'] < _REV_BALANCE_TTL:
+        return cached_revendedores_balance()
+    value = _query_revendedores_balance()
+    _rev_balance_cache['ts'] = time_module.time()
+    if value is not None:
+        _rev_balance_cache['value'] = value
+    return cached_revendedores_balance()
+
+
+def _query_revendedores_balance():
+    """Consulta el saldo disponible en la cuenta del revendedor externo (None si no se pudo)."""
     base_url = (os.environ.get('REVENDEDORES_BASE_URL') or '').strip().rstrip('/')
     api_key = (os.environ.get('REVENDEDORES_API_KEY') or '').strip()
     if not base_url or not api_key:
@@ -227,7 +247,7 @@ def get_revendedores_balance():
             except (TypeError, ValueError):
                 continue
 
-    return 0.0
+    return None
 
 
 def _generate_batch_id():
@@ -2750,7 +2770,8 @@ def index():
             # Tomar solo las primeras per_page transacciones
             transactions_data['transactions'] = all_transactions[:per_page]
         
-        balance = get_revendedores_balance()
+        # Sin esperar al proveedor: la página muestra el último saldo conocido y el JS lo actualiza
+        balance = cached_revendedores_balance()
     else:
         # Usuario normal ve solo sus transacciones
         if 'user_db_id' in session:
