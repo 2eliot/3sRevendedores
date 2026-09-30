@@ -157,7 +157,8 @@ body { line-height: 1.5; font-size: 16px; }
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 .user-chip .chip-value { font-family: var(--rc-mono); font-size: 13px !important; font-weight: 500 !important; color: var(--rc-text) !important; }
-.user-chip.chip-saldo .chip-value { color: var(--rc-green) !important; }
+.user-chip.chip-saldo .chip-value { color: var(--rc-hl) !important; }
+.user-chip.chip-saldo svg { stroke: var(--rc-hl) !important; }
 
 /* ============================================================
    TÍTULOS DE PÁGINA
@@ -222,7 +223,7 @@ body { line-height: 1.5; font-size: 16px; }
 .control-num { font-family: var(--rc-mono); font-size: 12px; color: var(--rc-ash) !important; }
 .package-cost { display: flex !important; align-items: baseline; justify-content: space-between !important; gap: 12px; }
 .package-cost .package { font-weight: 500; color: var(--rc-text) !important; }
-.package-cost .cost, .cost { font-family: var(--rc-mono); font-weight: 500; color: var(--rc-green) !important; font-variant-numeric: tabular-nums; }
+.package-cost .cost, .cost { font-family: var(--rc-mono); font-weight: 500; color: var(--rc-hl) !important; font-variant-numeric: tabular-nums; }
 .transaction-pin, .transaction-footer {
   display: flex; justify-content: flex-start !important; align-self: flex-start !important;
   background: none !important; border: 0 !important; padding: 0 !important; box-shadow: none !important;
@@ -721,9 +722,9 @@ tbody tr:last-child td { border-bottom: 0 !important; }
   padding-top: 8px !important;
   border-top: 1px solid var(--rc-border) !important;
   font-family: var(--rc-mono) !important;
-  color: var(--rc-green) !important;
+  color: var(--rc-hl) !important;
 }
-.ffid-player-name { font-weight: 600 !important; }
+.ffid-player-name { font-weight: 600 !important; color: var(--rc-hl) !important; }
 /* Código/serial más compacto */
 .ffid-voucher-details > div[style] { margin: 6px 0 !important; padding: 8px 12px !important; }
 .ffid-voucher-details > div[style] > div:nth-child(2) { font-size: 14px !important; }
@@ -1053,7 +1054,7 @@ select.ui-select-open {
 }
 .idg-pkg:hover { border-color: var(--rc-border-strong) !important; background: var(--rc-hover-bg) !important; }
 .idg-pkg-name { font-size: 14px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
-.idg-pkg-price { font-family: var(--rc-mono); font-size: 14px; color: var(--rc-green); }
+.idg-pkg-price { font-family: var(--rc-mono); font-size: 14px; color: var(--rc-hl); }
 .idg-pkg.is-selected {
   border-color: var(--rc-mist) !important;
   background: var(--rc-sel-bg) !important;
@@ -1104,7 +1105,7 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
   background: rgba(89, 212, 153, 0.08); border-radius: 10px;
 }
 .idg-dlg-total span { font-size: 13px; color: var(--rc-ash); }
-.idg-dlg-total strong { font-family: var(--rc-mono); font-size: 22px; font-weight: 600; color: var(--rc-green); }
+.idg-dlg-total strong { font-family: var(--rc-mono); font-size: 22px; font-weight: 600; color: var(--rc-hl); }
 .idg-dlg-saldo { margin: 8px 20px 0; font-size: 12px; color: var(--rc-ash); }
 .idg-dlg-saldo.is-error { color: var(--rc-coral); }
 .idg-dlg-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 20px 20px; }
@@ -1377,7 +1378,7 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 /* Monto (última fila) */
 .compra-exitosa .detalles-info > p:last-child {
   margin-top: 0 !important; border-top: 1px solid var(--rc-border) !important;
-  color: var(--rc-green) !important; font-family: var(--rc-mono); font-size: 13px !important;
+  color: var(--rc-hl) !important; font-family: var(--rc-mono); font-size: 13px !important;
 }
 .compra-exitosa .detalles-info > p:last-child strong { font-family: var(--rc-font); }
 /* Código / serial entregado */
@@ -1422,10 +1423,10 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 
 /* Compra exitosa: sin Ref ni Número de Control; ID, jugador y juego en verde */
 .compra-exitosa .dx-control, .compra-exitosa .dx-ref { display: none !important; }
-.compra-exitosa .dx-id, .compra-exitosa .dx-player { color: var(--rc-green) !important; font-weight: 600; }
-.compra-exitosa .detalles-info > p:first-child strong { color: var(--rc-green) !important; }
+.compra-exitosa .dx-id, .compra-exitosa .dx-player { color: var(--rc-hl) !important; font-weight: 600; }
+.compra-exitosa .detalles-info > p:first-child strong { color: var(--rc-hl) !important; }
 .compra-exitosa .detalles-info > p.dx-control, .compra-exitosa .detalles-info > p.dx-ref { display: none !important; }
-.compra-exitosa .detalles-info > p.dx-id, .compra-exitosa .detalles-info > p.dx-player { color: var(--rc-green) !important; font-weight: 600 !important; }
+.compra-exitosa .detalles-info > p.dx-id, .compra-exitosa .detalles-info > p.dx-player { color: var(--rc-hl) !important; font-weight: 600 !important; }
 
 /* ---------- Buscador del historial ---------- */
 .tx-search {
@@ -1467,7 +1468,7 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 }
 /* Código al final del recibo con botón pequeño */
 .dx-code-line { align-items: center; }
-.dx-code-line .dx-code-value { font-family: var(--rc-mono); font-weight: 600; color: var(--rc-green); letter-spacing: 0.02em; }
+.dx-code-line .dx-code-value { font-family: var(--rc-mono); font-weight: 600; color: var(--rc-hl); letter-spacing: 0.02em; }
 .dx-code-line .copy-btn-simple {
   display: inline-grid !important; place-items: center; vertical-align: middle;
   width: 24px !important; height: 24px !important; min-width: 0 !important; min-height: 0 !important;
@@ -1479,7 +1480,7 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 /* ---------- Compra exitosa: código debajo del monto ---------- */
 .compra-exitosa .detalles-info > p:last-child { color: inherit; font-family: inherit; }
 .compra-exitosa .detalles-info > p:last-of-type {
-  color: var(--rc-green) !important; font-family: var(--rc-mono);
+  color: var(--rc-hl) !important; font-family: var(--rc-mono);
 }
 .compra-exitosa .detalles-info > p:last-of-type strong { font-family: var(--rc-font); }
 .dx-code {
@@ -1611,7 +1612,7 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 #package-list .pk-info { display: flex !important; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0 !important; }
 #package-list .package-stock { font-size: 12px !important; padding: 2px 10px !important; border-radius: 999px !important; background: var(--rc-graphite) !important; color: var(--rc-ash) !important; }
 #package-list .package-title { font-size: 16px !important; font-weight: 700 !important; color: var(--rc-text) !important; }
-#package-list .package-price { font-family: var(--rc-mono); font-size: 13px !important; color: var(--rc-green) !important; background: none !important; padding: 0 !important; }
+#package-list .package-price { font-family: var(--rc-mono); font-size: 13px !important; color: var(--rc-hl) !important; background: none !important; padding: 0 !important; }
 #package-list .pk-actions { display: grid !important; grid-template-columns: 1fr !important; gap: 6px !important; margin-top: auto; }
 #package-list .pk-actions .btn {
   display: flex !important; align-items: center; justify-content: center;

@@ -390,7 +390,7 @@
           var decrement = (saldoAnterior - saldoActual) / steps;
           var timer = setInterval(function() {
             step++; currentValue -= decrement;
-            if (step >= steps) { currentValue = saldoActual; clearInterval(timer); setTimeout(function(){ saldoDisplay.style.color = '#28a745'; }, 100); }
+            if (step >= steps) { currentValue = saldoActual; clearInterval(timer); setTimeout(function(){ saldoDisplay.style.color = ''; }, 100); }
             saldoDisplay.textContent = '$' + currentValue.toFixed(2);
           }, 800/steps);
         }

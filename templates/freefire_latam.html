@@ -261,7 +261,7 @@
             currentValue = saldoActual;
             clearInterval(timer);
             setTimeout(function() {
-              saldoDisplay.style.color = '#28a745';
+              saldoDisplay.style.color = '';
             }, 100);
           }
           saldoDisplay.textContent = '$' + currentValue.toFixed(2);

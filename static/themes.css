@@ -8,40 +8,44 @@
 :root[data-accent="morado"] {
   --rc-accent: #a78bfa;
   --rc-canvas: #06050a; --rc-canvas-rgb: 6, 5, 10; --rc-card: #0a0810; --rc-recess: #13111b; --rc-graphite: #1c1926;
-  --rc-slate: #2e2a3a; --rc-border: #2a2635; --rc-border-strong: #373245;
+  --rc-slate: #2e2a3a; --rc-border-base: #2a2635; --rc-border-strong-base: #373245;
   --rc-panel: #0e0c15; --rc-hover-bg: #110e19; --rc-sel-bg: #16121f; --rc-sel-bg2: #181422;
 }
 :root[data-accent="azul"] {
   --rc-accent: #56c2ff;
   --rc-canvas: #04060a; --rc-canvas-rgb: 4, 6, 10; --rc-card: #070a0f; --rc-recess: #10141b; --rc-graphite: #191e27;
-  --rc-slate: #2b313c; --rc-border: #262c37; --rc-border-strong: #333a46;
+  --rc-slate: #2b313c; --rc-border-base: #262c37; --rc-border-strong-base: #333a46;
   --rc-panel: #0b0f15; --rc-hover-bg: #0d1219; --rc-sel-bg: #11161e; --rc-sel-bg2: #131921;
 }
 :root[data-accent="verde"] {
   --rc-accent: #59d499;
   --rc-canvas: #040706; --rc-canvas-rgb: 4, 7, 6; --rc-card: #070a09; --rc-recess: #101513; --rc-graphite: #19201d;
-  --rc-slate: #2b3430; --rc-border: #26302b; --rc-border-strong: #333e39;
+  --rc-slate: #2b3430; --rc-border-base: #26302b; --rc-border-strong-base: #333e39;
   --rc-panel: #0b0f0d; --rc-hover-bg: #0d1210; --rc-sel-bg: #111814; --rc-sel-bg2: #131a17;
 }
 :root[data-accent="ambar"] {
   --rc-accent: #ffc531;
   --rc-canvas: #070604; --rc-canvas-rgb: 7, 6, 4; --rc-card: #0a0907; --rc-recess: #151310; --rc-graphite: #201d18;
-  --rc-slate: #34302a; --rc-border: #2f2a23; --rc-border-strong: #3c372f;
+  --rc-slate: #34302a; --rc-border-base: #2f2a23; --rc-border-strong-base: #3c372f;
   --rc-panel: #0f0d0a; --rc-hover-bg: #12100c; --rc-sel-bg: #181510; --rc-sel-bg2: #1b1712;
 }
 :root[data-accent="rosa"] {
   --rc-accent: #f472b6;
   --rc-canvas: #080508; --rc-canvas-rgb: 8, 5, 8; --rc-card: #0c080b; --rc-recess: #171115; --rc-graphite: #221a1f;
-  --rc-slate: #372d33; --rc-border: #30262c; --rc-border-strong: #3e333a;
+  --rc-slate: #372d33; --rc-border-base: #30262c; --rc-border-strong-base: #3e333a;
   --rc-panel: #110c10; --rc-hover-bg: #140e13; --rc-sel-bg: #1a1218; --rc-sel-bg2: #1d141b;
 }
+
+/* Resalte de datos (nombres, IDs, montos, saldo) con el color elegido.
+   Con coral se queda en verde: un monto en rojo parecería un error. */
+:root:not([data-accent="coral"]) { --rc-hl: var(--rc-accent); }
 
 /* ---------- Modo claro ---------- */
 :root[data-theme="light"] {
   color-scheme: light;
   --rc-canvas: #f3f4f6; --rc-canvas-rgb: 243, 244, 246;
   --rc-card: #ffffff; --rc-recess: #f0f1f4; --rc-graphite: #e6e8ec; --rc-slate: #cfd3d9;
-  --rc-border: #e0e3e8; --rc-border-strong: #cbd0d7;
+  --rc-border-base: #e0e3e8; --rc-border-strong-base: #cbd0d7;
   --rc-text: #0e1013; --rc-mist: #22252a; --rc-ash: #5a5f68; --rc-smoke: #8b9099; --rc-iron: #b5bac2;
   --rc-ink: 14, 16, 19;
   --rc-coral: #d93d42; --rc-ember: #fde4e4;
@@ -52,6 +56,7 @@
   --rc-key-shadow: rgba(0, 0, 0, 0.06) 0 0 0 1px;
   --rc-lift: rgba(0, 0, 0, 0.04) 0 1px 2px 0, rgba(0, 0, 0, 0.06) 0 4px 12px 0;
 }
+:root[data-theme="light"] { --rc-border: color-mix(in srgb, var(--rc-accent) 35%, var(--rc-border-base)); --rc-border-strong: color-mix(in srgb, var(--rc-accent) 45%, var(--rc-border-strong-base)); }
 :root[data-theme="light"][data-accent="morado"] { --rc-accent: #7c3aed; }
 :root[data-theme="light"][data-accent="azul"]   { --rc-accent: #0a6fa8; }
 :root[data-theme="light"][data-accent="verde"]  { --rc-accent: #0f7a50; }

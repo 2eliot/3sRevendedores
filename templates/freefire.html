@@ -183,8 +183,8 @@
           {% endfor %}
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(var(--rc-ink),0.05); border-radius: 8px;">
-          <span style="font-weight: 600;">Cantidad solicitada: <span style="color: var(--rc-green);">{{ cantidad_comprada }}</span></span>
-          <span style="font-weight: 600;">Total: <span style="color: var(--rc-green);">${{ "%.2f"|format(monto_compra) }}</span></span>
+          <span style="font-weight: 600;">Cantidad solicitada: <span style="color: var(--rc-hl);">{{ cantidad_comprada }}</span></span>
+          <span style="font-weight: 600;">Total: <span style="color: var(--rc-hl);">${{ "%.2f"|format(monto_compra) }}</span></span>
         </div>
       {% else %}
         <!-- Un solo pin -->
@@ -197,8 +197,8 @@
           </div>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(var(--rc-ink),0.05); border-radius: 8px;">
-          <span style="font-weight: 600;">Cantidad solicitada: <span style="color: var(--rc-green);">1</span></span>
-          <span style="font-weight: 600;">Total: <span style="color: var(--rc-green);">${{ "%.2f"|format(monto_compra) }}</span></span>
+          <span style="font-weight: 600;">Cantidad solicitada: <span style="color: var(--rc-hl);">1</span></span>
+          <span style="font-weight: 600;">Total: <span style="color: var(--rc-hl);">${{ "%.2f"|format(monto_compra) }}</span></span>
         </div>
       {% endif %}
     </div>
@@ -447,7 +447,7 @@
             clearInterval(timer);
             // Cambiar a verde rápidamente
             setTimeout(function() {
-              saldoDisplay.style.color = '#28a745';
+              saldoDisplay.style.color = '';
             }, 100);
           }
           saldoDisplay.textContent = '$' + currentValue.toFixed(2);
