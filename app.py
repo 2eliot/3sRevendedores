@@ -7066,6 +7066,7 @@ AUDIT_TEMPLATE = r'''
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
 </head>
 <body>
     <a href="/admin" class="back-link">← Volver al Admin</a>
@@ -7191,6 +7192,7 @@ PIN_LOG_TEMPLATE = r'''
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
 </head>
 <body>
     <a href="/admin" class="back-link">&#8592; Volver al Panel Admin</a>

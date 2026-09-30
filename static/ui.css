@@ -1,0 +1,648 @@
+/* ============================================================
+   3sRevendedores — Rediseño visual (capa de maquetación)
+   Se carga después de theme.css. Solo estilos: no cambia IDs,
+   formularios ni scripts. Escala: 4/8px · tipo 12/14/16/18/24/32.
+   ============================================================ */
+
+:root {
+  --ui-radius-sm: 8px;
+  --ui-radius: 12px;
+  --ui-radius-lg: 16px;
+  --ui-radius-xl: 20px;
+  --ui-header-h: 64px;
+  --ui-panel: rgba(12, 13, 15, 0.92);
+  --ui-elev: rgba(255, 255, 255, 0.06) 0 1px 0 0 inset, rgba(0, 0, 0, 0.5) 0 12px 32px -8px, rgba(255, 255, 255, 0.08) 0 0 0 1px;
+  --ui-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+body { line-height: 1.5; font-size: 16px; }
+
+@keyframes ui-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes ui-pop  { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+/* ============================================================
+   CABECERA PÚBLICA
+   ============================================================ */
+.header {
+  position: sticky !important;
+  top: 0;
+  z-index: 50 !important;
+  height: var(--ui-header-h);
+  padding: 0 clamp(12px, 3vw, 32px) !important;
+  background: rgba(4, 5, 6, 0.72) !important;
+  -webkit-backdrop-filter: saturate(140%) blur(20px);
+  backdrop-filter: saturate(140%) blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  gap: 8px;
+}
+.header .hamburger { order: 0; }
+.header::before {
+  order: 1;
+  content: '3sRevendedores';
+  flex: 1;
+  margin-left: 4px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  color: var(--rc-text);
+  padding-left: 22px;
+  text-align: left;
+  background: no-repeat left center / 12px 12px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Crect x='2' y='2' width='8' height='8' rx='1.5' transform='rotate(45 6 6)' fill='%23ff6363'/%3E%3C/svg%3E");
+}
+.header .icon-container { order: 2; gap: 4px !important; }
+
+/* Botones de icono con área táctil amplia */
+.hamburger, .icon-container > div, .icon-container > a, .icon-container > svg {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  transition: background-color 0.15s ease;
+}
+.hamburger:hover, .icon-container > div:hover, .icon-container > a:hover, .icon-container > svg:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.header .icon, .hamburger .icon { width: 22px !important; height: 22px !important; }
+.header .icon:hover { transform: none !important; }
+
+/* Globos de notificación */
+.news-notification-badge, .wallet-notification-badge {
+  top: 2px !important; right: 2px !important;
+  width: auto !important; min-width: 18px; height: 18px !important;
+  padding: 0 5px;
+  border-radius: 999px !important;
+  font-size: 11px !important;
+  border: 2px solid var(--rc-canvas) !important;
+  animation: none !important;
+  background: var(--rc-coral) !important;
+  color: #07080a !important;
+}
+
+/* Paneles desplegables (menú de juegos / usuario) */
+.menu-juegos, .user-box {
+  top: calc(100% + 10px) !important;
+  background: var(--ui-panel) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  border: 0 !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: var(--ui-elev) !important;
+  padding: 8px !important;
+  z-index: 60;
+}
+.menu-juegos { width: 260px !important; max-height: calc(100vh - 96px); overflow-y: auto; cursor: default; }
+.menu-juegos.visible, .user-box.visible { animation: ui-pop 0.16s var(--ui-ease); }
+.menu-juegos .menu-title {
+  margin: 8px 10px 4px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rc-ash) !important;
+}
+.menu-juegos ul { margin: 0 !important; }
+.menu-juegos li { margin: 0 !important; }
+.menu-juegos > li { border-color: rgba(255, 255, 255, 0.06) !important; margin: 6px 4px !important; }
+.menu-juegos a {
+  display: flex; align-items: center;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--rc-mist) !important;
+  text-decoration: none;
+}
+.menu-juegos a:hover { background: rgba(255, 255, 255, 0.06); color: var(--rc-text) !important; font-weight: 500 !important; }
+
+.user-box { min-width: 260px !important; text-align: left !important; }
+.menu-juegos, .user-box, .menu-juegos *, .user-box * { box-sizing: border-box; }
+.user-box p {
+  margin: 4px 10px 8px !important;
+  font-size: 13px !important;
+  color: var(--rc-ash);
+  overflow-wrap: anywhere;
+}
+.user-box p strong { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rc-smoke); }
+.user-box a {
+  display: flex !important; align-items: center;
+  width: 100%;
+  min-height: 40px;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--rc-mist) !important;
+  font-size: 14px !important;
+  font-weight: 500;
+  text-decoration: none;
+}
+.user-box a:hover { background: rgba(255, 255, 255, 0.06) !important; color: var(--rc-text) !important; }
+.user-box .logout-btn { color: var(--rc-coral) !important; border-top: 1px solid rgba(255, 255, 255, 0.06); border-radius: 0 0 10px 10px !important; margin-top: 4px !important; }
+
+/* Sub-barra con ID y saldo */
+.user-panel {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 16px 16px 0 !important;
+}
+.user-chip {
+  height: 32px;
+  padding: 0 12px !important;
+  background: var(--rc-card) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: 999px !important;
+  color: var(--rc-ash) !important;
+  font-size: 13px !important;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.user-chip .chip-value { font-family: var(--rc-mono); font-size: 13px !important; font-weight: 500 !important; color: var(--rc-text) !important; }
+.user-chip.chip-saldo .chip-value { color: var(--rc-green) !important; }
+
+/* ============================================================
+   TÍTULOS DE PÁGINA
+   ============================================================ */
+.transaction-title, .section-title, .news-page-title {
+  display: block !important;
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 8px 0 24px !important;
+  font-size: clamp(22px, 3vw, 28px) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  color: var(--rc-text) !important;
+}
+
+/* Títulos dentro de tarjetas: un escalón menor */
+.games-section .section-title, .stats-section .section-title, .juego-container .section-title {
+  font-size: 18px !important; margin: 0 0 16px !important;
+}
+
+/* ============================================================
+   HISTORIAL DE TRANSACCIONES / CRÉDITOS
+   ============================================================ */
+.transactions { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px !important; text-align: left !important; }
+.transactions > .transaction-title { text-align: left; }
+.transaction-container { max-width: none !important; margin: 0 !important; gap: 12px !important; }
+
+.transaction-card-simple {
+  position: relative;
+  padding: 16px 20px !important;
+  background: var(--rc-card) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: rgba(255, 255, 255, 0.04) 0 1px 0 0 inset !important;
+  text-align: left !important;
+  animation: ui-rise 0.22s var(--ui-ease) both;
+  transition: border-color 0.15s ease;
+}
+.transaction-card-simple:hover { border-color: var(--rc-border-strong) !important; }
+.transaction-header {
+  display: flex !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+  margin: 0 0 12px !important;
+  padding: 0 0 12px !important;
+  background: none !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--rc-border) !important;
+  border-radius: 0 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rc-ash) !important;
+}
+.transaction-row { align-items: stretch !important; gap: 8px !important; margin: 0 !important; text-align: left !important; }
+.transaction-main { align-items: stretch !important; gap: 6px !important; }
+.user-simple { font-size: 15px; font-weight: 600; color: var(--rc-text) !important; }
+.control-status { display: flex; align-items: center; gap: 8px; justify-content: flex-start !important; }
+.control-num { font-family: var(--rc-mono); font-size: 12px; color: var(--rc-ash) !important; }
+.package-cost { display: flex !important; align-items: baseline; justify-content: space-between !important; gap: 12px; }
+.package-cost .package { font-weight: 500; color: var(--rc-text) !important; }
+.package-cost .cost, .cost { font-family: var(--rc-mono); font-weight: 500; color: var(--rc-green) !important; font-variant-numeric: tabular-nums; }
+.transaction-pin, .transaction-footer {
+  display: flex; justify-content: flex-start !important; align-self: flex-start !important;
+  background: none !important; border: 0 !important; padding: 0 !important; box-shadow: none !important;
+}
+.date-simple {
+  background: none !important; border: 0 !important; padding: 0 !important;
+  font-family: var(--rc-mono); font-size: 12px !important; color: var(--rc-ash) !important;
+}
+.transaction-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* PINs dentro de tarjetas y resultados */
+.pin-code, .pin-item, .ffid-voucher-line {
+  font-family: var(--rc-mono) !important;
+  letter-spacing: 0.02em;
+}
+.copy-btn, .copy-btn-simple { min-width: 32px; min-height: 32px; border-radius: 8px !important; }
+
+/* Bloque de PINs en el historial */
+.multiple-pins {
+  display: flex !important; flex-direction: column; align-items: stretch !important; gap: 8px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rc-border);
+  text-align: left !important;
+}
+.pins-count {
+  font-size: 11px !important; font-weight: 600 !important; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--rc-ash) !important;
+}
+.pin-item-simple {
+  display: flex !important; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin: 0 !important;
+  padding: 6px 6px 6px 12px !important;
+  background: var(--rc-recess) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: 10px !important;
+}
+.pin-code-simple { font-family: var(--rc-mono) !important; font-size: 14px !important; color: var(--rc-text) !important; overflow-wrap: anywhere; }
+/* Icono SVG de copiar en lugar del emoji */
+/* Solo-icono únicamente en los botones que eran solo '📋' (los que tienen texto llevan atributo style) */
+.copy-btn-simple:not([style]), .copy-btn:not([style]) {
+  position: relative;
+  font-size: 0 !important; color: transparent !important;
+  width: 32px; height: 32px; padding: 0 !important;
+}
+.copy-btn-simple:not([style])::before, .copy-btn:not([style])::before {
+  content: ''; position: absolute; inset: 0; margin: auto; width: 16px; height: 16px;
+  background: var(--rc-mist);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='13' height='13' rx='2'/%3E%3Cpath d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='13' height='13' rx='2'/%3E%3Cpath d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.copy-btn-simple:not([style]):hover::before, .copy-btn:not([style]):hover::before { background: var(--rc-text); }
+.copy-all-btn-simple { min-height: 36px; font-size: 13px !important; }
+
+/* Paginación */
+.pagination a, .pagination span, .page-btn, .pagination button {
+  min-width: 36px; height: 36px;
+  display: inline-grid; place-items: center;
+  border-radius: 10px !important;
+}
+
+/* Estados vacíos (skill: mensaje útil) */
+.empty-state, .no-transactions, .no-news {
+  padding: 48px 16px !important;
+  border: 1px dashed var(--rc-border) !important;
+  border-radius: var(--ui-radius-lg);
+  text-align: center;
+}
+.empty-state svg, .empty-icon { opacity: 0.6; }
+.empty-state p { font-size: 15px !important; color: var(--rc-ash) !important; }
+
+/* ============================================================
+   PÁGINAS DE JUEGO (compra)
+   ============================================================ */
+.juego-container {
+  max-width: 560px !important;
+  margin: 24px auto 48px !important;
+  padding: 32px !important;
+  border-radius: var(--ui-radius-xl) !important;
+  animation: ui-rise 0.22s var(--ui-ease) both;
+}
+.juego-titulo {
+  font-size: clamp(24px, 4vw, 32px) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  margin: 0 0 24px !important;
+  text-align: left !important;
+}
+.juego-form {
+  background: var(--rc-recess) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  padding: 20px !important;
+  box-shadow: none !important;
+}
+.juego-form .form-row { gap: 16px !important; }
+.juego-form label, .form-col label {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em;
+  color: var(--rc-ash) !important;
+  margin-bottom: 6px !important;
+  text-shadow: none !important;
+}
+.juego-form .form-control, .juego-form select, .juego-form input:not([type=checkbox]):not([type=radio]) {
+  min-height: 48px;
+  padding: 0 14px !important;
+  font-size: 15px !important;
+  border-radius: 10px !important;
+}
+.juego-form button, .juego-form .submit-btn {
+  min-height: 48px;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+  letter-spacing: 0.02em;
+  text-transform: none !important;
+}
+.total-price { font-family: var(--rc-mono); color: var(--rc-text) !important; }
+
+/* Bloques informativos y pasos */
+.juego-descripcion, .entrega-info, .informacion {
+  margin-top: 16px !important;
+  background: transparent !important;
+  border: 1px solid var(--rc-border) !important;
+  border-left-width: 1px !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: none !important;
+  color: var(--rc-ash) !important;
+  font-size: 14px;
+}
+.juego-descripcion ol li, .juego-descripcion ul li, .entrega-info li { text-align: left; }
+
+/* Resultado de compra */
+.compra-exitosa, .solicitud-container {
+  margin-top: 16px !important;
+  background: linear-gradient(180deg, rgba(89, 212, 153, 0.08), rgba(89, 212, 153, 0.02)) !important;
+  border: 1px solid rgba(89, 212, 153, 0.25) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: none !important;
+  animation: ui-rise 0.25s var(--ui-ease) both;
+}
+.pines-container, .pin-container { gap: 8px; }
+.pin-item {
+  background: var(--rc-card) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: 10px !important;
+}
+
+/* Volver: enlace discreto */
+.volver-container { margin-top: 24px !important; text-align: center; }
+.volver-btn {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--rc-ash) !important;
+  font-weight: 500 !important;
+  padding: 10px 16px !important;
+  border-radius: 10px !important;
+}
+.volver-btn:hover { color: var(--rc-text) !important; background: rgba(255, 255, 255, 0.06) !important; }
+.volver-btn::before { content: none !important; } /* el texto ya trae la flecha */
+
+/* Pie de tarjeta (billetera): fecha a la izquierda, usuario a la derecha */
+.transaction-footer {
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  align-self: stretch !important;
+  width: 100%;
+  gap: 12px;
+  margin-top: 8px !important;
+  padding-top: 10px !important;
+  border-top: 1px solid var(--rc-border) !important;
+}
+.transaction-footer .user-simple { font-size: 13px; font-weight: 500; color: var(--rc-ash) !important; }
+
+/* ============================================================
+   DASHBOARD DE USUARIO (bento)
+   ============================================================ */
+.dashboard-container {
+  max-width: 1100px;
+  margin: 24px auto 48px !important;
+  padding: 24px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.filter-buttons-integrated {
+  display: inline-flex !important;
+  gap: 4px !important;
+  padding: 4px;
+  background: var(--rc-card);
+  border: 1px solid var(--rc-border);
+  border-radius: 12px;
+}
+.filter-buttons-integrated button, .filter-buttons-integrated a {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--rc-ash) !important;
+  border-radius: 8px !important;
+  min-height: 36px;
+  padding: 0 14px !important;
+  box-shadow: none !important;
+}
+.filter-buttons-integrated .active, .filter-buttons-integrated button:hover {
+  background: var(--rc-graphite) !important;
+  color: var(--rc-text) !important;
+}
+.stats-grid { display: grid !important; gap: 16px !important; }
+.stat-card {
+  border-radius: var(--ui-radius-lg) !important;
+  padding: 20px 24px !important;
+  border-left-width: 1px !important;
+  animation: ui-rise 0.22s var(--ui-ease) both;
+}
+.stat-title, .stat-card h3 {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rc-ash) !important;
+}
+.stat-value, .stat-number {
+  font-family: var(--rc-mono) !important;
+  font-weight: 500 !important;
+  font-size: clamp(24px, 3.2vw, 32px) !important;
+  letter-spacing: -0.02em;
+  color: var(--rc-text) !important;
+  font-variant-numeric: tabular-nums;
+}
+.stat-subtitle { font-size: 13px; color: var(--rc-ash) !important; }
+.games-section {
+  background: var(--rc-card) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+  box-shadow: none !important;
+}
+
+/* Tablas modernas */
+.table-responsive { border: 1px solid var(--rc-border); border-radius: var(--ui-radius); overflow: hidden; }
+table { border-collapse: separate !important; border-spacing: 0; width: 100%; }
+th, td { padding: 12px 16px !important; }
+th { background: var(--rc-card) !important; border-bottom: 1px solid var(--rc-border) !important; text-align: left; }
+td { border-bottom: 1px solid var(--rc-border) !important; font-size: 14px; }
+tbody tr:last-child td { border-bottom: 0 !important; }
+
+/* ============================================================
+   BILLETERA / NOTICIAS
+   ============================================================ */
+.recarga-card, .billetera-container {
+  max-width: 560px;
+  margin-left: auto !important; margin-right: auto !important;
+  border-radius: var(--ui-radius-xl) !important;
+  padding: 24px !important;
+}
+.recarga-card-header { font-size: 18px !important; text-align: left !important; padding: 0 !important; margin-bottom: 16px !important; }
+.recarga-btn { min-height: 48px; border-radius: 12px !important; font-size: 15px !important; }
+
+.news-container { max-width: 720px; margin: 0 auto; }
+.news-card {
+  border-radius: var(--ui-radius-lg) !important;
+  padding: 20px !important;
+  text-align: left;
+  animation: ui-rise 0.22s var(--ui-ease) both;
+}
+.news-title { font-size: 18px !important; font-weight: 600 !important; color: var(--rc-text) !important; }
+.news-date { font-family: var(--rc-mono); font-size: 12px !important; color: var(--rc-ash) !important; }
+.news-content { color: var(--rc-mist) !important; line-height: 1.6; }
+.news-important-badge {
+  background: var(--rc-ember) !important; color: var(--rc-coral) !important;
+  border-radius: 6px !important; font-size: 11px !important; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px !important;
+}
+
+/* ============================================================
+   AVISOS (toasts)
+   ============================================================ */
+.flash-messages-main, .flash-messages {
+  top: calc(var(--ui-header-h) + 12px) !important;
+  right: 16px !important;
+  max-width: min(380px, calc(100vw - 32px)) !important;
+  z-index: 1000 !important;
+}
+.flash-message-main, .flash-message, .flash {
+  border-radius: 12px !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  animation: ui-pop 0.2s var(--ui-ease) both;
+}
+
+/* ============================================================
+   LOGIN / REGISTRO
+   ============================================================ */
+.auth-panel {
+  width: min(420px, calc(100vw - 32px)) !important;
+  padding: 32px !important;
+  border-radius: var(--ui-radius-xl) !important;
+  background: var(--rc-card) !important;
+  border: 1px solid var(--rc-border) !important;
+  box-shadow: rgba(255, 255, 255, 0.05) 0 1px 0 0 inset !important;
+  animation: ui-rise 0.25s var(--ui-ease) both;
+}
+.auth-header h1 {
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+  padding-left: 26px;
+  display: inline-block;
+  background: no-repeat left center / 14px 14px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Crect x='2' y='2' width='8' height='8' rx='1.5' transform='rotate(45 6 6)' fill='%23ff6363'/%3E%3C/svg%3E") !important;
+}
+.auth-header p { color: var(--rc-ash) !important; font-size: 14px !important; }
+.tab-buttons {
+  display: flex !important;
+  gap: 4px;
+  padding: 4px !important;
+  background: var(--rc-recess) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: 12px !important;
+}
+.tab-buttons button {
+  flex: 1;
+  min-height: 40px;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--rc-ash) !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+.tab-buttons button.active-tab, .tab-buttons .active-tab {
+  background: var(--rc-graphite) !important;
+  background-image: none !important;
+  color: var(--rc-text) !important;
+  box-shadow: rgba(255, 255, 255, 0.06) 0 1px 0 0 inset !important;
+}
+.input-group label { font-size: 13px !important; font-weight: 500 !important; color: var(--rc-ash) !important; }
+.input-group input { min-height: 48px; font-size: 15px !important; }
+.submit-btn { min-height: 48px; border-radius: 12px !important; font-size: 15px !important; }
+.aviso-banner {
+  background: var(--rc-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: var(--ui-radius-lg) !important;
+}
+
+/* ============================================================
+   PANEL ADMIN
+   ============================================================ */
+.admin-main { padding: 24px clamp(12px, 3vw, 32px) !important; }
+.admin-shell { margin-top: 0 !important; gap: 24px !important; }
+.admin-sidebar {
+  top: 24px !important;
+  padding: 12px !important;
+  border-radius: var(--ui-radius-lg) !important;
+}
+.admin-sidebar::before {
+  content: '3sRevendedores';
+  display: block;
+  padding: 6px 10px 14px 32px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--rc-border);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--rc-text);
+  background: no-repeat 10px 9px / 12px 12px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Crect x='2' y='2' width='8' height='8' rx='1.5' transform='rotate(45 6 6)' fill='%23ff6363'/%3E%3C/svg%3E");
+}
+.side-tab-button {
+  min-height: 40px;
+  margin: 2px 0 !important;
+  padding: 0 10px !important;
+  border-radius: 10px !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  gap: 12px !important;
+}
+.side-tab-button .label { font-size: 14px !important; font-weight: 500; }
+.admin-sidebar .icon svg { width: 18px !important; height: 18px !important; }
+
+.tab-content { padding: 0 !important; animation: ui-rise 0.2s var(--ui-ease) both !important; }
+.stats-admin-section, .tab-content > section:not(.um-section) {
+  border-radius: var(--ui-radius-xl) !important;
+  padding: 24px !important;
+}
+.tab-content h2, .stats-admin-section h2 {
+  font-size: 22px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em;
+}
+.stats-section, .stats-admin-grid { gap: 16px !important; }
+
+/* Subpáginas admin sueltas */
+.back-button, a.back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px; padding: 0 12px !important;
+  border-radius: 10px !important;
+  background: var(--rc-graphite) !important;
+  border: 1px solid var(--rc-border) !important;
+  color: var(--rc-mist) !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+}
+.back-button:hover, a.back-link:hover { background: var(--rc-slate) !important; color: var(--rc-text) !important; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 720px) {
+  :root { --ui-header-h: 56px; }
+  .header::before { font-size: 14px; }
+  .hamburger, .icon-container > div, .icon-container > a, .icon-container > svg { min-width: 44px; height: 44px; }
+  .header .icon-container { gap: 0 !important; }
+  .juego-container { margin: 16px 12px 32px !important; padding: 20px !important; border-radius: var(--ui-radius-lg) !important; }
+  .juego-form { padding: 16px !important; }
+  .dashboard-container { padding: 16px 12px !important; margin-top: 8px !important; }
+  .transaction-card-simple { padding: 16px !important; }
+  .auth-panel { padding: 24px !important; }
+  .stats-admin-section, .tab-content > section:not(.um-section) { padding: 16px !important; border-radius: var(--ui-radius-lg) !important; }
+  .admin-sidebar::before { display: none; }
+}
+@media (max-width: 420px) {
+  .header::before { content: '3sR'; }
+}
