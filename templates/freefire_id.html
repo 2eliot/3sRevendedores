@@ -40,17 +40,20 @@
       width: 100%;
       margin-bottom: 0;
       background: rgba(255,255,255,0.08);
-      color: #e0e0e0;
+      color: #e6e6e6;
       transition: all 0.3s ease;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .juego-form input.form-control:focus {
       outline: none;
       border-color: var(--ffid-accent);
-      box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
       transform: translateY(-1px);
     }
   </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -92,7 +95,7 @@
           {% endfor %}
         </ul>
 
-        <li style="border-top:1px solid #000000; margin:6px 0; list-style:none;"></li>
+        <li style="border-top:1px solid #2a2b2d; margin:6px 0; list-style:none;"></li>
         <ul>
           <li><a href="/billetera">Recargar Usuario</a></li>
         </ul>
@@ -194,17 +197,17 @@
       <div class="solicitud-container">
         <div class="solicitud-info">
           <p class="solicitud-label">Estado:</p>
-          <p class="solicitud-estado" id="estadoSolicitud" style="color: #28a745;">✅ COMPLETADO</p>
+          <p class="solicitud-estado" id="estadoSolicitud" style="color: #59d499;">✅ COMPLETADO</p>
         </div>
         <div class="detalles-info">
           <p><strong>Free Fire</strong></p>
           <p><strong>Paquete:</strong> {{ paquete_nombre.split(' / ')[0] if ' / ' in paquete_nombre else paquete_nombre }}</p>
           {% if player_name %}
-          <p><strong>Jugador:</strong> <span style="color: #28a745; font-weight: 700; font-size: 1.1em;">{{ player_name }}</span></p>
+          <p><strong>Jugador:</strong> <span style="color: #59d499; font-weight: 700; font-size: 1.1em;">{{ player_name }}</span></p>
           {% endif %}
           <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
-          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #8896a6; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #9c9c9d; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
       {% else %}
@@ -218,7 +221,7 @@
           <p><strong>Paquete:</strong> {{ paquete_nombre.split(' / ')[0] if ' / ' in paquete_nombre else paquete_nombre }}</p>
           <p><strong>ID de Jugador:</strong> {{ player_id }}</p>
           <p><strong>Número de Control:</strong> {{ numero_control }}</p>
-          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #8896a6; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
+          <p style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); color: #9c9c9d; font-size: 0.9em;"><strong>Monto:</strong> ${{ "%.2f"|format(monto_compra) }}</p>
         </div>
       </div>
       <div class="entrega-info">
@@ -229,25 +232,25 @@
     </div>
     {% else %}
     <div class="juego-descripcion" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.08);">
-      <p style="margin-bottom: 16px; color: #c0c8d4; font-size: 0.9em;">Asegurate de ingresar correctamente tu ID de jugador. La recarga puede tardar unos segundos.</p>
+      <p style="margin-bottom: 16px; color: #9c9c9d; font-size: 0.9em;">Asegurate de ingresar correctamente tu ID de jugador. La recarga puede tardar unos segundos.</p>
 
       <div style="background: rgba(255,255,255,0.04); border-radius: 10px; padding: 16px; margin-top: 8px;">
-        <p style="font-weight: 700; font-size: 1.05em; margin-bottom: 12px; color: #e0e0e0;">Pasos para recargar diamantes:</p>
+        <p style="font-weight: 700; font-size: 1.05em; margin-bottom: 12px; color: #e6e6e6;">Pasos para recargar diamantes:</p>
         <ol style="margin: 0; padding-left: 20px; list-style: none;">
-          <li style="padding: 8px 0; color: #c0c8d4; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #ff8c00; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">1</span>
+          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: #2e2612; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">1</span>
             Ingresa tu <strong>ID de jugador</strong> de Free Fire
           </li>
-          <li style="padding: 8px 0; color: #c0c8d4; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #ff8c00; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">2</span>
+          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: #2e2612; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">2</span>
             Selecciona el paquete de diamantes que deseas
           </li>
-          <li style="padding: 8px 0; color: #c0c8d4; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-            <span style="background: #ff8c00; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">3</span>
+          <li style="padding: 8px 0; color: #9c9c9d; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
+            <span style="background: #2e2612; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">3</span>
             Presiona <strong>Recargar Ahora</strong> y espera unos segundos
           </li>
-          <li style="padding: 8px 0; color: #c0c8d4; display: flex; align-items: center; gap: 10px;">
-            <span style="background: #ff8c00; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">4</span>
+          <li style="padding: 8px 0; color: #9c9c9d; display: flex; align-items: center; gap: 10px;">
+            <span style="background: #2e2612; color: #ffffff; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 700;">4</span>
             Los diamantes se agregan <strong>automaticamente</strong> a tu cuenta
           </li>
         </ol>

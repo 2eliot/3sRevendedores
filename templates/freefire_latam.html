@@ -6,6 +6,9 @@
   <title>Free Fire Latam</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='freefire_latam.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -52,7 +55,7 @@
           {% endfor %}
         </ul>
 
-        <li style="border-top:1px solid #000000; margin:6px 0; list-style:none;"></li>
+        <li style="border-top:1px solid #2a2b2d; margin:6px 0; list-style:none;"></li>
         <ul>
           <li><a href="/billetera">Recargar Usuario</a></li>
         </ul>
@@ -185,7 +188,7 @@
     {% else %}
     <div class="juego-descripcion">
       <p>💡 Instrucciones para canjear tu código PIN:</p>
-      <ul style="list-style-type: square; padding-left: 1.5rem; line-height: 1.6; color: #c0c8d4;">
+      <ul style="list-style-type: square; padding-left: 1.5rem; line-height: 1.6; color: #9c9c9d;">
         <li>Dirígete al sitio oficial de <a href="https://pagostore.garena.com/" target="_blank">https://pagostore.garena.com/</a></li>
         <li>Accede con tu cuenta usando tu <strong>ID de jugador</strong></li>
         <li>Verifica que la región seleccionada sea <strong>Bolivia</strong></li>

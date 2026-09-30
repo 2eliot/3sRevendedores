@@ -7025,32 +7025,32 @@ AUDIT_TEMPLATE = r'''
     <title>Auditoría FreeFire ID - Transacciones Inconsistentes</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #0a0a1a; color: #e0e0e0; padding: 20px; }
-        h1 { color: #ff6b6b; margin-bottom: 5px; }
-        .subtitle { color: #888; margin-bottom: 20px; font-size: 14px; }
-        .back-link { color: #00ff88; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+        body { font-family: 'Segoe UI', sans-serif; background: #111214; color: #e6e6e6; padding: 20px; }
+        h1 { color: #ff6363; margin-bottom: 5px; }
+        .subtitle { color: #9c9c9d; margin-bottom: 20px; font-size: 14px; }
+        .back-link { color: #59d499; text-decoration: none; margin-bottom: 20px; display: inline-block; }
         .back-link:hover { text-decoration: underline; }
         .alert { 
-            background: #ff6b6b20; 
-            border: 1px solid #ff6b6b; 
+            background: rgba(255, 99, 99, 0.125); 
+            border: 1px solid #ff6363; 
             border-radius: 8px; 
             padding: 15px; 
             margin-bottom: 20px; 
         }
         .alert p { margin: 5px 0; font-size: 14px; }
-        .alert strong { color: #ff6b6b; }
-        table { width: 100%; border-collapse: collapse; background: #1a1a2e; border-radius: 8px; overflow: hidden; }
-        th { background: #16213e; color: #00ff88; padding: 10px 8px; text-align: left; font-size: 12px; position: sticky; top: 0; }
-        td { padding: 8px; border-bottom: 1px solid #222; font-size: 13px; }
-        tr:hover { background: #16213e; }
-        .severity-HIGH { border-left: 4px solid #ff4444; }
-        .severity-MEDIUM { border-left: 4px solid #ffaa00; }
-        .pin-code { font-family: monospace; font-size: 12px; color: #ffdd57; cursor: pointer; }
-        .status-refunded { color: #ff4444; font-weight: bold; }
-        .status-ok { color: #00ff88; font-weight: bold; }
+        .alert strong { color: #ff6363; }
+        table { width: 100%; border-collapse: collapse; background: #1b1c1e; border-radius: 8px; overflow: hidden; }
+        th { background: #1b1c1e; color: #59d499; padding: 10px 8px; text-align: left; font-size: 12px; position: sticky; top: 0; }
+        td { padding: 8px; border-bottom: 1px solid #2a2b2d; font-size: 13px; }
+        tr:hover { background: #1b1c1e; }
+        .severity-HIGH { border-left: 4px solid #ff6363; }
+        .severity-MEDIUM { border-left: 4px solid #ffc531; }
+        .pin-code { font-family: monospace; font-size: 12px; color: #ffc531; cursor: pointer; }
+        .status-refunded { color: #ff6363; font-weight: bold; }
+        .status-ok { color: #59d499; font-weight: bold; }
         .btn { 
-            background: #ff6b6b; 
-            color: white; 
+            background: #452324; 
+            color: #ffffff; 
             border: none; 
             padding: 4px 8px; 
             border-radius: 4px; 
@@ -7058,11 +7058,14 @@ AUDIT_TEMPLATE = r'''
             font-size: 11px; 
             margin: 0 2px;
         }
-        .btn:hover { background: #ff5252; }
-        .btn-success { background: #00ff88; }
-        .btn-success:hover { background: #00dd77; }
-        .empty-state { text-align: center; padding: 40px; color: #888; }
+        .btn:hover { background: #452324; }
+        .btn-success { background: #13261d; }
+        .btn-success:hover { background: #13261d; }
+        .empty-state { text-align: center; padding: 40px; color: #9c9c9d; }
     </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
     <a href="/admin" class="back-link">← Volver al Admin</a>
@@ -7155,36 +7158,39 @@ PIN_LOG_TEMPLATE = r'''
     <title>Log de PINes FreeFire ID</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #0a0a1a; color: #e0e0e0; padding: 20px; }
-        h1 { color: #00ff88; margin-bottom: 5px; }
-        .subtitle { color: #888; margin-bottom: 20px; font-size: 14px; }
-        .back-link { color: #00ff88; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+        body { font-family: 'Segoe UI', sans-serif; background: #111214; color: #e6e6e6; padding: 20px; }
+        h1 { color: #59d499; margin-bottom: 5px; }
+        .subtitle { color: #9c9c9d; margin-bottom: 20px; font-size: 14px; }
+        .back-link { color: #59d499; text-decoration: none; margin-bottom: 20px; display: inline-block; }
         .back-link:hover { text-decoration: underline; }
         .stats { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
-        .stat-box { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 12px 20px; }
+        .stat-box { background: #1b1c1e; border: 1px solid #2a2b2d; border-radius: 8px; padding: 12px 20px; }
         .stat-box .num { font-size: 24px; font-weight: bold; }
-        .stat-box .label { font-size: 12px; color: #888; }
-        .stat-box.success .num { color: #00ff88; }
-        .stat-box.fail .num { color: #ff4444; }
-        .stat-box.pending .num { color: #ffaa00; }
-        table { width: 100%; border-collapse: collapse; background: #1a1a2e; border-radius: 8px; overflow: hidden; }
-        th { background: #16213e; color: #00ff88; padding: 10px 8px; text-align: left; font-size: 12px; position: sticky; top: 0; }
-        td { padding: 8px; border-bottom: 1px solid #222; font-size: 13px; }
-        tr:hover { background: #16213e; }
-        .pin-code { font-family: monospace; font-size: 12px; color: #ffdd57; cursor: pointer; }
-        .pin-code:hover { color: #fff; }
-        .estado-aprobado { color: #00ff88; font-weight: bold; }
-        .estado-rechazado { color: #ff4444; font-weight: bold; }
-        .estado-pendiente { color: #ffaa00; font-weight: bold; }
-        .player-id { font-family: monospace; color: #88ccff; }
+        .stat-box .label { font-size: 12px; color: #9c9c9d; }
+        .stat-box.success .num { color: #59d499; }
+        .stat-box.fail .num { color: #ff6363; }
+        .stat-box.pending .num { color: #ffc531; }
+        table { width: 100%; border-collapse: collapse; background: #1b1c1e; border-radius: 8px; overflow: hidden; }
+        th { background: #1b1c1e; color: #59d499; padding: 10px 8px; text-align: left; font-size: 12px; position: sticky; top: 0; }
+        td { padding: 8px; border-bottom: 1px solid #2a2b2d; font-size: 13px; }
+        tr:hover { background: #1b1c1e; }
+        .pin-code { font-family: monospace; font-size: 12px; color: #ffc531; cursor: pointer; }
+        .pin-code:hover { color: #ffffff; }
+        .estado-aprobado { color: #59d499; font-weight: bold; }
+        .estado-rechazado { color: #ff6363; font-weight: bold; }
+        .estado-pendiente { color: #ffc531; font-weight: bold; }
+        .player-id { font-family: monospace; color: #56c2ff; }
         .search-box { margin-bottom: 15px; }
-        .search-box input { background: #1a1a2e; border: 1px solid #333; color: #fff; padding: 8px 15px;
+        .search-box input { background: #1b1c1e; border: 1px solid #2a2b2d; color: #ffffff; padding: 8px 15px;
                            border-radius: 6px; width: 300px; font-size: 14px; }
-        .search-box input:focus { outline: none; border-color: #00ff88; }
-        .notas { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #999; }
-        .copy-toast { position: fixed; bottom: 20px; right: 20px; background: #00ff88; color: #000;
+        .search-box input:focus { outline: none; border-color: #59d499; }
+        .notas { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #9c9c9d; }
+        .copy-toast { position: fixed; bottom: 20px; right: 20px; background: #13261d; color: #ffffff;
                      padding: 10px 20px; border-radius: 6px; display: none; font-weight: bold; z-index: 999; }
     </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
     <a href="/admin" class="back-link">&#8592; Volver al Panel Admin</a>
@@ -7229,7 +7235,7 @@ PIN_LOG_TEMPLATE = r'''
             <tr>
                 <td>{{ t.id }}</td>
                 <td>{{ t.fecha|format_date('%Y-%m-%d %H:%M') if t.fecha else '-' }}</td>
-                <td>{{ t.usuario_nombre }}<br><small style="color:#666">{{ t.correo }}</small></td>
+                <td>{{ t.usuario_nombre }}<br><small style="color:#9c9c9d">{{ t.correo }}</small></td>
                 <td class="player-id">{{ t.player_id }}</td>
                 <td class="pin-code" onclick="copyPin(this)" title="Click para copiar">{{ t.pin_codigo or 'N/A' }}</td>
                 <td>{{ t.paquete_nombre or '-' }}</td>

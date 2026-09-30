@@ -1,6 +1,6 @@
 body {
   font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+  background: linear-gradient(135deg, #07080a 0%, #040506 100%);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -15,8 +15,8 @@ body {
 .aviso-banner {
   width: 100%;
   max-width: 480px;
-  background: linear-gradient(135deg, rgba(30,58,138,0.9), rgba(17,24,39,0.95));
-  border: 1px solid rgba(88,166,255,0.45);
+  background: linear-gradient(135deg, rgba(86, 194, 255, 0.9), rgba(17,24,39,0.95));
+  border: 1px solid rgba(86, 194, 255, 0.45);
   border-radius: 14px;
   padding: 16px 20px;
   display: flex;
@@ -37,17 +37,17 @@ body {
   gap: 3px;
 }
 .aviso-body strong {
-  color: #e2e8f0;
+  color: #e6e6e6;
   font-size: 0.95rem;
 }
 .aviso-body span {
-  color: #94a3b8;
+  color: #9c9c9d;
   font-size: 0.82rem;
 }
 .aviso-btn {
   flex-shrink: 0;
-  background: #1d4ed8;
-  color: #fff;
+  background: #0f2233;
+  color: #ffffff;
   text-decoration: none;
   padding: 9px 16px;
   border-radius: 8px;
@@ -56,7 +56,7 @@ body {
   white-space: nowrap;
   transition: background .15s;
 }
-.aviso-btn:hover { background: #2563eb; }
+.aviso-btn:hover { background: #0f2233; }
 @media (max-width: 520px) {
   .aviso-banner { flex-direction: column; align-items: flex-start; }
   .aviso-btn { align-self: stretch; text-align: center; }
@@ -69,8 +69,8 @@ body {
   backdrop-filter: blur(10px);
   padding: 2.5rem;
   border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(220, 38, 38, 0.25);
-  border: 1px solid rgba(220, 38, 38, 0.35);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 99, 99, 0.35);
 }
 
 .auth-header {
@@ -79,25 +79,25 @@ body {
 }
 
 .auth-header h1 {
-  color: #fff;
+  color: #ffffff;
   font-size: 2rem;
   font-weight: 700;
   margin: 0 0 0.5rem 0;
-  background: linear-gradient(135deg, #dc2626, #ef4444);
+  background: linear-gradient(135deg, #452324, #452324);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .auth-header p {
-  color: #a3a3a3;
+  color: #9c9c9d;
   margin: 0;
   font-size: 0.95rem;
 }
 
 .tab-buttons {
   display: flex;
-  background: #111111;
+  background: #07080a;
   border-radius: 12px;
   padding: 4px;
   margin-bottom: 2rem;
@@ -109,7 +109,7 @@ body {
   padding: 0.75rem 1rem;
   border: none;
   background: transparent;
-  color: #fff;
+  color: #ffffff;
   cursor: pointer;
   font-weight: 600;
   border-radius: 8px;
@@ -118,14 +118,14 @@ body {
 }
 
 .tab-buttons button:hover {
-  color: #fff;
-  background: rgba(220, 38, 38, 0.2);
+  color: #ffffff;
+  background: rgba(255, 99, 99, 0.2);
 }
 
 .active-tab {
-  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
-  color: #fff !important;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  background: linear-gradient(135deg, #452324, #452324) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   transform: translateY(-1px);
 }
 
@@ -141,7 +141,7 @@ body {
 
 .input-group label {
   display: block;
-  color: #fff;
+  color: #ffffff;
   font-weight: 500;
   margin-bottom: 0.5rem;
   font-size: 0.9rem;
@@ -150,30 +150,30 @@ body {
 .tab-content input {
   width: 100%;
   padding: 0.875rem 1rem;
-  border: 2px solid #262626;
+  border: 2px solid #2a2b2d;
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s ease;
-  background: #0f0f0f;
-  color: #fff;
+  background: #07080a;
+  color: #ffffff;
   box-sizing: border-box;
 }
 
 .tab-content input:focus {
   outline: none;
-  border-color: #ef4444;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
+  border-color: #ff6363;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25);
   transform: translateY(-1px);
 }
 
 .tab-content input::placeholder {
-  color: #a3a3a3;
+  color: #9c9c9d;
 }
 
 .submit-btn {
   padding: 1rem;
-  background: linear-gradient(135deg, #dc2626, #ef4444);
-  color: #fff;
+  background: linear-gradient(135deg, #452324, #452324);
+  color: #ffffff;
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -181,12 +181,12 @@ body {
   font-size: 1rem;
   transition: all 0.3s ease;
   margin-top: 0.5rem;
-  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
 }
 
 .submit-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
 .submit-btn:active {
@@ -210,13 +210,13 @@ body {
 }
 
 .flash-error {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-  color: #fff;
+  background: linear-gradient(135deg, #452324, #452324);
+  color: #ffffff;
 }
 
 .flash-success {
-  background: linear-gradient(135deg, #51cf66, #40c057);
-  color: #fff;
+  background: linear-gradient(135deg, #13261d, #13261d);
+  color: #ffffff;
 }
 
 /* Responsive design */

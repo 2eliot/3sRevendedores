@@ -6,9 +6,11 @@
   <title>Panel de Administrador</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='users_modern.css') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -82,7 +84,7 @@
 
       <!-- Pestaña de Usuarios -->
       <div id="tab-usuarios" class="tab-content active">
-        <section class="um-section" id="um-section" data-theme="dark">
+        <section class="um-section" id="um-section">
           <header class="um-header">
             <div class="um-title">
               <h2>Gestión de Usuarios</h2>
@@ -98,10 +100,6 @@
                 <input type="search" id="user-id-search" placeholder="Buscar por ID, nombre o email" autocomplete="off">
                 <button type="button" id="user-id-clear" class="um-search-clear" aria-label="Limpiar">×</button>
               </label>
-              <button type="button" id="um-theme-toggle" class="um-icon-btn" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
-                <svg class="um-ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-                <svg class="um-ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              </button>
             </div>
           </header>
 
@@ -279,15 +277,15 @@
           </div>
 
           {% for dg in dyn_games %}
-          <div class="card" style="margin-top:20px;border:1px solid rgba(167,139,250,0.3);">
-            <div class="card-header" style="background:rgba(167,139,250,0.1);"><h3>{{ dg.nombre }} — Mapeo y Sync</h3></div>
+          <div class="card" style="margin-top:20px;border:1px solid rgba(255, 255, 255, 0.105);">
+            <div class="card-header" style="background:rgba(255, 255, 255, 0.035);"><h3>{{ dg.nombre }} — Mapeo y Sync</h3></div>
             <div class="card-body">
-              <p style="color:#aaa;font-size:13px;margin-bottom:12px;">Mapea tus paquetes con los IDs de GamePoint y sincroniza precios.</p>
+              <p style="color:#9c9c9d;font-size:13px;margin-bottom:12px;">Mapea tus paquetes con los IDs de GamePoint y sincroniza precios.</p>
               <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
                 <button type="button" class="btn btn-secondary" onclick="loadDynMapping({{ dg.id }})">Cargar Mapeo</button>
-                <button type="button" class="btn btn-primary" onclick="autoImportDynPackages({{ dg.id }})" style="background:#22c55e;">Auto-Importar Paquetes</button>
-                <button type="button" class="btn btn-primary" onclick="syncDynPrices({{ dg.id }})" style="background:#a78bfa;">Sincronizar Precios</button>
-                <div id="dyn-mapping-status-{{ dg.id }}" style="color:#aaa;font-size:13px;display:flex;align-items:center;"></div>
+                <button type="button" class="btn btn-primary" onclick="autoImportDynPackages({{ dg.id }})" style="background:#13261d;">Auto-Importar Paquetes</button>
+                <button type="button" class="btn btn-primary" onclick="syncDynPrices({{ dg.id }})" style="background:#1b1c1e;">Sincronizar Precios</button>
+                <div id="dyn-mapping-status-{{ dg.id }}" style="color:#9c9c9d;font-size:13px;display:flex;align-items:center;"></div>
               </div>
               <div id="dyn-mapping-table-{{ dg.id }}" style="overflow-x:auto;"></div>
               <div id="dyn-sync-report-{{ dg.id }}" style="display:none;margin-top:12px;overflow-x:auto;"></div>
@@ -360,12 +358,12 @@
       <div id="tab-costo" class="tab-content">
         <section class="costo-section">
           <h2>💰 Costos y Compras de Usuarios</h2>
-          <p style="color:#888;margin-bottom:20px;">Historial de compras diarias de usuarios activos con detalles de saldo antes/después.</p>
+          <p style="color:#9c9c9d;margin-bottom:20px;">Historial de compras diarias de usuarios activos con detalles de saldo antes/después.</p>
           
           <!-- Sub-tabs: Usuarios / Admin -->
           <div style="display:flex;gap:8px;margin-bottom:16px;">
-            <button type="button" class="costo-subtab active" data-subtab="usuarios" style="padding:8px 16px;font-size:13px;background:#00d4aa;color:#000;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Usuarios</button>
-            <button type="button" class="costo-subtab" data-subtab="admin" style="padding:8px 16px;font-size:13px;background:#333;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Admin</button>
+            <button type="button" class="costo-subtab active" data-subtab="usuarios" style="padding:8px 16px;font-size:13px;background:#13261d;color:#ffffff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Usuarios</button>
+            <button type="button" class="costo-subtab" data-subtab="admin" style="padding:8px 16px;font-size:13px;background:#2f3031;color:#ffffff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">Admin</button>
           </div>
 
           <!-- Sub-tab Usuarios -->
@@ -375,16 +373,16 @@
                 <h3>📋 Compras por Día</h3>
                 <div style="display:flex;align-items:center;gap:12px;">
                   <div class="day-pagination" style="display:flex;gap:8px;">
-                    <button type="button" class="day-btn active" data-day="today" style="padding:6px 12px;font-size:12px;background:#00d4aa;color:#000;border:none;border-radius:4px;cursor:pointer;">Hoy</button>
-                    <button type="button" class="day-btn" data-day="yesterday" style="padding:6px 12px;font-size:12px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;">Ayer</button>
-                    <button type="button" class="day-btn" data-day="daybefore" style="padding:6px 12px;font-size:12px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;">Antes de ayer</button>
+                    <button type="button" class="day-btn active" data-day="today" style="padding:6px 12px;font-size:12px;background:#13261d;color:#ffffff;border:none;border-radius:4px;cursor:pointer;">Hoy</button>
+                    <button type="button" class="day-btn" data-day="yesterday" style="padding:6px 12px;font-size:12px;background:#2f3031;color:#ffffff;border:none;border-radius:4px;cursor:pointer;">Ayer</button>
+                    <button type="button" class="day-btn" data-day="daybefore" style="padding:6px 12px;font-size:12px;background:#2f3031;color:#ffffff;border:none;border-radius:4px;cursor:pointer;">Antes de ayer</button>
                   </div>
                   <button type="button" id="refresh-current" class="btn btn-secondary" style="padding:4px 12px;font-size:12px;">🔄</button>
                 </div>
               </div>
               <div class="card-body">
                 <div id="current-purchases-list">
-                  <div style="text-align:center;padding:20px;color:#888;">Cargando...</div>
+                  <div style="text-align:center;padding:20px;color:#9c9c9d;">Cargando...</div>
                 </div>
               </div>
             </div>
@@ -398,7 +396,7 @@
               </div>
               <div class="card-body">
                 <div id="admin-cost-summary" style="display:flex;gap:16px;flex-wrap:wrap;">
-                  <div style="text-align:center;padding:20px;color:#888;width:100%;">Cargando...</div>
+                  <div style="text-align:center;padding:20px;color:#9c9c9d;width:100%;">Cargando...</div>
                 </div>
               </div>
             </div>
@@ -407,16 +405,16 @@
                 <h3>📋 Compras Admin</h3>
                 <div style="display:flex;align-items:center;gap:12px;">
                   <div class="day-pagination-admin" style="display:flex;gap:8px;">
-                    <button type="button" class="day-btn-admin active" data-day="today" style="padding:6px 12px;font-size:12px;background:#00d4aa;color:#000;border:none;border-radius:4px;cursor:pointer;">Hoy</button>
-                    <button type="button" class="day-btn-admin" data-day="yesterday" style="padding:6px 12px;font-size:12px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;">Ayer</button>
-                    <button type="button" class="day-btn-admin" data-day="daybefore" style="padding:6px 12px;font-size:12px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;">Antes de ayer</button>
+                    <button type="button" class="day-btn-admin active" data-day="today" style="padding:6px 12px;font-size:12px;background:#13261d;color:#ffffff;border:none;border-radius:4px;cursor:pointer;">Hoy</button>
+                    <button type="button" class="day-btn-admin" data-day="yesterday" style="padding:6px 12px;font-size:12px;background:#2f3031;color:#ffffff;border:none;border-radius:4px;cursor:pointer;">Ayer</button>
+                    <button type="button" class="day-btn-admin" data-day="daybefore" style="padding:6px 12px;font-size:12px;background:#2f3031;color:#ffffff;border:none;border-radius:4px;cursor:pointer;">Antes de ayer</button>
                   </div>
                   <button type="button" id="refresh-admin" class="btn btn-secondary" style="padding:4px 12px;font-size:12px;">🔄</button>
                 </div>
               </div>
               <div class="card-body">
                 <div id="admin-purchases-list">
-                  <div style="text-align:center;padding:20px;color:#888;">Cargando...</div>
+                  <div style="text-align:center;padding:20px;color:#9c9c9d;">Cargando...</div>
                 </div>
               </div>
             </div>
@@ -448,11 +446,11 @@
       </div>
 
       <!-- Restaurar backup de pines -->
-      <div style="margin-top:20px;padding:14px 18px;background:rgba(88,166,255,0.06);border:1px solid rgba(88,166,255,0.2);border-radius:10px;">
-        <h4 style="color:#58a6ff;margin:0 0 8px;font-size:14px;">🗂️ Restaurar Backup de Pines</h4>
-        <p style="color:#8b949e;font-size:12px;margin:0 0 10px;">Importa un archivo <strong style="color:#c9d1d9;">backup_YYYY-MM-DD.zip</strong> recibido por correo para restablecer el stock de pines Free Fire Global sin duplicados.</p>
+      <div style="margin-top:20px;padding:14px 18px;background:rgba(86, 194, 255, 0.06);border:1px solid rgba(86, 194, 255, 0.2);border-radius:10px;">
+        <h4 style="color:#56c2ff;margin:0 0 8px;font-size:14px;">🗂️ Restaurar Backup de Pines</h4>
+        <p style="color:#9c9c9d;font-size:12px;margin:0 0 10px;">Importa un archivo <strong style="color:#e6e6e6;">backup_YYYY-MM-DD.zip</strong> recibido por correo para restablecer el stock de pines Free Fire Global sin duplicados.</p>
         <form method="POST" action="/admin/restore_backup" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <input type="file" name="backup_zip" accept=".zip" required style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e6edf3;padding:6px 10px;font-size:13px;flex:1;min-width:200px;">
+          <input type="file" name="backup_zip" accept=".zip" required style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e6e6e6;padding:6px 10px;font-size:13px;flex:1;min-width:200px;">
           <button type="submit" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap;">📥 Importar Backup</button>
         </form>
       </div>
@@ -469,22 +467,22 @@
           </div>
           <div id="apilog-stats" style="display:none;margin-bottom:14px;">
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;">
-              <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:10px 12px;text-align:center;">
-                <div style="font-size:11px;color:#8b949e;margin-bottom:2px;">Exitosas</div>
-                <div id="apilog-stat-ok" style="font-size:20px;font-weight:700;color:#4ade80;">0</div>
+              <div style="background:rgba(89, 212, 153, 0.08);border:1px solid rgba(89, 212, 153, 0.2);border-radius:10px;padding:10px 12px;text-align:center;">
+                <div style="font-size:11px;color:#9c9c9d;margin-bottom:2px;">Exitosas</div>
+                <div id="apilog-stat-ok" style="font-size:20px;font-weight:700;color:#59d499;">0</div>
               </div>
-              <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:10px 12px;text-align:center;">
-                <div style="font-size:11px;color:#8b949e;margin-bottom:2px;">Fallidas</div>
-                <div id="apilog-stat-fail" style="font-size:20px;font-weight:700;color:#f87171;">0</div>
+              <div style="background:rgba(255, 99, 99, 0.08);border:1px solid rgba(255, 99, 99, 0.2);border-radius:10px;padding:10px 12px;text-align:center;">
+                <div style="font-size:11px;color:#9c9c9d;margin-bottom:2px;">Fallidas</div>
+                <div id="apilog-stat-fail" style="font-size:20px;font-weight:700;color:#ff6363;">0</div>
               </div>
-              <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:10px;padding:10px 12px;text-align:center;">
-                <div style="font-size:11px;color:#8b949e;margin-bottom:2px;">Total</div>
-                <div id="apilog-stat-total" style="font-size:20px;font-weight:700;color:#a78bfa;">0</div>
+              <div style="background:rgba(255, 255, 255, 0.028);border:1px solid rgba(255, 255, 255, 0.07);border-radius:10px;padding:10px 12px;text-align:center;">
+                <div style="font-size:11px;color:#9c9c9d;margin-bottom:2px;">Total</div>
+                <div id="apilog-stat-total" style="font-size:20px;font-weight:700;color:#ffffff;">0</div>
               </div>
             </div>
           </div>
           <div id="apilog-table-wrap">
-            <div style="text-align:center;padding:30px;color:#888;">Haz clic en Actualizar para cargar el log.</div>
+            <div style="text-align:center;padding:30px;color:#9c9c9d;">Haz clic en Actualizar para cargar el log.</div>
           </div>
         </section>
       </div>
@@ -493,20 +491,20 @@
       <div id="tab-webservice" class="tab-content">
         <section class="prices-section">
           <h2 style="margin-bottom:14px;">🔌 API Marca Blanca — Cuentas de Web Service</h2>
-          <p style="color:#8b949e;font-size:13px;margin-bottom:18px;">Permite que webs externas se conecten, consulten productos y ejecuten recargas usando el saldo de un usuario asignado.</p>
+          <p style="color:#9c9c9d;font-size:13px;margin-bottom:18px;">Permite que webs externas se conecten, consulten productos y ejecuten recargas usando el saldo de un usuario asignado.</p>
 
           <!-- Formulario crear cuenta -->
-          <div class="card" style="margin-bottom:18px;border:1px solid rgba(74,222,128,0.25);">
-            <div class="card-header" style="background:rgba(74,222,128,0.06);"><h3>+ Crear Cuenta API</h3></div>
+          <div class="card" style="margin-bottom:18px;border:1px solid rgba(89, 212, 153, 0.25);">
+            <div class="card-header" style="background:rgba(89, 212, 153, 0.06);"><h3>+ Crear Cuenta API</h3></div>
             <div class="card-body">
               <form method="POST" action="/admin/webservice-accounts/create" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
                 <div>
-                  <label style="display:block;color:#8b949e;font-size:11px;margin-bottom:3px;">Nombre *</label>
-                  <input type="text" name="ws_nombre" placeholder="Ej: Inefable Store" required style="padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e0e0e0;font-size:13px;width:180px;">
+                  <label style="display:block;color:#9c9c9d;font-size:11px;margin-bottom:3px;">Nombre *</label>
+                  <input type="text" name="ws_nombre" placeholder="Ej: Inefable Store" required style="padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e6e6e6;font-size:13px;width:180px;">
                 </div>
                 <div>
-                  <label style="display:block;color:#8b949e;font-size:11px;margin-bottom:3px;">Usuario vinculado *</label>
-                  <select name="ws_usuario_id" required style="padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e0e0e0;font-size:13px;min-width:220px;">
+                  <label style="display:block;color:#9c9c9d;font-size:11px;margin-bottom:3px;">Usuario vinculado *</label>
+                  <select name="ws_usuario_id" required style="padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e6e6e6;font-size:13px;min-width:220px;">
                     <option value="" disabled selected>Seleccionar usuario...</option>
                     {% for user in users %}
                     <option value="{{ user.id }}">{{ user.nombre }} {{ user.apellido }} — ${{ "%.2f"|format(user.saldo) }} (ID: {{ user.id }})</option>
@@ -514,8 +512,8 @@
                   </select>
                 </div>
                 <div>
-                  <label style="display:block;color:#8b949e;font-size:11px;margin-bottom:3px;">Webhook URL</label>
-                  <input type="url" name="ws_webhook_url" placeholder="https://ejemplo.com/webhook" style="padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e0e0e0;font-size:13px;width:280px;">
+                  <label style="display:block;color:#9c9c9d;font-size:11px;margin-bottom:3px;">Webhook URL</label>
+                  <input type="url" name="ws_webhook_url" placeholder="https://ejemplo.com/webhook" style="padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e6e6e6;font-size:13px;width:280px;">
                 </div>
                 <button type="submit" class="btn btn-success" style="padding:7px 16px;">Crear</button>
               </form>
@@ -526,49 +524,49 @@
           <div class="card">
             <div class="card-header"><h3>Cuentas Registradas</h3></div>
             <div class="card-body">
-              <div id="ws-accounts-list" style="color:#888;padding:10px;">Cargando cuentas...</div>
+              <div id="ws-accounts-list" style="color:#9c9c9d;padding:10px;">Cargando cuentas...</div>
             </div>
           </div>
 
           <!-- Documentación rápida -->
-          <div class="card" style="margin-top:18px;border:1px solid rgba(167,139,250,0.25);">
-            <div class="card-header" style="background:rgba(167,139,250,0.06);"><h3>📖 Endpoints Disponibles</h3></div>
-            <div class="card-body" style="font-size:13px;color:#c9d1d9;">
+          <div class="card" style="margin-top:18px;border:1px solid rgba(255, 255, 255, 0.087);">
+            <div class="card-header" style="background:rgba(255, 255, 255, 0.021);"><h3>📖 Endpoints Disponibles</h3></div>
+            <div class="card-body" style="font-size:13px;color:#e6e6e6;">
               <table style="width:100%;border-collapse:collapse;">
                 <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
-                  <th style="text-align:left;padding:6px 8px;color:#8b949e;font-size:11px;">Método</th>
-                  <th style="text-align:left;padding:6px 8px;color:#8b949e;font-size:11px;">Endpoint</th>
-                  <th style="text-align:left;padding:6px 8px;color:#8b949e;font-size:11px;">Descripción</th>
+                  <th style="text-align:left;padding:6px 8px;color:#9c9c9d;font-size:11px;">Método</th>
+                  <th style="text-align:left;padding:6px 8px;color:#9c9c9d;font-size:11px;">Endpoint</th>
+                  <th style="text-align:left;padding:6px 8px;color:#9c9c9d;font-size:11px;">Descripción</th>
                 </tr></thead>
                 <tbody>
                   <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <td style="padding:6px 8px;"><span style="background:#22863a;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">GET</span></td>
+                    <td style="padding:6px 8px;"><span style="background:#13261d;color:#ffffff;padding:2px 6px;border-radius:4px;font-size:11px;">GET</span></td>
                     <td style="padding:6px 8px;font-family:monospace;">/api/v1/products</td>
                     <td style="padding:6px 8px;">Catálogo de juegos + paquetes + precios</td>
                   </tr>
                   <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <td style="padding:6px 8px;"><span style="background:#b08800;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">POST</span></td>
+                    <td style="padding:6px 8px;"><span style="background:#2e2612;color:#ffffff;padding:2px 6px;border-radius:4px;font-size:11px;">POST</span></td>
                     <td style="padding:6px 8px;font-family:monospace;">/api/v1/recharge</td>
                     <td style="padding:6px 8px;">Crear orden de recarga (descuenta saldo)</td>
                   </tr>
                   <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <td style="padding:6px 8px;"><span style="background:#22863a;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">GET</span></td>
+                    <td style="padding:6px 8px;"><span style="background:#13261d;color:#ffffff;padding:2px 6px;border-radius:4px;font-size:11px;">GET</span></td>
                     <td style="padding:6px 8px;font-family:monospace;">/api/v1/orders/&lt;id&gt;</td>
                     <td style="padding:6px 8px;">Consultar estado de una orden</td>
                   </tr>
                   <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <td style="padding:6px 8px;"><span style="background:#22863a;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">GET</span></td>
+                    <td style="padding:6px 8px;"><span style="background:#13261d;color:#ffffff;padding:2px 6px;border-radius:4px;font-size:11px;">GET</span></td>
                     <td style="padding:6px 8px;font-family:monospace;">/api/v1/account</td>
                     <td style="padding:6px 8px;">Info de la cuenta + usuario vinculado</td>
                   </tr>
                   <tr>
-                    <td style="padding:6px 8px;"><span style="background:#22863a;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">GET</span></td>
+                    <td style="padding:6px 8px;"><span style="background:#13261d;color:#ffffff;padding:2px 6px;border-radius:4px;font-size:11px;">GET</span></td>
                     <td style="padding:6px 8px;font-family:monospace;">/api/v1/balance</td>
                     <td style="padding:6px 8px;">Consultar saldo de la cuenta</td>
                   </tr>
                 </tbody>
               </table>
-              <p style="color:#8b949e;margin-top:10px;font-size:12px;">Autenticación: <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">X-API-Key: wsk_...</code> en header o <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">?api_key=wsk_...</code> en query param.</p>
+              <p style="color:#9c9c9d;margin-top:10px;font-size:12px;">Autenticación: <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">X-API-Key: wsk_...</code> en header o <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">?api_key=wsk_...</code> en query param.</p>
             </div>
           </div>
         </section>
@@ -606,37 +604,37 @@
           </div>
 
           <!-- Formulario crear juego dinámico (oculto por defecto) -->
-          <div id="crear-juego-form" style="display:none;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:10px;padding:14px;margin-bottom:14px;">
-            <h4 id="cj-title" style="color:#a78bfa;margin:0 0 10px;">+ Crear Juego Dinámico</h4>
+          <div id="crear-juego-form" style="display:none;background:rgba(255, 255, 255, 0.021);border:1px solid rgba(255, 255, 255, 0.07);border-radius:10px;padding:14px;margin-bottom:14px;">
+            <h4 id="cj-title" style="color:#ffffff;margin:0 0 10px;">+ Crear Juego Dinámico</h4>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-              <div><label style="color:#8896a6;font-size:11px;display:block;">Nombre *</label>
-                <input id="cj-nombre" placeholder="Ej: Mobile Legends" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:13px;"></div>
-              <div><label style="color:#8896a6;font-size:11px;display:block;">GP Product ID *</label>
-                <input id="cj-productid" type="number" placeholder="155" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:13px;"></div>
-              <div><label style="color:#8896a6;font-size:11px;display:block;">Modo</label>
-                <select id="cj-modo" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:13px;">
+              <div><label style="color:#9c9c9d;font-size:11px;display:block;">Nombre *</label>
+                <input id="cj-nombre" placeholder="Ej: Mobile Legends" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e6e6e6;font-size:13px;"></div>
+              <div><label style="color:#9c9c9d;font-size:11px;display:block;">GP Product ID *</label>
+                <input id="cj-productid" type="number" placeholder="155" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e6e6e6;font-size:13px;"></div>
+              <div><label style="color:#9c9c9d;font-size:11px;display:block;">Modo</label>
+                <select id="cj-modo" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e6e6e6;font-size:13px;">
                   <option value="id">ID (Recarga Directa)</option><option value="pin">PIN (Voucher)</option>
                 </select></div>
             </div>
             <div style="margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
-              <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+              <label style="color:#e6e6e6;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
                 <input type="checkbox" id="cj-dual-id"> Doble ID (ID + Server)
               </label>
-              <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+              <label style="color:#e6e6e6;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
                 <input type="checkbox" id="cj-server-select" onchange="document.getElementById('cj-server-opts-row').style.display=this.checked?'block':'none'"> Selector de Servidor
               </label>
-              <label style="color:#ccc;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+              <label style="color:#e6e6e6;font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;">
                 <input type="checkbox" id="cj-local-stock"> Etiqueta tarjeta (stock local)
               </label>
             </div>
             <div id="cj-server-opts-row" style="display:none;margin-top:6px;">
-              <label style="color:#8896a6;font-size:11px;display:block;">Opciones de servidor (separadas por coma)</label>
-              <input id="cj-server-opciones" placeholder="Ej: Asia, Europe, North America, South America" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:13px;">
+              <label style="color:#9c9c9d;font-size:11px;display:block;">Opciones de servidor (separadas por coma)</label>
+              <input id="cj-server-opciones" placeholder="Ej: Asia, Europe, North America, South America" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e6e6e6;font-size:13px;">
             </div>
             <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
               <button type="button" id="cj-submit-btn" class="btn btn-success" style="padding:8px 16px;font-size:13px;" onclick="crearJuegoDinamico()">Crear</button>
               <button type="button" id="cj-cancel-edit" class="btn btn-secondary" style="display:none;padding:8px 16px;font-size:13px;" onclick="cancelarEdicionJuegoDinamico()">Cancelar</button>
-              <span id="cj-status" style="font-size:12px;color:#888;"></span>
+              <span id="cj-status" style="font-size:12px;color:#9c9c9d;"></span>
             </div>
           </div>
 
@@ -649,13 +647,13 @@
             <!-- Botón añadir paquete (solo para juegos dinámicos) -->
             <div id="add-pkg-area" style="display:none;margin-top:10px;padding:10px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.1);border-radius:8px;">
               <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:end;">
-                <div><label style="color:#8896a6;font-size:11px;display:block;">Nombre</label>
-                  <input id="new-dyn-pkg-name" placeholder="100 Diamantes" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:13px;"></div>
-                <div><label style="color:#8896a6;font-size:11px;display:block;">Precio USD</label>
-                  <input id="new-dyn-pkg-price" type="number" step="0.01" placeholder="0.80" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e0e0e0;font-size:13px;"></div>
+                <div><label style="color:#9c9c9d;font-size:11px;display:block;">Nombre</label>
+                  <input id="new-dyn-pkg-name" placeholder="100 Diamantes" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e6e6e6;font-size:13px;"></div>
+                <div><label style="color:#9c9c9d;font-size:11px;display:block;">Precio USD</label>
+                  <input id="new-dyn-pkg-price" type="number" step="0.01" placeholder="0.80" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e6e6e6;font-size:13px;"></div>
                 <button type="button" class="btn btn-success" style="padding:7px 14px;font-size:12px;" onclick="addDynPackage()">+ Añadir</button>
               </div>
-              <span id="add-pkg-status" style="font-size:11px;color:#888;margin-top:4px;display:block;"></span>
+              <span id="add-pkg-status" style="font-size:11px;color:#9c9c9d;margin-top:4px;display:block;"></span>
             </div>
 
             <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
@@ -702,9 +700,9 @@
                   <div class="image-upload-area" onclick="document.getElementById('news_imagen').click()" id="image-upload-area">
                     <input type="file" id="news_imagen" name="imagen" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="previewNewsImage(this)">
                     <div id="image-upload-placeholder">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:#aaa;margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                      <p style="color:#aaa;margin:0;font-size:0.9em">Haz clic para subir imagen</p>
-                      <p style="color:#bbb;margin:4px 0 0;font-size:0.75em">PNG, JPG, GIF, WEBP</p>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:#9c9c9d;margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      <p style="color:#9c9c9d;margin:0;font-size:0.9em">Haz clic para subir imagen</p>
+                      <p style="color:#9c9c9d;margin:4px 0 0;font-size:0.75em">PNG, JPG, GIF, WEBP</p>
                     </div>
                     <img id="image-preview" src="" alt="Preview" style="display:none;max-width:100%;max-height:180px;border-radius:8px;object-fit:contain">
                   </div>
@@ -772,24 +770,24 @@
       <div id="tab-redeemer" class="tab-content">
         <section class="redeemer-section">
           <h2>&#9889; Redeemer Automatico - Free Fire ID</h2>
-          <p style="color:#888;margin-bottom:16px;">Configura la redencion automatica de pines en redeempins.com. Cuando apruebes una transaccion de Free Fire ID, el sistema tomara un pin del inventario FF Global y lo redimira automaticamente.</p>
+          <p style="color:#9c9c9d;margin-bottom:16px;">Configura la redencion automatica de pines en redeempins.com. Cuando apruebes una transaccion de Free Fire ID, el sistema tomara un pin del inventario FF Global y lo redimira automaticamente.</p>
 
           <div class="redeemer-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
             <!-- Configuración -->
-            <div class="redeemer-config-card" style="background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #333;">
-              <h3 style="color:#00d4aa;margin-bottom:16px;">Configuracion</h3>
+            <div class="redeemer-config-card" style="background:#1b1c1e;border-radius:12px;padding:20px;border:1px solid #2a2b2d;">
+              <h3 style="color:#59d499;margin-bottom:16px;">Configuracion</h3>
               <form method="POST" action="/admin/redeemer_config" id="redeemer-config-form">
                 <div style="margin-bottom:12px;">
-                  <label style="display:block;color:#ccc;margin-bottom:4px;font-size:13px;">Nombre Completo:</label>
-                  <input type="text" name="nombre_completo" id="rc_nombre" value="{{ redeemer_config.nombre_completo }}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #444;background:#0d0d1a;color:#fff;" required>
+                  <label style="display:block;color:#e6e6e6;margin-bottom:4px;font-size:13px;">Nombre Completo:</label>
+                  <input type="text" name="nombre_completo" id="rc_nombre" value="{{ redeemer_config.nombre_completo }}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #2a2b2d;background:#111214;color:#ffffff;" required>
                 </div>
                 <div style="margin-bottom:12px;">
-                  <label style="display:block;color:#ccc;margin-bottom:4px;font-size:13px;">Fecha de Nacimiento (DD/MM/YYYY):</label>
-                  <input type="text" name="fecha_nacimiento" id="rc_fecha" value="{{ redeemer_config.fecha_nacimiento }}" placeholder="01/01/1995" style="width:100%;padding:8px;border-radius:6px;border:1px solid #444;background:#0d0d1a;color:#fff;" required>
+                  <label style="display:block;color:#e6e6e6;margin-bottom:4px;font-size:13px;">Fecha de Nacimiento (DD/MM/YYYY):</label>
+                  <input type="text" name="fecha_nacimiento" id="rc_fecha" value="{{ redeemer_config.fecha_nacimiento }}" placeholder="01/01/1995" style="width:100%;padding:8px;border-radius:6px;border:1px solid #2a2b2d;background:#111214;color:#ffffff;" required>
                 </div>
                 <div style="margin-bottom:12px;">
-                  <label style="display:block;color:#ccc;margin-bottom:4px;font-size:13px;">Nacionalidad:</label>
-                  <select name="nacionalidad" id="rc_nacionalidad" style="width:100%;padding:8px;border-radius:6px;border:1px solid #444;background:#0d0d1a;color:#fff;">
+                  <label style="display:block;color:#e6e6e6;margin-bottom:4px;font-size:13px;">Nacionalidad:</label>
+                  <select name="nacionalidad" id="rc_nacionalidad" style="width:100%;padding:8px;border-radius:6px;border:1px solid #2a2b2d;background:#111214;color:#ffffff;">
                     <option value="Chile" {% if redeemer_config.nacionalidad == 'Chile' %}selected{% endif %}>Chile</option>
                     <option value="Argentina" {% if redeemer_config.nacionalidad == 'Argentina' %}selected{% endif %}>Argentina</option>
                     <option value="Colombia" {% if redeemer_config.nacionalidad == 'Colombia' %}selected{% endif %}>Colombia</option>
@@ -804,55 +802,55 @@
                   </select>
                 </div>
                 <div style="margin-bottom:12px;">
-                  <label style="display:block;color:#ccc;margin-bottom:4px;font-size:13px;">URL Base:</label>
-                  <input type="text" name="url_base" id="rc_url" value="{{ redeemer_config.url_base }}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #444;background:#0d0d1a;color:#fff;">
+                  <label style="display:block;color:#e6e6e6;margin-bottom:4px;font-size:13px;">URL Base:</label>
+                  <input type="text" name="url_base" id="rc_url" value="{{ redeemer_config.url_base }}" style="width:100%;padding:8px;border-radius:6px;border:1px solid #2a2b2d;background:#111214;color:#ffffff;">
                 </div>
                 <div style="margin-bottom:12px;">
-                  <label style="display:block;color:#ccc;margin-bottom:4px;font-size:13px;">Timeout (ms):</label>
-                  <input type="number" name="timeout_ms" id="rc_timeout" value="{{ redeemer_config.timeout_ms }}" min="5000" max="120000" style="width:100%;padding:8px;border-radius:6px;border:1px solid #444;background:#0d0d1a;color:#fff;">
+                  <label style="display:block;color:#e6e6e6;margin-bottom:4px;font-size:13px;">Timeout (ms):</label>
+                  <input type="number" name="timeout_ms" id="rc_timeout" value="{{ redeemer_config.timeout_ms }}" min="5000" max="120000" style="width:100%;padding:8px;border-radius:6px;border:1px solid #2a2b2d;background:#111214;color:#ffffff;">
                 </div>
                 <div style="margin-bottom:12px;">
-                  <label style="display:block;color:#ccc;margin-bottom:4px;font-size:13px;">Modo headless (sin ventana):</label>
-                  <select name="headless" style="width:100%;padding:8px;border-radius:6px;border:1px solid #444;background:#0d0d1a;color:#fff;">
+                  <label style="display:block;color:#e6e6e6;margin-bottom:4px;font-size:13px;">Modo headless (sin ventana):</label>
+                  <select name="headless" style="width:100%;padding:8px;border-radius:6px;border:1px solid #2a2b2d;background:#111214;color:#ffffff;">
                     <option value="true" {% if redeemer_config.headless == 'true' or redeemer_config.headless == True %}selected{% endif %}>Si (headless)</option>
                     <option value="false" {% if redeemer_config.headless == 'false' or redeemer_config.headless == False %}selected{% endif %}>No (visible)</option>
                   </select>
                 </div>
-                <div style="margin-bottom:16px;padding:12px;border-radius:8px;background:#1e3a2f;border:1px solid #2d5a3f;">
-                  <label style="display:flex;align-items:center;gap:8px;color:#00d4aa;font-weight:bold;cursor:pointer;">
+                <div style="margin-bottom:16px;padding:12px;border-radius:8px;background:#1b1c1e;border:1px solid #59d499;">
+                  <label style="display:flex;align-items:center;gap:8px;color:#59d499;font-weight:bold;cursor:pointer;">
                     <input type="hidden" name="auto_redeem" value="false">
-                    <input type="checkbox" name="auto_redeem" value="true" {% if redeemer_config.auto_redeem == 'true' %}checked{% endif %} style="width:18px;height:18px;accent-color:#00d4aa;">
+                    <input type="checkbox" name="auto_redeem" value="true" {% if redeemer_config.auto_redeem == 'true' %}checked{% endif %} style="width:18px;height:18px;accent-color:#59d499;">
                     Activar redencion automatica al aprobar
                   </label>
-                  <p style="color:#888;font-size:12px;margin:4px 0 0 26px;">Al aprobar una transaccion de Free Fire ID, se tomara un pin FF Global y se redimira automaticamente en redeempins.com</p>
+                  <p style="color:#9c9c9d;font-size:12px;margin:4px 0 0 26px;">Al aprobar una transaccion de Free Fire ID, se tomara un pin FF Global y se redimira automaticamente en redeempins.com</p>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%;">Guardar Configuracion</button>
               </form>
             </div>
 
             <!-- Prueba manual -->
-            <div class="redeemer-test-card" style="background:#1a1a2e;border-radius:12px;padding:20px;border:1px solid #333;">
-              <h3 style="color:#ff9800;margin-bottom:16px;">Prueba Manual</h3>
-              <p style="color:#888;font-size:13px;margin-bottom:16px;">Prueba la redencion de un pin manualmente. El navegador se abrira visible para que puedas ver el proceso.</p>
+            <div class="redeemer-test-card" style="background:#1b1c1e;border-radius:12px;padding:20px;border:1px solid #2a2b2d;">
+              <h3 style="color:#ffc531;margin-bottom:16px;">Prueba Manual</h3>
+              <p style="color:#9c9c9d;font-size:13px;margin-bottom:16px;">Prueba la redencion de un pin manualmente. El navegador se abrira visible para que puedas ver el proceso.</p>
               <form method="POST" action="/admin/test_redeem">
                 <div style="margin-bottom:12px;">
-                  <label style="display:block;color:#ccc;margin-bottom:4px;font-size:13px;">Codigo PIN:</label>
-                  <input type="text" name="test_pin_code" placeholder="41D26298-7BF3-4308-A576-17CBEE8373BC" style="width:100%;padding:8px;border-radius:6px;border:1px solid #444;background:#0d0d1a;color:#fff;" required>
+                  <label style="display:block;color:#e6e6e6;margin-bottom:4px;font-size:13px;">Codigo PIN:</label>
+                  <input type="text" name="test_pin_code" placeholder="41D26298-7BF3-4308-A576-17CBEE8373BC" style="width:100%;padding:8px;border-radius:6px;border:1px solid #2a2b2d;background:#111214;color:#ffffff;" required>
                 </div>
                 <div style="margin-bottom:12px;">
-                  <label style="display:block;color:#ccc;margin-bottom:4px;font-size:13px;">Player ID:</label>
-                  <input type="text" name="test_player_id" placeholder="123456789" style="width:100%;padding:8px;border-radius:6px;border:1px solid #444;background:#0d0d1a;color:#fff;" required>
+                  <label style="display:block;color:#e6e6e6;margin-bottom:4px;font-size:13px;">Player ID:</label>
+                  <input type="text" name="test_player_id" placeholder="123456789" style="width:100%;padding:8px;border-radius:6px;border:1px solid #2a2b2d;background:#111214;color:#ffffff;" required>
                 </div>
                 <button type="submit" class="btn btn-warning" style="width:100%;">Ejecutar Prueba</button>
               </form>
 
-              <div style="margin-top:20px;padding:12px;border-radius:8px;background:#0d0d1a;border:1px solid #333;">
-                <h4 style="color:#fff;margin-bottom:8px;font-size:14px;">Estado del sistema</h4>
-                <ul style="color:#888;font-size:12px;list-style:none;padding:0;margin:0;">
-                  <li style="margin-bottom:4px;">&#9679; Redeemer: <span style="color:#00d4aa;">Instalado</span></li>
+              <div style="margin-top:20px;padding:12px;border-radius:8px;background:#111214;border:1px solid #2a2b2d;">
+                <h4 style="color:#ffffff;margin-bottom:8px;font-size:14px;">Estado del sistema</h4>
+                <ul style="color:#9c9c9d;font-size:12px;list-style:none;padding:0;margin:0;">
+                  <li style="margin-bottom:4px;">&#9679; Redeemer: <span style="color:#59d499;">Instalado</span></li>
                   <li style="margin-bottom:4px;">&#9679; Auto-redeem: <span style="color:{% if redeemer_config.auto_redeem == 'true' %}#00d4aa{% else %}#ff5555{% endif %};">{% if redeemer_config.auto_redeem == 'true' %}Activado{% else %}Desactivado{% endif %}</span></li>
-                  <li style="margin-bottom:4px;">&#9679; Nacionalidad: <span style="color:#fff;">{{ redeemer_config.nacionalidad }}</span></li>
-                  <li>&#9679; URL: <span style="color:#fff;">{{ redeemer_config.url_base }}</span></li>
+                  <li style="margin-bottom:4px;">&#9679; Nacionalidad: <span style="color:#ffffff;">{{ redeemer_config.nacionalidad }}</span></li>
+                  <li>&#9679; URL: <span style="color:#ffffff;">{{ redeemer_config.url_base }}</span></li>
                 </ul>
               </div>
             </div>
@@ -866,26 +864,26 @@
           <h2 style="margin-bottom:18px;">🔗 Mapeo de Paquetes – Revendedores</h2>
 
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px;">
-            <button id="btn-sync-catalog" onclick="syncRevCatalog()" style="background:#a78bfa;color:#fff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600;">
+            <button id="btn-sync-catalog" onclick="syncRevCatalog()" style="background:#1b1c1e;color:#ffffff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-weight:600;">
               🔄 Sincronizar Catálogo
             </button>
-            <span id="sync-status" style="font-size:0.85rem;color:#aaa;"></span>
+            <span id="sync-status" style="font-size:0.85rem;color:#9c9c9d;"></span>
           </div>
 
           <div style="margin-bottom:16px;">
             <label style="font-weight:600;margin-right:8px;">Juego:</label>
-            <select id="mapeo-game-select" onchange="loadMappingUI()" style="padding:8px 16px;border-radius:8px;background:#1e1e2e;color:#fff;border:1px solid #333;min-width:220px;">
+            <select id="mapeo-game-select" onchange="loadMappingUI()" style="padding:8px 16px;border-radius:8px;background:#1b1c1e;color:#ffffff;border:1px solid #2a2b2d;min-width:220px;">
               <option value="">— Seleccionar juego —</option>
             </select>
           </div>
 
           <div id="mapeo-table-container" style="margin-top:12px;"></div>
 
-          <div id="mapeo-save-bar" style="display:none;margin-top:18px;padding:14px;background:#1a1a2e;border-radius:10px;text-align:right;">
-            <button onclick="saveMappingsBulk()" style="background:#00d4aa;color:#111;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;">
+          <div id="mapeo-save-bar" style="display:none;margin-top:18px;padding:14px;background:#1b1c1e;border-radius:10px;text-align:right;">
+            <button onclick="saveMappingsBulk()" style="background:#13261d;color:#ffffff;border:none;padding:10px 28px;border-radius:8px;cursor:pointer;font-weight:700;font-size:1rem;">
               💾 Guardar Mappings
             </button>
-            <span id="save-status" style="margin-left:12px;font-size:0.85rem;color:#aaa;"></span>
+            <span id="save-status" style="margin-left:12px;font-size:0.85rem;color:#9c9c9d;"></span>
           </div>
         </section>
       </div>
@@ -1018,7 +1016,7 @@
         .then(data => {
           const wrap = document.getElementById('ws-accounts-list');
           if (!data.ok || !data.accounts.length) {
-            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#666;">No hay cuentas API creadas.</div>';
+            wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#9c9c9d;">No hay cuentas API creadas.</div>';
             return;
           }
           let html = '';
@@ -1034,7 +1032,7 @@
             // Header: nombre + estado
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
               '<div><strong style="font-size:15px;">' + a.nombre + '</strong> <span style="color:' + estadoColor + ';font-size:12px;font-weight:600;margin-left:8px;">' + estadoText + '</span></div>' +
-              '<span style="color:#8b949e;font-size:11px;">ID: ' + a.id + '</span>' +
+              '<span style="color:#9c9c9d;font-size:11px;">ID: ' + a.id + '</span>' +
             '</div>';
 
             // Info grid
@@ -1042,27 +1040,27 @@
 
             // Usuario vinculado
             html += '<div>' +
-              '<span style="color:#8b949e;font-size:11px;display:block;">Usuario vinculado</span>' +
+              '<span style="color:#9c9c9d;font-size:11px;display:block;">Usuario vinculado</span>' +
               '<strong>' + a.usuario_nombre + '</strong><br>' +
-              '<small style="color:#8b949e;">' + a.usuario_correo + ' (ID: ' + a.usuario_id + ')</small>' +
+              '<small style="color:#9c9c9d;">' + a.usuario_correo + ' (ID: ' + a.usuario_id + ')</small>' +
             '</div>';
 
             // Saldo
             html += '<div>' +
-              '<span style="color:#8b949e;font-size:11px;display:block;">Saldo disponible</span>' +
-              '<strong style="color:#4ade80;font-size:16px;">$' + a.usuario_saldo.toFixed(2) + '</strong>' +
+              '<span style="color:#9c9c9d;font-size:11px;display:block;">Saldo disponible</span>' +
+              '<strong style="color:#59d499;font-size:16px;">$' + a.usuario_saldo.toFixed(2) + '</strong>' +
             '</div>';
 
             // API Key
             html += '<div>' +
-              '<span style="color:#8b949e;font-size:11px;display:block;">API Key</span>' +
+              '<span style="color:#9c9c9d;font-size:11px;display:block;">API Key</span>' +
               '<code style="font-size:11px;cursor:pointer;background:rgba(255,255,255,0.06);padding:3px 8px;border-radius:4px;" title="' + a.api_key + '" onclick="navigator.clipboard.writeText(\'' + a.api_key + '\');this.style.color=\'#4ade80\';setTimeout(()=>this.style.color=\'\',1000)">' + keyShort + ' 📋</code>' +
             '</div>';
 
             // Webhook
             html += '<div>' +
-              '<span style="color:#8b949e;font-size:11px;display:block;">Webhook URL</span>' +
-              '<span style="font-size:12px;word-break:break-all;">' + (a.webhook_url || '<span style="color:#666">No configurado</span>') + '</span>' +
+              '<span style="color:#9c9c9d;font-size:11px;display:block;">Webhook URL</span>' +
+              '<span style="font-size:12px;word-break:break-all;">' + (a.webhook_url || '<span style="color:#9c9c9d">No configurado</span>') + '</span>' +
             '</div>';
 
             html += '</div>'; // close grid
@@ -1096,10 +1094,10 @@
 
             html += '<div id="ws-edit-' + a.id + '" style="display:none;margin-top:10px;padding:10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.08);">' +
               '<form method="POST" action="/admin/webservice-accounts/' + a.id + '/update" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">' +
-                '<div><label style="display:block;color:#8b949e;font-size:11px;margin-bottom:3px;">Cambiar usuario vinculado</label>' +
-                  '<select name="ws_usuario_id" style="padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e0e0e0;font-size:12px;min-width:220px;">' + userOpts + '</select></div>' +
-                '<div><label style="display:block;color:#8b949e;font-size:11px;margin-bottom:3px;">Webhook URL</label>' +
-                  '<input type="url" name="ws_webhook_url" value="' + (a.webhook_url || '') + '" placeholder="https://..." style="padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e0e0e0;font-size:12px;width:250px;"></div>' +
+                '<div><label style="display:block;color:#9c9c9d;font-size:11px;margin-bottom:3px;">Cambiar usuario vinculado</label>' +
+                  '<select name="ws_usuario_id" style="padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e6e6e6;font-size:12px;min-width:220px;">' + userOpts + '</select></div>' +
+                '<div><label style="display:block;color:#9c9c9d;font-size:11px;margin-bottom:3px;">Webhook URL</label>' +
+                  '<input type="url" name="ws_webhook_url" value="' + (a.webhook_url || '') + '" placeholder="https://..." style="padding:6px 8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e6e6e6;font-size:12px;width:250px;"></div>' +
                 '<button type="submit" class="btn btn-success" style="padding:5px 14px;font-size:12px;">Guardar</button>' +
               '</form></div>';
 
@@ -1108,7 +1106,7 @@
           wrap.innerHTML = html;
         })
         .catch(err => {
-          document.getElementById('ws-accounts-list').innerHTML = '<div style="color:#f87171;">Error cargando cuentas: ' + err + '</div>';
+          document.getElementById('ws-accounts-list').innerHTML = '<div style="color:#ff6363;">Error cargando cuentas: ' + err + '</div>';
         });
     }
 
@@ -1121,12 +1119,12 @@
     async function loadApiLog() {
       const wrap = document.getElementById('apilog-table-wrap');
       const statsWrap = document.getElementById('apilog-stats');
-      wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Cargando...</div>';
+      wrap.innerHTML = '<div style="text-align:center;padding:20px;color:#9c9c9d;">Cargando...</div>';
       try {
         const res = await fetch('/admin/api_recharges_log');
         const data = await res.json();
-        if (!data.ok) { wrap.innerHTML = '<div style="color:#f87171;padding:16px;">Error: ' + (data.error||'?') + '</div>'; return; }
-        if (!data.logs.length) { wrap.innerHTML = '<div style="text-align:center;padding:30px;color:#888;">Sin recargas registradas aún.</div>'; return; }
+        if (!data.ok) { wrap.innerHTML = '<div style="color:#ff6363;padding:16px;">Error: ' + (data.error||'?') + '</div>'; return; }
+        if (!data.logs.length) { wrap.innerHTML = '<div style="text-align:center;padding:30px;color:#9c9c9d;">Sin recargas registradas aún.</div>'; return; }
         // Stats
         let okCount = 0, failCount = 0;
         for (const r of data.logs) { r.success == 1 ? okCount++ : failCount++; }
@@ -1141,31 +1139,31 @@
           const borderColor = ok ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)';
           const bgColor = ok ? 'rgba(74,222,128,0.04)' : 'rgba(248,113,113,0.04)';
           const statusBadge = ok
-            ? '<span style="background:rgba(74,222,128,0.15);color:#4ade80;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">✅ Exitosa</span>'
-            : '<span style="background:rgba(248,113,113,0.15);color:#f87171;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">❌ Fallida</span>';
+            ? '<span style="background:rgba(89, 212, 153, 0.15);color:#59d499;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">✅ Exitosa</span>'
+            : '<span style="background:rgba(255, 99, 99, 0.15);color:#ff6363;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">❌ Fallida</span>';
           const fecha = (r.fecha||'').replace('T',' ').substring(0,16);
           const gameName = r.game_name || 'Free Fire ID';
           const pkgName = r.package_name || ('Pkg ' + r.package_id);
           const playerName = r.player_name || '-';
-          const errTip = (!ok && r.error_msg) ? '<div style="margin-top:4px;font-size:11px;color:#f87171;word-break:break-word;">⚠ ' + (r.error_msg||'').substring(0,80) + '</div>' : '';
+          const errTip = (!ok && r.error_msg) ? '<div style="margin-top:4px;font-size:11px;color:#ff6363;word-break:break-word;">⚠ ' + (r.error_msg||'').substring(0,80) + '</div>' : '';
           html += '<div style="background:' + bgColor + ';border:1px solid ' + borderColor + ';border-radius:10px;padding:10px 12px;">'
                 + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px;">'
-                + '<span style="font-size:11px;color:#8b949e;">#' + r.id + ' · ' + fecha + '</span>'
+                + '<span style="font-size:11px;color:#9c9c9d;">#' + r.id + ' · ' + fecha + '</span>'
                 + statusBadge
                 + '</div>'
-                + '<div style="margin-bottom:6px;"><span style="background:rgba(167,139,250,0.15);color:#a78bfa;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;">' + gameName + '</span> <span style="color:#ccc;font-size:12px;">' + pkgName + '</span></div>'
+                + '<div style="margin-bottom:6px;"><span style="background:rgba(255, 255, 255, 0.052);color:#ffffff;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;">' + gameName + '</span> <span style="color:#e6e6e6;font-size:12px;">' + pkgName + '</span></div>'
                 + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px;">'
-                + '<div><span style="color:#8b949e;font-size:11px;">Player ID</span><div style="color:#e0e0e0;font-family:monospace;font-size:12px;word-break:break-all;">' + r.player_id + '</div></div>'
-                + '<div><span style="color:#8b949e;font-size:11px;">Jugador</span><div style="color:#58a6ff;">' + playerName + '</div></div>'
+                + '<div><span style="color:#9c9c9d;font-size:11px;">Player ID</span><div style="color:#e6e6e6;font-family:monospace;font-size:12px;word-break:break-all;">' + r.player_id + '</div></div>'
+                + '<div><span style="color:#9c9c9d;font-size:11px;">Jugador</span><div style="color:#56c2ff;">' + playerName + '</div></div>'
                 + '</div>'
-                + '<div style="margin-top:4px;font-size:11px;color:#888;">⏱ ' + (r.duration_seconds||0) + 's</div>'
+                + '<div style="margin-top:4px;font-size:11px;color:#9c9c9d;">⏱ ' + (r.duration_seconds||0) + 's</div>'
                 + errTip
                 + '</div>';
         }
         html += '</div>';
         wrap.innerHTML = html;
       } catch(e) {
-        wrap.innerHTML = '<div style="color:#f87171;padding:16px;">Error de red: ' + e + '</div>';
+        wrap.innerHTML = '<div style="color:#ff6363;padding:16px;">Error de red: ' + e + '</div>';
       }
     }
 
@@ -1174,12 +1172,12 @@
       evt.preventDefault();
       const st = form.querySelector('.pin-ajax-status');
       const formData = new FormData(form);
-      if (st) st.innerHTML = '<span style="color:#aaa;">Enviando...</span>';
+      if (st) st.innerHTML = '<span style="color:#9c9c9d;">Enviando...</span>';
       try {
         const res = await fetch(url, { method:'POST', headers:{'Accept':'application/json'}, body: formData });
         const data = await res.json();
         if (data.success) {
-          if (st) st.innerHTML = '<span style="color:#4ade80;">✅ ' + (data.message || 'OK') + '</span>';
+          if (st) st.innerHTML = '<span style="color:#59d499;">✅ ' + (data.message || 'OK') + '</span>';
           const pinInput = form.querySelector('input[name="pin_codigo"]');
           const batchInput = form.querySelector('textarea[name="pins_batch"]');
           if (pinInput) { pinInput.value = ''; pinInput.focus(); }
@@ -1193,9 +1191,9 @@
             stockEl.textContent = (cur + added) + ' pines';
           }
         } else {
-          if (st) st.innerHTML = '<span style="color:#ff6b6b;">❌ ' + (data.error || 'Error') + '</span>';
+          if (st) st.innerHTML = '<span style="color:#ff6363;">❌ ' + (data.error || 'Error') + '</span>';
         }
-      } catch(e) { if (st) st.innerHTML = '<span style="color:#ff6b6b;">❌ Error de red</span>'; }
+      } catch(e) { if (st) st.innerHTML = '<span style="color:#ff6363;">❌ Error de red</span>'; }
       return false;
     }
 
@@ -1326,12 +1324,12 @@
       const cost = costRaw === null || costRaw === '' ? NaN : Number(costRaw);
       const price = Number(priceInput.value);
       if (!isFinite(cost)) {
-        info.innerHTML = '<span style="color:#9aa5b1;">Costo: -</span> <span style="color:#9aa5b1;">Ganancia: -</span>';
+        info.innerHTML = '<span style="color:#9c9c9d;">Costo: -</span> <span style="color:#9c9c9d;">Ganancia: -</span>';
         return;
       }
       const profit = (isFinite(price) ? price : 0) - cost;
       const profitColor = profit >= 0 ? '#4ade80' : '#ff6b6b';
-      info.innerHTML = `<span style="color:#9aa5b1;">Costo: $${cost.toFixed(2)}</span> <span style="color:${profitColor};">Ganancia: $${profit.toFixed(2)}</span>`;
+      info.innerHTML = `<span style="color:#9c9c9d;">Costo: $${cost.toFixed(2)}</span> <span style="color:${profitColor};">Ganancia: $${profit.toFixed(2)}</span>`;
     }
 
     async function renderPricePackageList(game) {
@@ -1389,7 +1387,7 @@
         container.appendChild(card);
       });
       if (isDyn && data.length === 0) {
-        container.innerHTML = '<p style="color:#666;font-size:13px;padding:10px;">Sin paquetes. Usa el formulario de abajo para añadir.</p>';
+        container.innerHTML = '<p style="color:#9c9c9d;font-size:13px;padding:10px;">Sin paquetes. Usa el formulario de abajo para añadir.</p>';
       }
 
       container.querySelectorAll('.pkg-price').forEach(inp => {
@@ -1476,11 +1474,11 @@
       const serverSelect = document.getElementById('cj-server-select').checked;
       const localStock = document.getElementById('cj-local-stock').checked;
       if (!nombre || (!productId && !localStock)) {
-        st.innerHTML = '<span style="color:#ff6b6b;">Nombre y Product ID son obligatorios, excepto tarjetas con stock local</span>';
+        st.innerHTML = '<span style="color:#ff6363;">Nombre y Product ID son obligatorios, excepto tarjetas con stock local</span>';
         return;
       }
 
-      st.innerHTML = `<span style="color:#aaa;">${_editingDynGameId ? 'Guardando...' : 'Creando...'}</span>`;
+      st.innerHTML = `<span style="color:#9c9c9d;">${_editingDynGameId ? 'Guardando...' : 'Creando...'}</span>`;
       const payload = {
         nombre,
         gamepoint_product_id: productId || 0,
@@ -1509,13 +1507,13 @@
         });
         const data = await res.json();
         if (data.success) {
-          st.innerHTML = `<span style="color:#4ade80;">✅ ${_editingDynGameId ? 'Actualizado' : 'Creado'}. Recargando...</span>`;
+          st.innerHTML = `<span style="color:#59d499;">✅ ${_editingDynGameId ? 'Actualizado' : 'Creado'}. Recargando...</span>`;
           setTimeout(() => location.reload(), 800);
         } else {
-          st.innerHTML = '<span style="color:#ff6b6b;">❌ ' + (data.error || 'Error') + '</span>';
+          st.innerHTML = '<span style="color:#ff6363;">❌ ' + (data.error || 'Error') + '</span>';
         }
       } catch (e) {
-        st.innerHTML = '<span style="color:#ff6b6b;">❌ Error de red</span>';
+        st.innerHTML = '<span style="color:#ff6363;">❌ Error de red</span>';
       }
     }
 
@@ -1527,15 +1525,15 @@
       const nombre = nameInput.value.trim();
       const precio = parseFloat(priceInput.value);
       if (!nombre || !precio || precio <= 0) {
-        st.innerHTML = '<span style="color:#ff6b6b;">Nombre y precio requeridos</span>';
+        st.innerHTML = '<span style="color:#ff6363;">Nombre y precio requeridos</span>';
         return;
       }
       if (!_currentDynGameId) {
-        st.innerHTML = '<span style="color:#ff6b6b;">Juego no identificado</span>';
+        st.innerHTML = '<span style="color:#ff6363;">Juego no identificado</span>';
         return;
       }
 
-      st.innerHTML = '<span style="color:#aaa;">Añadiendo...</span>';
+      st.innerHTML = '<span style="color:#9c9c9d;">Añadiendo...</span>';
       try {
         const res = await fetch(`/admin/dynamic-games/${_currentDynGameId}/packages/add`, {
           method: 'POST',
@@ -1559,12 +1557,12 @@
           nameInput.value = '';
           priceInput.value = '';
           nameInput.focus();
-          st.innerHTML = '<span style="color:#4ade80;">✅ ' + nombre + ' añadido</span>';
+          st.innerHTML = '<span style="color:#59d499;">✅ ' + nombre + ' añadido</span>';
         } else {
-          st.innerHTML = '<span style="color:#ff6b6b;">❌ ' + (data.error || 'Error') + '</span>';
+          st.innerHTML = '<span style="color:#ff6363;">❌ ' + (data.error || 'Error') + '</span>';
         }
       } catch (e) {
-        st.innerHTML = '<span style="color:#ff6b6b;">❌ Error de red</span>';
+        st.innerHTML = '<span style="color:#ff6363;">❌ Error de red</span>';
       }
     }
 
@@ -1601,20 +1599,10 @@
       if (empty) empty.hidden = visible > 0;
     };
 
-    // Tema claro/oscuro de Gestión de Usuarios (oscuro por defecto)
+    // Gestión de Usuarios: estado de carga en formularios
     (function() {
       const section = document.getElementById('um-section');
-      const toggle = document.getElementById('um-theme-toggle');
-      if (!section || !toggle) return;
-      try {
-        const saved = localStorage.getItem('umTheme');
-        if (saved === 'light' || saved === 'dark') section.dataset.theme = saved;
-      } catch (e) {}
-      toggle.addEventListener('click', function() {
-        const next = section.dataset.theme === 'dark' ? 'light' : 'dark';
-        section.dataset.theme = next;
-        try { localStorage.setItem('umTheme', next); } catch (e) {}
-      });
+      if (!section) return;
 
       // Estado de carga: evita doble envío mientras el servidor responde
       section.addEventListener('submit', function(e) {
@@ -2068,7 +2056,7 @@
         const data = await res.json();
         if (!res.ok || !data.success) {
           statusEl.textContent = data.error || 'Error cargando productos.';
-          bodyEl.innerHTML = '<tr><td colspan="2" style="color:#dc3545;">No se pudo cargar.</td></tr>';
+          bodyEl.innerHTML = '<tr><td colspan="2" style="color:#ff6363;">No se pudo cargar.</td></tr>';
           return;
         }
         const list = (data.data && data.data.detail) ? data.data.detail : [];
@@ -2093,7 +2081,7 @@
         });
       } catch (e) {
         statusEl.textContent = 'Error inesperado.';
-        bodyEl.innerHTML = '<tr><td colspan="2" style="color:#dc3545;">Error.</td></tr>';
+        bodyEl.innerHTML = '<tr><td colspan="2" style="color:#ff6363;">Error.</td></tr>';
       }
     }
 
@@ -2139,7 +2127,7 @@
             <td>${lp.id}</td>
             <td>${lp.nombre}</td>
             <td>$${Number(lp.precio).toFixed(2)}</td>
-            <td><select id="bs-gp-sel-${lp.id}" style="background:#1a1a2e;color:#ddd;border:1px solid #333;padding:4px 6px;border-radius:4px;font-size:12px;width:100%;max-width:300px;">
+            <td><select id="bs-gp-sel-${lp.id}" style="background:#1b1c1e;color:#e6e6e6;border:1px solid #2a2b2d;padding:4px 6px;border-radius:4px;font-size:12px;width:100%;max-width:300px;">
               <option value="">-- Sin asignar --</option>${gpOpts}
             </select></td>
             <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="saveBSMapping(${lp.id})">Guardar</button></td>
@@ -2168,11 +2156,11 @@
         });
         const data = await res.json();
         if (data.success) {
-          st.innerHTML = '<span style="color:#4ade80;">Mapeo guardado para ' + data.nombre + '</span>';
+          st.innerHTML = '<span style="color:#59d499;">Mapeo guardado para ' + data.nombre + '</span>';
         } else {
-          st.innerHTML = '<span style="color:#ff6b6b;">' + (data.error || 'Error') + '</span>';
+          st.innerHTML = '<span style="color:#ff6363;">' + (data.error || 'Error') + '</span>';
         }
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error de red</span>'; }
+      } catch(e) { st.innerHTML = '<span style="color:#ff6363;">Error de red</span>'; }
     }
 
     async function syncBSPrices() {
@@ -2184,11 +2172,11 @@
       try {
         const res = await fetch('/admin/bloodstrike/sync_prices', {method:'POST',headers:{'Accept':'application/json'}});
         const data = await res.json();
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">' + (data.error||'Error') + '</span>'; return; }
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6363;">' + (data.error||'Error') + '</span>'; return; }
         const usdToMyr = Number(data.usd_to_myr_rate || (1 / Number(data.myr_to_usd_rate || 0.2538)));
-        st.innerHTML = '<span style="color:#4ade80;">Sync OK: ' + data.packages_updated + '/' + data.total_gamepoint_packages + ' actualizados (1 USD = ' + usdToMyr.toFixed(4) + ' MYR)</span>';
+        st.innerHTML = '<span style="color:#59d499;">Sync OK: ' + data.packages_updated + '/' + data.total_gamepoint_packages + ' actualizados (1 USD = ' + usdToMyr.toFixed(4) + ' MYR)</span>';
         if (rpt && data.report) {
-          let html = '<div style="background:#0d0d1a;border-radius:8px;padding:12px;font-size:12px;"><strong>Reporte de Sync:</strong><table class="table" style="width:100%;font-size:12px;margin-top:8px;"><thead><tr><th>GP ID</th><th>Nombre GP</th><th>Precio MYR</th><th>Costo USD</th><th>Venta USD</th><th>Local</th><th>Cambio</th></tr></thead><tbody>';
+          let html = '<div style="background:#111214;border-radius:8px;padding:12px;font-size:12px;"><strong>Reporte de Sync:</strong><table class="table" style="width:100%;font-size:12px;margin-top:8px;"><thead><tr><th>GP ID</th><th>Nombre GP</th><th>Precio MYR</th><th>Costo USD</th><th>Venta USD</th><th>Local</th><th>Cambio</th></tr></thead><tbody>';
           data.report.forEach(r => {
             const cambioColor = r.cambio > 0 ? '#ff6b6b' : (r.cambio < 0 ? '#4ade80' : '#888');
             const cambioTxt = r.local_id ? (r.cambio > 0 ? '+' : '') + r.cambio.toFixed(4) : (r.nota || 'N/A');
@@ -2196,7 +2184,7 @@
               <td>${r.gamepoint_id}</td><td>${r.gamepoint_name}</td>
               <td>${r.gamepoint_price_myr}</td><td>$${(r.costo_usd_nuevo||0).toFixed(4)}</td>
               <td style="font-weight:700;">$${r.nuevo_precio_venta_usd.toFixed(2)}</td>
-              <td>${r.local_id ? '#'+r.local_id+' '+r.local_nombre : '<span style="color:#888;">-</span>'}</td>
+              <td>${r.local_id ? '#'+r.local_id+' '+r.local_nombre : '<span style="color:#9c9c9d;">-</span>'}</td>
               <td style="color:${cambioColor};">${cambioTxt}</td>
             </tr>`;
           });
@@ -2205,7 +2193,7 @@
           rpt.style.display = 'block';
         }
         loadBSMapping();
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error inesperado</span>'; }
+      } catch(e) { st.innerHTML = '<span style="color:#ff6363;">Error inesperado</span>'; }
     }
 
     // ======= Tasa USD → MYR (GameClub) =======
@@ -2227,7 +2215,7 @@
       if (!el || !st) return;
       const rate = parseFloat(el.value);
       if (!rate || rate <= 0) {
-        st.innerHTML = '<span style="color:#ff6b6b;">❌ Tasa inválida</span>';
+        st.innerHTML = '<span style="color:#ff6363;">❌ Tasa inválida</span>';
         return;
       }
       try {
@@ -2245,12 +2233,12 @@
           const errCount = Array.isArray(dyn.errors) ? dyn.errors.length : 0;
           const usdToMyr = Number(data.usd_to_myr_rate || rate);
           const myrToUsd = Number(data.myr_to_usd_rate || (1 / usdToMyr));
-          st.innerHTML = '<span style="color:#4ade80;">✅ Guardado: 1 USD = ' + usdToMyr.toFixed(4) + ' MYR (1 MYR = ' + myrToUsd.toFixed(6) + ' USD) | Sync dinámico: ' + synced + ' juegos, ' + updated + ' paquetes' + (errCount ? ' (' + errCount + ' con error)' : '') + '</span>';
+          st.innerHTML = '<span style="color:#59d499;">✅ Guardado: 1 USD = ' + usdToMyr.toFixed(4) + ' MYR (1 MYR = ' + myrToUsd.toFixed(6) + ' USD) | Sync dinámico: ' + synced + ' juegos, ' + updated + ' paquetes' + (errCount ? ' (' + errCount + ' con error)' : '') + '</span>';
         } else {
-          st.innerHTML = '<span style="color:#ff6b6b;">❌ ' + (data.error || 'Error') + '</span>';
+          st.innerHTML = '<span style="color:#ff6363;">❌ ' + (data.error || 'Error') + '</span>';
         }
       } catch(e) {
-        st.innerHTML = '<span style="color:#ff6b6b;">❌ Error de red</span>';
+        st.innerHTML = '<span style="color:#ff6363;">❌ Error de red</span>';
       }
     }
 
@@ -2262,7 +2250,7 @@
 
       st.textContent = 'Calculando estado de precios...';
       summaryEl.innerHTML = '';
-      tableWrap.innerHTML = '<div style="color:#888;padding:10px 0;">Cargando...</div>';
+      tableWrap.innerHTML = '<div style="color:#9c9c9d;padding:10px 0;">Cargando...</div>';
 
       try {
         const res = await fetch('/admin/gameclub/price_health', {headers:{'Accept':'application/json'}});
@@ -2271,12 +2259,12 @@
         try {
           data = JSON.parse(raw || '{}');
         } catch(parseErr) {
-          st.innerHTML = '<span style="color:#ff6b6b;">Error del servidor al responder estadísticas (formato inválido)</span>';
+          st.innerHTML = '<span style="color:#ff6363;">Error del servidor al responder estadísticas (formato inválido)</span>';
           tableWrap.innerHTML = '';
           return;
         }
         if (!res.ok || !data.success) {
-          st.innerHTML = '<span style="color:#ff6b6b;">' + (data.error || 'Error al calcular estadísticas') + '</span>';
+          st.innerHTML = '<span style="color:#ff6363;">' + (data.error || 'Error al calcular estadísticas') + '</span>';
           tableWrap.innerHTML = '';
           return;
         }
@@ -2286,7 +2274,7 @@
         const errors = Array.isArray(data.errors) ? data.errors : [];
 
         const usdToMyr = Number(data.usd_to_myr_rate || (1 / Number(data.myr_to_usd_rate || 0.2538)));
-        st.innerHTML = '<span style="color:#4ade80;">Actualizado. Tasa: 1 USD = ' + usdToMyr.toFixed(4) + ' MYR | Filas: ' + Number(s.total_rows || 0) + '</span>';
+        st.innerHTML = '<span style="color:#59d499;">Actualizado. Tasa: 1 USD = ' + usdToMyr.toFixed(4) + ' MYR | Filas: ' + Number(s.total_rows || 0) + '</span>';
 
         const okRows = Number(s.ok_rows || 0);
         const badRows = Number(s.out_of_sync_rows || 0);
@@ -2294,21 +2282,21 @@
         const healthPct = compRows > 0 ? ((okRows / compRows) * 100).toFixed(1) : '0.0';
 
         summaryEl.innerHTML = '' +
-          '<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:10px 12px;text-align:center;">' +
-            '<div style="font-size:11px;color:#8b949e;">Sincronizados OK</div>' +
-            '<div style="font-size:20px;font-weight:700;color:#4ade80;">' + okRows + '</div>' +
+          '<div style="background:rgba(89, 212, 153, 0.08);border:1px solid rgba(89, 212, 153, 0.2);border-radius:10px;padding:10px 12px;text-align:center;">' +
+            '<div style="font-size:11px;color:#9c9c9d;">Sincronizados OK</div>' +
+            '<div style="font-size:20px;font-weight:700;color:#59d499;">' + okRows + '</div>' +
           '</div>' +
-          '<div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:10px;padding:10px 12px;text-align:center;">' +
-            '<div style="font-size:11px;color:#8b949e;">Fuera de sync</div>' +
-            '<div style="font-size:20px;font-weight:700;color:#f87171;">' + badRows + '</div>' +
+          '<div style="background:rgba(255, 99, 99, 0.08);border:1px solid rgba(255, 99, 99, 0.2);border-radius:10px;padding:10px 12px;text-align:center;">' +
+            '<div style="font-size:11px;color:#9c9c9d;">Fuera de sync</div>' +
+            '<div style="font-size:20px;font-weight:700;color:#ff6363;">' + badRows + '</div>' +
           '</div>' +
-          '<div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:10px;padding:10px 12px;text-align:center;">' +
-            '<div style="font-size:11px;color:#8b949e;">Salud global</div>' +
-            '<div style="font-size:20px;font-weight:700;color:#a78bfa;">' + healthPct + '%</div>' +
+          '<div style="background:rgba(255, 255, 255, 0.028);border:1px solid rgba(255, 255, 255, 0.07);border-radius:10px;padding:10px 12px;text-align:center;">' +
+            '<div style="font-size:11px;color:#9c9c9d;">Salud global</div>' +
+            '<div style="font-size:20px;font-weight:700;color:#ffffff;">' + healthPct + '%</div>' +
           '</div>' +
-          '<div style="background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.2);border-radius:10px;padding:10px 12px;text-align:center;">' +
-            '<div style="font-size:11px;color:#8b949e;">Desv. promedio</div>' +
-            '<div style="font-size:20px;font-weight:700;color:#58a6ff;">$' + Number(s.avg_abs_diff || 0).toFixed(4) + '</div>' +
+          '<div style="background:rgba(86, 194, 255, 0.08);border:1px solid rgba(86, 194, 255, 0.2);border-radius:10px;padding:10px 12px;text-align:center;">' +
+            '<div style="font-size:11px;color:#9c9c9d;">Desv. promedio</div>' +
+            '<div style="font-size:20px;font-weight:700;color:#56c2ff;">$' + Number(s.avg_abs_diff || 0).toFixed(4) + '</div>' +
           '</div>';
 
         const snapshotKey = 'gpPriceHealthSnapshotV1';
@@ -2320,7 +2308,7 @@
         }
 
         if (!items.length) {
-          tableWrap.innerHTML = '<div style="color:#888;padding:10px 0;">No hay paquetes mapeados para comparar.</div>';
+          tableWrap.innerHTML = '<div style="color:#9c9c9d;padding:10px 0;">No hay paquetes mapeados para comparar.</div>';
         } else {
           let html = '<table class="table" style="width:100%;font-size:12px;"><thead><tr>' +
             '<th>Juego</th><th>Paquete</th><th>Precio en GP antes</th><th>Precio en GP ahora</th><th>Precio mío antes</th><th>Precio actualizado ahora</th><th>Estado</th>' +
@@ -2358,7 +2346,7 @@
 
           html += '</tbody></table>';
           if (errors.length) {
-            html += '<div style="margin-top:10px;color:#f59e0b;font-size:12px;">Advertencias API: ' + errors.map(e => (e.game || '?') + ': ' + (e.error || 'error')).join(' | ') + '</div>';
+            html += '<div style="margin-top:10px;color:#ffc531;font-size:12px;">Advertencias API: ' + errors.map(e => (e.game || '?') + ': ' + (e.error || 'error')).join(' | ') + '</div>';
           }
           tableWrap.innerHTML = html;
           try {
@@ -2366,7 +2354,7 @@
           } catch(e) {}
         }
       } catch(e) {
-        st.innerHTML = '<span style="color:#ff6b6b;">Error de conexión al cargar estadísticas</span>';
+        st.innerHTML = '<span style="color:#ff6363;">Error de conexión al cargar estadísticas</span>';
         tableWrap.innerHTML = '';
       }
     }
@@ -2388,7 +2376,7 @@
         data.local_packages.forEach(lp => {
           html += `<tr>
             <td>${lp.id}</td><td>${lp.nombre}</td><td>$${Number(lp.precio).toFixed(2)}</td>
-            <td><select id="dyn-gp-sel-${gameId}-${lp.id}" style="background:#1a1a2e;color:#ddd;border:1px solid #333;padding:4px 6px;border-radius:4px;font-size:12px;width:100%;max-width:300px;">
+            <td><select id="dyn-gp-sel-${gameId}-${lp.id}" style="background:#1b1c1e;color:#e6e6e6;border:1px solid #2a2b2d;padding:4px 6px;border-radius:4px;font-size:12px;width:100%;max-width:300px;">
               <option value="">-- Sin asignar --</option>${gpOpts}
             </select></td>
             <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="saveDynMapping(${gameId},${lp.id})">Guardar</button></td>
@@ -2412,11 +2400,11 @@
       try {
         const res = await fetch(`/admin/dynamic-games/${gameId}/auto-import-packages`, {method:'POST',headers:{'Accept':'application/json'}});
         let data = null;
-        try { data = await res.json(); } catch(_) { st.innerHTML = '<span style="color:#ff6b6b;">Error del servidor (respuesta inválida). Revisa los logs.</span>'; return; }
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">'+(data.error||'Error '+res.status)+'</span>'; return; }
-        st.innerHTML = `<span style="color:#4ade80;">✅ ${data.created} paquetes creados, ${data.skipped} ya existían (${data.total_gp} en GP)</span>`;
+        try { data = await res.json(); } catch(_) { st.innerHTML = '<span style="color:#ff6363;">Error del servidor (respuesta inválida). Revisa los logs.</span>'; return; }
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6363;">'+(data.error||'Error '+res.status)+'</span>'; return; }
+        st.innerHTML = `<span style="color:#59d499;">✅ ${data.created} paquetes creados, ${data.skipped} ya existían (${data.total_gp} en GP)</span>`;
         loadDynMapping(gameId);
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error de red: '+e.message+'</span>'; }
+      } catch(e) { st.innerHTML = '<span style="color:#ff6363;">Error de red: '+e.message+'</span>'; }
     }
 
     async function saveDynMapping(gameId, localId) {
@@ -2429,9 +2417,9 @@
           body: JSON.stringify({local_id: localId, gamepoint_package_id: sel.value || null})
         });
         const data = await res.json();
-        if (data.success) { st.innerHTML = '<span style="color:#4ade80;">Mapeo guardado para '+data.nombre+'</span>'; }
-        else { st.innerHTML = '<span style="color:#ff6b6b;">'+(data.error||'Error')+'</span>'; }
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error de red</span>'; }
+        if (data.success) { st.innerHTML = '<span style="color:#59d499;">Mapeo guardado para '+data.nombre+'</span>'; }
+        else { st.innerHTML = '<span style="color:#ff6363;">'+(data.error||'Error')+'</span>'; }
+      } catch(e) { st.innerHTML = '<span style="color:#ff6363;">Error de red</span>'; }
     }
 
     async function syncDynPrices(gameId) {
@@ -2443,10 +2431,10 @@
       try {
         const res = await fetch(`/admin/dynamic-games/${gameId}/sync-prices`, {method:'POST',headers:{'Accept':'application/json'}});
         const data = await res.json();
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6b6b;">'+(data.error||'Error')+'</span>'; return; }
-        st.innerHTML = '<span style="color:#4ade80;">✅ Sync OK: '+data.packages_updated+'/'+data.total_gp+' actualizados</span>';
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:#ff6363;">'+(data.error||'Error')+'</span>'; return; }
+        st.innerHTML = '<span style="color:#59d499;">✅ Sync OK: '+data.packages_updated+'/'+data.total_gp+' actualizados</span>';
         if (rpt && data.report) {
-          let html = '<div style="background:#0d0d1a;border-radius:8px;padding:12px;font-size:12px;"><strong>Reporte de Sync:</strong><table class="table" style="width:100%;font-size:12px;margin-top:8px;"><thead><tr><th>GP ID</th><th>Nombre GP</th><th>Precio MYR</th><th>Costo USD</th><th>Venta USD</th><th>Local</th><th>Cambio</th></tr></thead><tbody>';
+          let html = '<div style="background:#111214;border-radius:8px;padding:12px;font-size:12px;"><strong>Reporte de Sync:</strong><table class="table" style="width:100%;font-size:12px;margin-top:8px;"><thead><tr><th>GP ID</th><th>Nombre GP</th><th>Precio MYR</th><th>Costo USD</th><th>Venta USD</th><th>Local</th><th>Cambio</th></tr></thead><tbody>';
           data.report.forEach(r => {
             const cambioColor = r.cambio > 0 ? '#ff6b6b' : (r.cambio < 0 ? '#4ade80' : '#888');
             const cambioTxt = r.local_id ? (r.cambio > 0 ? '+' : '') + r.cambio.toFixed(4) : (r.nota || 'N/A');
@@ -2454,7 +2442,7 @@
               <td>${r.gp_id}</td><td>${r.gp_name}</td>
               <td>${r.gp_myr}</td><td>$${(r.costo_nuevo||0).toFixed(4)}</td>
               <td style="font-weight:700;">$${r.precio_nuevo.toFixed(2)}</td>
-              <td>${r.local_id ? '#'+r.local_id+' '+r.local_nombre : '<span style="color:#888;">-</span>'}</td>
+              <td>${r.local_id ? '#'+r.local_id+' '+r.local_nombre : '<span style="color:#9c9c9d;">-</span>'}</td>
               <td style="color:${cambioColor};">${cambioTxt}</td>
             </tr>`;
           });
@@ -2463,7 +2451,7 @@
           rpt.style.display = 'block';
         }
         loadDynMapping(gameId);
-      } catch(e) { st.innerHTML = '<span style="color:#ff6b6b;">Error inesperado</span>'; }
+      } catch(e) { st.innerHTML = '<span style="color:#ff6363;">Error inesperado</span>'; }
     }
 
     async function loadAdminCostoData() {
@@ -2474,44 +2462,44 @@
     async function loadAdminSummary() {
       const container = document.getElementById('admin-cost-summary');
       if (!container) return;
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:#888;width:100%;">Cargando...</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#9c9c9d;width:100%;">Cargando...</div>';
       try {
         const response = await fetch('/admin/costos/admin-summary');
         const data = await response.json();
-        if (!data.success) { container.innerHTML = '<div style="color:#ff6b6b;">Error</div>'; return; }
+        if (!data.success) { container.innerHTML = '<div style="color:#ff6363;">Error</div>'; return; }
         container.innerHTML = `
-          <div style="flex:1;min-width:200px;background:#0d0d1a;border-radius:8px;padding:16px;text-align:center;">
-            <div style="color:#888;font-size:12px;margin-bottom:4px;">Gasto Hoy</div>
-            <div style="color:#ff9800;font-size:24px;font-weight:bold;">$${data.gasto_hoy.toFixed(2)}</div>
-            <div style="color:#888;font-size:11px;">${data.compras_hoy} compras</div>
+          <div style="flex:1;min-width:200px;background:#111214;border-radius:8px;padding:16px;text-align:center;">
+            <div style="color:#9c9c9d;font-size:12px;margin-bottom:4px;">Gasto Hoy</div>
+            <div style="color:#ffc531;font-size:24px;font-weight:bold;">$${data.gasto_hoy.toFixed(2)}</div>
+            <div style="color:#9c9c9d;font-size:11px;">${data.compras_hoy} compras</div>
           </div>
-          <div style="flex:1;min-width:200px;background:#0d0d1a;border-radius:8px;padding:16px;text-align:center;">
-            <div style="color:#888;font-size:12px;margin-bottom:4px;">Gasto Semanal</div>
-            <div style="color:#ff6b6b;font-size:24px;font-weight:bold;">$${data.gasto_semanal.toFixed(2)}</div>
-            <div style="color:#888;font-size:11px;">${data.compras_semanal} compras</div>
+          <div style="flex:1;min-width:200px;background:#111214;border-radius:8px;padding:16px;text-align:center;">
+            <div style="color:#9c9c9d;font-size:12px;margin-bottom:4px;">Gasto Semanal</div>
+            <div style="color:#ff6363;font-size:24px;font-weight:bold;">$${data.gasto_semanal.toFixed(2)}</div>
+            <div style="color:#9c9c9d;font-size:11px;">${data.compras_semanal} compras</div>
           </div>
-          <div style="flex:1;min-width:200px;background:#0d0d1a;border-radius:8px;padding:16px;text-align:center;">
-            <div style="color:#888;font-size:12px;margin-bottom:4px;">Gasto Mensual</div>
-            <div style="color:#ff6b6b;font-size:24px;font-weight:bold;">$${data.gasto_mensual.toFixed(2)}</div>
-            <div style="color:#888;font-size:11px;">${data.compras_mensual} compras</div>
+          <div style="flex:1;min-width:200px;background:#111214;border-radius:8px;padding:16px;text-align:center;">
+            <div style="color:#9c9c9d;font-size:12px;margin-bottom:4px;">Gasto Mensual</div>
+            <div style="color:#ff6363;font-size:24px;font-weight:bold;">$${data.gasto_mensual.toFixed(2)}</div>
+            <div style="color:#9c9c9d;font-size:11px;">${data.compras_mensual} compras</div>
           </div>
         `;
       } catch (e) {
         console.error('Error admin summary:', e);
-        container.innerHTML = '<div style="color:#ff6b6b;">Error al cargar resumen</div>';
+        container.innerHTML = '<div style="color:#ff6363;">Error al cargar resumen</div>';
       }
     }
     
     async function loadAdminPurchases(day) {
       const container = document.getElementById('admin-purchases-list');
       if (!container) return;
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Cargando...</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#9c9c9d;">Cargando...</div>';
       try {
         const response = await fetch(`/admin/costos/${day}?admin_only=1`);
         const data = await response.json();
         if (!data.success || data.purchases.length === 0) {
           const dayNames = { 'today': 'hoy', 'yesterday': 'ayer', 'daybefore': 'antes de ayer' };
-          container.innerHTML = `<div style="text-align:center;padding:20px;color:#888;">No hay compras admin para ${dayNames[day] || day}</div>`;
+          container.innerHTML = `<div style="text-align:center;padding:20px;color:#9c9c9d;">No hay compras admin para ${dayNames[day] || day}</div>`;
           return;
         }
         let html = '';
@@ -2522,15 +2510,15 @@
           else if (tipo === 'reembolso') { montoColor = '#ff6b6b'; montoSign = '↩'; }
           
           html += `
-            <div style="background:#0d0d1a;border-radius:6px;padding:12px;margin-bottom:8px;">
+            <div style="background:#111214;border-radius:6px;padding:12px;margin-bottom:8px;">
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div>
-                  <div style="color:#fff;font-weight:bold;margin-bottom:2px;">${p.paquete_nombre}</div>
-                  <div style="color:#888;font-size:12px;">${p.tipo_compra} | ${p.fecha}</div>
+                  <div style="color:#ffffff;font-weight:bold;margin-bottom:2px;">${p.paquete_nombre}</div>
+                  <div style="color:#9c9c9d;font-size:12px;">${p.tipo_compra} | ${p.fecha}</div>
                 </div>
                 <div style="text-align:right;">
                   <div style="color:${montoColor};font-weight:bold;font-size:16px;">${montoSign}$${p.monto.toFixed(2)}</div>
-                  <div style="color:#888;font-size:11px;">$${p.saldo_antes.toFixed(2)} → $${p.saldo_despues.toFixed(2)}</div>
+                  <div style="color:#9c9c9d;font-size:11px;">$${p.saldo_antes.toFixed(2)} → $${p.saldo_despues.toFixed(2)}</div>
                 </div>
               </div>
             </div>
@@ -2539,7 +2527,7 @@
         container.innerHTML = html;
       } catch (e) {
         console.error('Error admin purchases:', e);
-        container.innerHTML = '<div style="color:#ff6b6b;">Error al cargar</div>';
+        container.innerHTML = '<div style="color:#ff6363;">Error al cargar</div>';
       }
     }
     
@@ -2551,7 +2539,7 @@
         return;
       }
       
-      container.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Cargando...</div>';
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:#9c9c9d;">Cargando...</div>';
       
       try {
         console.log(`Haciendo fetch a /admin/costos/${day}`);
@@ -2566,7 +2554,7 @@
             'yesterday': 'ayer',
             'daybefore': 'antes de ayer'
           };
-          container.innerHTML = `<div style="text-align:center;padding:20px;color:#888;">No hay compras registradas para ${dayNames[day] || day}</div>`;
+          container.innerHTML = `<div style="text-align:center;padding:20px;color:#9c9c9d;">No hay compras registradas para ${dayNames[day] || day}</div>`;
           return;
         }
         
@@ -2616,23 +2604,23 @@
           else if (ultimoTipo === 'reembolso') { montoSign = '↩'; montoColor = '#ff6b6b'; }
           
           html += `
-            <div class="costo-user-card" style="background:#1a1a2e;border-radius:8px;padding:16px;margin-bottom:12px;border:1px solid #333;">
+            <div class="costo-user-card" style="background:#1b1c1e;border-radius:8px;padding:16px;margin-bottom:12px;border:1px solid #2a2b2d;">
               <div style="display:flex;justify-content:space-between;align-items:start;gap:16px;">
                 <div style="flex:1;">
-                  <div style="font-weight:bold;color:#00d4aa;margin-bottom:6px;">
+                  <div style="font-weight:bold;color:#59d499;margin-bottom:6px;">
                     ${u.usuario_nombre} ${u.usuario_apellido}
-                    <span style="font-size:12px;color:#888;margin-left:8px;">ID: ${u.usuario_id}</span>
+                    <span style="font-size:12px;color:#9c9c9d;margin-left:8px;">ID: ${u.usuario_id}</span>
                   </div>
-                  <div style="color:#fff;font-size:13px;margin-bottom:4px;">${ultimaCompra} <span style="color:${montoColor};">${montoSign}$${ultimoMonto.toFixed(2)}</span></div>
+                  <div style="color:#ffffff;font-size:13px;margin-bottom:4px;">${ultimaCompra} <span style="color:${montoColor};">${montoSign}$${ultimoMonto.toFixed(2)}</span></div>
                   <div style="display:flex;gap:10px;align-items:center;">
-                    <span style="color:#888;">Saldo:</span>
-                    <span style="color:#ff6b6b;">$${saldoAntes.toFixed(2)}</span>
-                    <span style="color:#888;">→</span>
-                    <span style="color:#51cf66;">$${saldoDespues.toFixed(2)}</span>
+                    <span style="color:#9c9c9d;">Saldo:</span>
+                    <span style="color:#ff6363;">$${saldoAntes.toFixed(2)}</span>
+                    <span style="color:#9c9c9d;">→</span>
+                    <span style="color:#59d499;">$${saldoDespues.toFixed(2)}</span>
                   </div>
                 </div>
                 <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-                  <div style="color:#888;font-size:12px;">${numEventos} movimiento${numEventos > 1 ? 's' : ''}</div>
+                  <div style="color:#9c9c9d;font-size:12px;">${numEventos} movimiento${numEventos > 1 ? 's' : ''}</div>
                   <button type="button" onclick="showUserPurchaseDetail(${u.usuario_id}, '${day}')" class="btn btn-primary" style="padding:6px 14px;font-size:12px;">
                     📋 Ver
                   </button>
@@ -2646,7 +2634,7 @@
         
       } catch (error) {
         console.error(`Error cargando compras de ${day}:`, error);
-        container.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6b6b;">Error al cargar datos</div>';
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:#ff6363;">Error al cargar datos</div>';
       }
     }
 
@@ -2662,14 +2650,14 @@
         }
         
         let detailHtml = `
-          <div style="background:#1a1a2e;border-radius:8px;padding:20px;border:1px solid #333;max-width:600px;margin:0 auto;">
+          <div style="background:#1b1c1e;border-radius:8px;padding:20px;border:1px solid #2a2b2d;max-width:600px;margin:0 auto;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <h3 style="margin:0;color:#00d4aa;">📋 Historial de Compras</h3>
-              <button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">×</button>
+              <h3 style="margin:0;color:#59d499;">📋 Historial de Compras</h3>
+              <button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;color:#ffffff;font-size:20px;cursor:pointer;">×</button>
             </div>
             <div style="margin-bottom:12px;">
-              <strong style="color:#fff;">${data.usuario.nombre} ${data.usuario.apellido}</strong><br>
-              <span style="color:#888;">ID: ${data.usuario.id} | ${data.usuario.correo}</span>
+              <strong style="color:#ffffff;">${data.usuario.nombre} ${data.usuario.apellido}</strong><br>
+              <span style="color:#9c9c9d;">ID: ${data.usuario.id} | ${data.usuario.correo}</span>
             </div>
             <div style="max-height:400px;overflow-y:auto;">
         `;
@@ -2684,18 +2672,18 @@
           else if (p.tipo === 'compra' && (p.pin_codigo || '').includes('ID:')) { tipoIcon = '🎮'; }
           
           detailHtml += `
-            <div style="background:#0d0d1a;border-radius:6px;padding:12px;margin-bottom:8px;">
+            <div style="background:#111214;border-radius:6px;padding:12px;margin-bottom:8px;">
               <div style="display:flex;justify-content:space-between;align-items:start;">
                 <div>
-                  <div style="color:#fff;font-weight:bold;margin-bottom:4px;">${tipoIcon} ${p.paquete_nombre}</div>
-                  <div style="color:#888;font-size:12px;">${p.fecha_hora}</div>
-                  ${p.duracion_segundos ? `<div style="color:#4fc3f7;font-size:12px;">⏱️ ${p.duracion_segundos}s</div>` : ''}
-                  ${p.player_id ? `<div style="color:#888;font-size:12px;">Player ID: ${p.player_id}</div>` : ''}
-                  ${(p.pin_codigo && p.pin_codigo.length > 2) ? `<div style="color:#888;font-size:12px;">PIN: ${p.pin_codigo.substring(0,20)}...</div>` : ''}
+                  <div style="color:#ffffff;font-weight:bold;margin-bottom:4px;">${tipoIcon} ${p.paquete_nombre}</div>
+                  <div style="color:#9c9c9d;font-size:12px;">${p.fecha_hora}</div>
+                  ${p.duracion_segundos ? `<div style="color:#56c2ff;font-size:12px;">⏱️ ${p.duracion_segundos}s</div>` : ''}
+                  ${p.player_id ? `<div style="color:#9c9c9d;font-size:12px;">Player ID: ${p.player_id}</div>` : ''}
+                  ${(p.pin_codigo && p.pin_codigo.length > 2) ? `<div style="color:#9c9c9d;font-size:12px;">PIN: ${p.pin_codigo.substring(0,20)}...</div>` : ''}
                 </div>
                 <div style="text-align:right;">
                   <div style="color:${montoColor};font-weight:bold;">${montoPrefix}$${p.monto.toFixed(2)}</div>
-                  <div style="color:#888;font-size:11px;">$${p.saldo_antes.toFixed(2)} → $${p.saldo_despues.toFixed(2)}</div>
+                  <div style="color:#9c9c9d;font-size:11px;">$${p.saldo_antes.toFixed(2)} → $${p.saldo_despues.toFixed(2)}</div>
                 </div>
               </div>
             </div>
@@ -2776,7 +2764,7 @@
 
       const game = (_mapeoData.games || []).find(g => g.id === gameId);
       if (!game || !game.packages.length) {
-        container.innerHTML = '<p style="color:#888;">Este juego no tiene paquetes.</p>';
+        container.innerHTML = '<p style="color:#9c9c9d;">Este juego no tiene paquetes.</p>';
         saveBar.style.display = 'none';
         return;
       }
@@ -2789,7 +2777,7 @@
       });
 
       let html = '<table style="width:100%;border-collapse:collapse;font-size:0.92rem;">';
-      html += '<thead><tr style="border-bottom:1px solid #333;text-align:left;">';
+      html += '<thead><tr style="border-bottom:1px solid #2a2b2d;text-align:left;">';
       html += '<th style="padding:8px;">Paquete local</th><th style="padding:8px;">Precio</th>';
       html += '<th style="padding:8px;">Paquete remoto</th><th style="padding:8px;text-align:center;">Auto</th>';
       html += '</tr></thead><tbody>';
@@ -2799,10 +2787,10 @@
         const selVal = mapping ? (mapping.remote_product_id + '||' + mapping.remote_package_id) : '';
         const autoChecked = mapping && mapping.auto_enabled ? 'checked' : '';
 
-        html += `<tr style="border-bottom:1px solid #222;" data-juego="${gameId}" data-paquete="${pkg.id}">`;
+        html += `<tr style="border-bottom:1px solid #2a2b2d;" data-juego="${gameId}" data-paquete="${pkg.id}">`;
         html += `<td style="padding:8px;">${pkg.nombre}</td>`;
         html += `<td style="padding:8px;">$${pkg.precio.toFixed(2)}</td>`;
-        html += `<td style="padding:8px;"><select class="mapeo-remote-sel" style="width:100%;padding:6px;background:#1e1e2e;color:#fff;border:1px solid #444;border-radius:6px;">`;
+        html += `<td style="padding:8px;"><select class="mapeo-remote-sel" style="width:100%;padding:6px;background:#1b1c1e;color:#ffffff;border:1px solid #2a2b2d;border-radius:6px;">`;
         html += `<option value="">— Sin mapear —</option>`;
         Object.keys(catByProduct).forEach(pid => {
           const grp = catByProduct[pid];
@@ -2815,7 +2803,7 @@
           html += '</optgroup>';
         });
         html += '</select></td>';
-        html += `<td style="padding:8px;text-align:center;"><input type="checkbox" class="mapeo-auto-chk" ${autoChecked} style="width:18px;height:18px;accent-color:#a78bfa;cursor:pointer;"></td>`;
+        html += `<td style="padding:8px;text-align:center;"><input type="checkbox" class="mapeo-auto-chk" ${autoChecked} style="width:18px;height:18px;accent-color:#ffffff;cursor:pointer;"></td>`;
         html += '</tr>';
       });
 

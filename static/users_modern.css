@@ -1,65 +1,39 @@
 /* ============================================================
-   Gestión de Usuarios — estilo minimalista (Swiss) con tema
-   oscuro por defecto y tema claro. Paleta pizarra + verde.
+   Gestión de Usuarios — tema "Midnight + Coral" (ver theme.css)
    ============================================================ */
 
 .um-section {
-  /* Oscuro (por defecto) */
-  --um-bg: #0f172a;
-  --um-surface: #1b2336;
-  --um-surface-2: #232c40;
-  --um-border: #2c3850;
-  --um-border-strong: #475569;
-  --um-text: #f8fafc;
-  --um-muted: #94a3b8;
-  --um-input-bg: #141c2e;
-  --um-accent: #a5b4fc;
-  --um-accent-soft: rgba(129, 140, 248, 0.16);
-  --um-success: #4ade80;
-  --um-success-soft: rgba(34, 197, 94, 0.13);
-  --um-warning: #fbbf24;
-  --um-warning-soft: rgba(245, 158, 11, 0.14);
-  --um-danger: #f87171;
-  --um-danger-soft: rgba(239, 68, 68, 0.13);
-  --um-on-solid: #0f172a;
-  --um-ring: #a5b4fc;
-  --um-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --um-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --um-mono: 'Fira Code', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --um-bg: transparent;
+  --um-surface: #07080a;
+  --um-surface-2: #111214;
+  --um-border: #2a2b2d;
+  --um-border-strong: #363739;
+  --um-text: #ffffff;
+  --um-muted: #9c9c9d;
+  --um-input-bg: rgba(255, 255, 255, 0.05);
+  --um-accent: #e6e6e6;
+  --um-accent-soft: rgba(255, 255, 255, 0.08);
+  --um-success: #59d499;
+  --um-success-soft: rgba(89, 212, 153, 0.1);
+  --um-warning: #ffc531;
+  --um-warning-soft: rgba(255, 197, 49, 0.1);
+  --um-danger: #ff6363;
+  --um-danger-soft: rgba(255, 99, 99, 0.12);
+  --um-on-solid: #07080a;
+  --um-ring: #9c9c9d;
+  --um-shadow: rgba(255, 255, 255, 0.05) 0 1px 0 0 inset, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
+  --um-shadow-hover: rgba(255, 255, 255, 0.07) 0 1px 0 0 inset, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
+  --um-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, Consolas, monospace;
   color-scheme: dark;
-}
-
-.um-section[data-theme="light"] {
-  --um-bg: #f8fafc;
-  --um-surface: #ffffff;
-  --um-surface-2: #f1f5f9;
-  --um-border: #e2e8f0;
-  --um-border-strong: #cbd5e1;
-  --um-text: #0f172a;
-  --um-muted: #475569;
-  --um-input-bg: #ffffff;
-  --um-accent: #4338ca;
-  --um-accent-soft: rgba(79, 70, 229, 0.09);
-  --um-success: #15803d;
-  --um-success-soft: rgba(22, 163, 74, 0.09);
-  --um-warning: #a16207;
-  --um-warning-soft: rgba(234, 179, 8, 0.13);
-  --um-danger: #b91c1c;
-  --um-danger-soft: rgba(220, 38, 38, 0.07);
-  --um-on-solid: #ffffff;
-  --um-ring: #4338ca;
-  --um-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --um-shadow-hover: 0 8px 24px rgba(15, 23, 42, 0.08);
-  color-scheme: light;
 }
 
 .um-section {
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   background: var(--um-bg);
   color: var(--um-text);
-  border: 1px solid var(--um-border);
+  border: 0;
   border-radius: 16px;
-  padding: 24px;
+  padding: 0;
   line-height: 1.5;
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
@@ -172,7 +146,6 @@
 .um-icon-btn:hover { background: var(--um-surface-2); border-color: var(--um-border-strong); }
 .um-icon-btn svg { width: 18px; height: 18px; }
 .um-section[data-theme="dark"] .um-ico-moon,
-.um-section[data-theme="light"] .um-ico-sun { display: none; }
 
 /* ---------- Rejilla y tarjeta ---------- */
 .um-grid {
@@ -206,24 +179,13 @@
   width: 42px;
   height: 42px;
   flex-shrink: 0;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 0.9rem;
+  border-radius: 99999px;
+  font-weight: 600;
+  font-size: 0.85rem;
   letter-spacing: 0.02em;
 }
-/* Tonos desaturados: fondo suave + letra del mismo tono (sin degradados) */
-.um-avatar-0 { background: rgba(129, 140, 248, 0.18); color: #a5b4fc; }
-.um-avatar-1 { background: rgba(56, 189, 248, 0.16); color: #7dd3fc; }
-.um-avatar-2 { background: rgba(74, 222, 128, 0.15); color: #86efac; }
-.um-avatar-3 { background: rgba(251, 191, 36, 0.15); color: #fcd34d; }
-.um-avatar-4 { background: rgba(244, 114, 182, 0.15); color: #f9a8d4; }
-.um-avatar-5 { background: rgba(45, 212, 191, 0.15); color: #5eead4; }
-.um-section[data-theme="light"] .um-avatar-0 { color: #4338ca; }
-.um-section[data-theme="light"] .um-avatar-1 { color: #0369a1; }
-.um-section[data-theme="light"] .um-avatar-2 { color: #15803d; }
-.um-section[data-theme="light"] .um-avatar-3 { color: #a16207; }
-.um-section[data-theme="light"] .um-avatar-4 { color: #be185d; }
-.um-section[data-theme="light"] .um-avatar-5 { color: #0f766e; }
+/* Contenedor circular neutro (un solo acento en todo el sistema) */
+.um-avatar { background: #1b1c1e; color: #e6e6e6; box-shadow: rgba(255,255,255,0.08) 0 0 0 1px inset; }
 
 .um-ident { flex: 1; min-width: 0; }
 .um-name {
@@ -396,6 +358,8 @@
 .um-btn-success:hover { background: var(--um-success); color: var(--um-on-solid); }
 .um-btn-warning:hover { background: var(--um-warning); color: var(--um-on-solid); }
 .um-btn-accent:hover  { background: var(--um-accent);  color: var(--um-on-solid); }
+.um-btn-success { background: var(--um-accent) !important; color: var(--um-on-solid) !important; }
+.um-btn-success:hover { background: #ffffff !important; }
 
 /* Estado de carga */
 .um-section button.is-loading { color: transparent !important; pointer-events: none; }
@@ -459,7 +423,7 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
-  .um-section { padding: 16px; border-radius: 14px; }
+  .um-section { padding: 0; }
   .um-header { flex-direction: column; align-items: stretch; }
   .um-toolbar { width: 100%; }
   .um-search { width: auto; flex: 1; }
@@ -479,26 +443,4 @@
   .um-section button.is-loading::after { animation-duration: 1.6s; }
 }
 
-/* ---------- Entorno oscuro mientras la pestaña Usuarios está activa ---------- */
 #tab-usuarios.tab-content { padding: 0; }
-body:has(#tab-usuarios.active) .admin-shell .tabs-container { background: transparent; box-shadow: none; }
-
-body:has(#tab-usuarios.active #um-section[data-theme="dark"]) {
-  background-color: #0b1120;
-  color-scheme: dark;
-}
-body:has(#tab-usuarios.active #um-section[data-theme="dark"]) .admin-sidebar {
-  background: #1b2336;
-  border: 1px solid #2c3850;
-  box-shadow: none;
-}
-body:has(#tab-usuarios.active #um-section[data-theme="dark"]) .side-tab-button:not(.active) {
-  background: #232c40;
-  border-color: #2c3850;
-  color: #cbd5e1;
-}
-body:has(#tab-usuarios.active #um-section[data-theme="dark"]) .side-tab-button:not(.active):hover {
-  background: #2c3850;
-  border-color: #475569;
-  color: #f8fafc;
-}

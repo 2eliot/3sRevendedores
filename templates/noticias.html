@@ -6,6 +6,9 @@
   <title>Noticias</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -176,7 +179,7 @@
     .news-title {
       font-size: 1.3rem;
       font-weight: 700;
-      color: #fff;
+      color: #ffffff;
       margin: 0;
       flex: 1;
     }
@@ -184,7 +187,7 @@
     .news-date {
       font-family: 'Courier New', monospace;
       font-size: 0.85rem;
-      color: #8896a6;
+      color: #9c9c9d;
       font-weight: 500;
       white-space: nowrap;
     }
@@ -196,7 +199,7 @@
     .news-content p {
       font-size: 1rem;
       line-height: 1.6;
-      color: #c0c8d4;
+      color: #9c9c9d;
       margin: 0;
       white-space: pre-wrap;
     }
@@ -205,8 +208,8 @@
       position: absolute;
       top: -8px;
       right: -8px;
-      background: #dc3545;
-      color: white;
+      background: #452324;
+      color: #ffffff;
       padding: 0.25rem 0.5rem;
       border-radius: 12px;
       font-size: 0.75rem;
@@ -221,28 +224,28 @@
 
     /* Estilos para notificaciones personalizadas */
     .personal-notification {
-      border-left: 4px solid #28a745;
-      background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+      border-left: 4px solid #59d499;
+      background: linear-gradient(135deg, #07080a 0%, #07080a 100%);
     }
 
     .personal-notification.notification-success {
-      border-left-color: #28a745;
-      background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+      border-left-color: #59d499;
+      background: linear-gradient(135deg, #07080a 0%, #07080a 100%);
     }
 
     .personal-notification.notification-error {
-      border-left-color: #dc3545;
-      background: linear-gradient(135deg, #fff8f8 0%, #f5e8e8 100%);
+      border-left-color: #ff6363;
+      background: linear-gradient(135deg, #07080a 0%, #07080a 100%);
     }
 
     .personal-notification.notification-warning {
-      border-left-color: #ffc107;
-      background: linear-gradient(135deg, #fffef8 0%, #f5f3e8 100%);
+      border-left-color: #ffc531;
+      background: linear-gradient(135deg, #07080a 0%, #07080a 100%);
     }
 
     .personal-notification.notification-info {
-      border-left-color: #17a2b8;
-      background: linear-gradient(135deg, #f8fcff 0%, #e8f4f8 100%);
+      border-left-color: #56c2ff;
+      background: linear-gradient(135deg, #07080a 0%, #0f2233 100%);
     }
 
     .personal-notification-badge {
@@ -257,23 +260,23 @@
     }
 
     .notification-badge-success {
-      background: #28a745;
-      color: white;
+      background: #13261d;
+      color: #ffffff;
     }
 
     .notification-badge-error {
-      background: #dc3545;
-      color: white;
+      background: #452324;
+      color: #ffffff;
     }
 
     .notification-badge-warning {
-      background: #ffc107;
-      color: #212529;
+      background: #2e2612;
+      color: #ffffff;
     }
 
     .notification-badge-info {
-      background: #17a2b8;
-      color: white;
+      background: #0f2233;
+      color: #ffffff;
     }
 
     /* Responsive para noticias */

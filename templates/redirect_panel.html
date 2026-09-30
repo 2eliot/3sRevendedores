@@ -9,16 +9,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
-      background: #0d1117;
+      background: #111214;
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: 'Inter', sans-serif;
-      color: #e6edf3;
+      color: #e6e6e6;
       padding: 24px;
     }
     .panel {
-      background: #161b22;
+      background: #1b1c1e;
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
       padding: 36px 32px;
@@ -30,11 +30,11 @@
       font-size: 1.25rem;
       font-weight: 700;
       margin-bottom: 6px;
-      color: #fff;
+      color: #ffffff;
     }
     .panel-sub {
       font-size: 0.85rem;
-      color: #8b949e;
+      color: #9c9c9d;
       margin-bottom: 28px;
     }
     /* Status badge */
@@ -56,14 +56,14 @@
       border-radius: 20px;
       letter-spacing: 0.5px;
     }
-    .badge-on  { background: rgba(40,167,69,0.2);  color: #28a745; border: 1px solid #28a745; }
-    .badge-off { background: rgba(220,53,69,0.2);  color: #dc3545; border: 1px solid #dc3545; }
+    .badge-on  { background: rgba(89, 212, 153, 0.2);  color: #59d499; border: 1px solid #59d499; }
+    .badge-off { background: rgba(255, 99, 99, 0.2);  color: #ff6363; border: 1px solid #ff6363; }
     /* URL input */
     label {
       display: block;
       font-size: 0.85rem;
       font-weight: 600;
-      color: #8b949e;
+      color: #9c9c9d;
       margin-bottom: 7px;
     }
     input[type="url"], input[type="text"] {
@@ -71,7 +71,7 @@
       background: rgba(255,255,255,0.05);
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 8px;
-      color: #e6edf3;
+      color: #e6e6e6;
       font-size: 0.95rem;
       padding: 10px 14px;
       outline: none;
@@ -79,7 +79,7 @@
       transition: border-color .2s;
       margin-bottom: 20px;
     }
-    input:focus { border-color: rgba(88,166,255,0.6); }
+    input:focus { border-color: rgba(86, 194, 255, 0.6); }
     /* Buttons */
     .btn-row { display: flex; gap: 12px; }
     .btn {
@@ -94,9 +94,9 @@
       transition: opacity .15s, transform .1s;
     }
     .btn:active { transform: scale(0.97); }
-    .btn-on  { background: #28a745; color: #fff; }
-    .btn-off { background: #dc3545; color: #fff; }
-    .btn-save { background: #1f6feb; color: #fff; flex: 2; }
+    .btn-on  { background: #13261d; color: #ffffff; }
+    .btn-off { background: #452324; color: #ffffff; }
+    .btn-save { background: #0f2233; color: #ffffff; flex: 2; }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
     /* Preview */
     .preview-box {
@@ -104,21 +104,21 @@
       border-top: 1px solid rgba(255,255,255,0.07);
       padding-top: 20px;
     }
-    .preview-label { font-size: 0.75rem; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    .preview-label { font-size: 0.75rem; font-weight: 700; color: #9c9c9d; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
     .banner-preview {
-      background: linear-gradient(135deg, #1a2332, #0d1b2a);
-      border: 1px solid rgba(88,166,255,0.35);
+      background: linear-gradient(135deg, #1b1c1e, #1b1c1e);
+      border: 1px solid rgba(86, 194, 255, 0.35);
       border-radius: 10px;
       padding: 16px 18px;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    .banner-preview p { font-size: 0.9rem; color: #c9d1d9; }
+    .banner-preview p { font-size: 0.9rem; color: #e6e6e6; }
     .banner-preview a {
       display: inline-block;
-      background: #1f6feb;
-      color: #fff;
+      background: #0f2233;
+      color: #ffffff;
       text-decoration: none;
       padding: 8px 18px;
       border-radius: 7px;
@@ -132,8 +132,8 @@
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%) translateY(20px);
-      background: #238636;
-      color: #fff;
+      background: #13261d;
+      color: #ffffff;
       padding: 10px 24px;
       border-radius: 8px;
       font-size: 0.88rem;
@@ -144,8 +144,11 @@
       z-index: 999;
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    #toast.error { background: #b91c1c; }
+    #toast.error { background: #452324; }
   </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   <div class="panel" data-activo="{{ '1' if aviso.activo else '0' }}">

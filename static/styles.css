@@ -14,8 +14,8 @@
 }
 body {
   font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
-  color: #e0e0e0;
+  background: linear-gradient(135deg, #07080a 0%, #1b1c1e 100%);
+  color: #e6e6e6;
   min-height: 100vh;
 }
 
@@ -37,15 +37,15 @@ body {
 }
 
 .flash-message-main.flash-error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: #452324;
+  color: #ff6363;
+  border: 1px solid #ff6363;
 }
 
 .flash-message-main.flash-success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background-color: #13261d;
+  color: #59d499;
+  border: 1px solid #59d499;
 }
 
 /* Mensajes flash para páginas de juegos */
@@ -66,20 +66,20 @@ body {
 }
 
 .flash-message.flash-error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: #452324;
+  color: #ff6363;
+  border: 1px solid #ff6363;
 }
 
 .flash-message.flash-success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background-color: #13261d;
+  color: #59d499;
+  border: 1px solid #59d499;
 }
 
 /* ==== HEADER ==== */
 .header {
-  background-color: #000;
+  background-color: #040506;
   padding: 0.8rem 1.5rem;
   display: flex;
   justify-content: space-between;
@@ -95,7 +95,7 @@ body {
 .hamburger .icon {
   width: 32px;
   height: 32px;
-  stroke: #fff;
+  stroke: #ffffff;
   fill: none;
 }
 
@@ -104,8 +104,8 @@ body {
   position: absolute;
   top: 40px;
   left: 0;
-  background: #fff;
-  color: #333;
+  background: #07080a;
+  color: #ffffff;
   padding: 0.8rem 1rem;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
@@ -127,12 +127,12 @@ body {
   margin-bottom: 0.5rem;
 }
 .menu-juegos a {
-  color: #333;
+  color: #ffffff;
   text-decoration: none;
   font-size: 0.95rem;
 }
 .menu-juegos a:hover {
-  color: #000;
+  color: #ffffff;
   font-weight: bold;
 }
 
@@ -147,19 +147,19 @@ body {
   width: 26px;
   height: 26px;
   fill: none;
-  stroke: #fff;
+  stroke: #ffffff;
   stroke-width: 1.8;
   transition: transform 0.25s cubic-bezier(.4,0,.2,1), stroke 0.25s ease, filter 0.25s ease;
   cursor: pointer;
 }
 .icon:hover {
   transform: scale(1.15);
-  stroke: #a78bfa;
+  stroke: #ffffff;
   filter: drop-shadow(0 0 6px rgba(167,139,250,0.45));
 }
 
 .icon.active {
-  stroke: #a78bfa;
+  stroke: #ffffff;
 }
 
 /* Contenedor del ícono de cartera con notificación */
@@ -173,8 +173,8 @@ body {
   position: absolute;
   top: -8px;
   right: -8px;
-  background: #28a745;
-  color: white;
+  background: #13261d;
+  color: #ffffff;
   border-radius: 50%;
   width: 20px;
   height: 20px;
@@ -183,7 +183,7 @@ body {
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 700;
-  border: 2px solid #222;
+  border: 2px solid #2a2b2d;
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   animation: wallet-notification-pulse 2s infinite;
 }
@@ -196,7 +196,7 @@ body {
   }
   50% {
     transform: scale(1.1);
-    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
   }
   100% {
     transform: scale(1);
@@ -222,7 +222,7 @@ body {
 }
 
 .dashboard-icon-container:hover .icon {
-  stroke: #a78bfa;
+  stroke: #ffffff;
   filter: drop-shadow(0 0 6px rgba(167,139,250,0.45));
 }
 
@@ -237,8 +237,8 @@ body {
   position: absolute;
   top: -8px;
   right: -8px;
-  background: #007bff;
-  color: white;
+  background: #0f2233;
+  color: #ffffff;
   border-radius: 50%;
   width: 20px;
   height: 20px;
@@ -247,7 +247,7 @@ body {
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 700;
-  border: 2px solid #222;
+  border: 2px solid #2a2b2d;
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   animation: news-notification-pulse 2s infinite;
 }
@@ -260,7 +260,7 @@ body {
   }
   50% {
     transform: scale(1.1);
-    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
   }
   100% {
     transform: scale(1);
@@ -276,8 +276,8 @@ body {
   position: absolute;
   top: 40px;
   right: 0;
-  background-color: #fff;
-  color: #333;
+  background-color: #07080a;
+  color: #ffffff;
   padding: 0.8rem 1rem;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
@@ -297,32 +297,32 @@ body {
   margin-top: 0.5rem;
   margin-right: 0.5rem;
   padding: 0.4rem 0.6rem;
-  background: #667eea;
-  color: #fff;
+  background: #1b1c1e;
+  color: #ffffff;
   text-decoration: none;
   border-radius: 4px;
   font-size: 0.85rem;
 }
 .user-box .admin-btn:hover {
-  background: #5a6fd8;
+  background: #1b1c1e;
 }
 
 .user-box .logout-btn {
   display: inline-block;
   margin-top: 0.5rem;
   padding: 0.4rem 0.6rem;
-  background: #333;
-  color: #fff;
+  background: #2f3031;
+  color: #ffffff;
   text-decoration: none;
   border-radius: 4px;
 }
 .user-box .logout-btn:hover {
-  background: #444;
+  background: #2f3031;
 }
 
 /* ==== PANEL SALDO ==== */
 .user-panel {
-  background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+  background: linear-gradient(135deg, #07080a 0%, #1b1c1e 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -364,15 +364,15 @@ body {
   flex-shrink: 0;
 }
 .user-chip .chip-value {
-  color: #fff;
+  color: #ffffff;
   font-weight: 600;
   font-size: 0.88rem;
 }
 .user-chip.chip-saldo .chip-value {
-  color: #4ade80;
+  color: #59d499;
 }
 .user-chip.chip-saldo svg {
-  stroke: #4ade80;
+  stroke: #59d499;
 }
 
 /* ==== HISTORIAL ==== */
@@ -382,7 +382,7 @@ body {
 }
 .transaction-title {
   background: rgba(255,255,255,0.08);
-  color: #fff;
+  color: #ffffff;
   padding: 0.5rem 1rem;
   border-radius: 12px;
   display: inline-block;
@@ -396,7 +396,7 @@ body {
 .transaction-header {
   width: 100%;
   background-color: rgba(255,255,255,0.06);
-  color: #e0e0e0;
+  color: #e6e6e6;
   font-weight: 700;
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
@@ -450,7 +450,7 @@ body {
   padding: 0.75rem;
   transition: box-shadow 0.2s ease, background 0.2s ease;
   text-align: center;
-  color: #e0e0e0;
+  color: #e6e6e6;
 }
 
 .transaction-card-simple:hover {
@@ -495,9 +495,9 @@ body {
 
 .ffid-voucher-status-value {
   font-weight: 800;
-  color: #4dd9ac;
-  background: rgba(77, 217, 172, 0.12);
-  border: 1px solid rgba(77, 217, 172, 0.35);
+  color: #59d499;
+  background: rgba(89, 212, 153, 0.12);
+  border: 1px solid rgba(89, 212, 153, 0.35);
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 0.92em;
@@ -515,7 +515,7 @@ body {
 }
 
 .ffid-player-name {
-  color: #28a745;
+  color: #59d499;
   font-weight: 800;
 }
 
@@ -555,7 +555,7 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #a0aec0;
+  color: #9c9c9d;
 }
 
 .status-simple {
@@ -572,13 +572,13 @@ body {
 .package {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #a78bfa;
+  color: #ffffff;
 }
 
 .cost {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #28a745;
+  color: #59d499;
 }
 
 /* PIN de la transacción */
@@ -597,13 +597,13 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #e0e0e0;
+  color: #e6e6e6;
   letter-spacing: 0.5px;
 }
 
 .copy-btn-simple {
-  background-color: #667eea;
-  color: white;
+  background-color: #1b1c1e;
+  color: #ffffff;
   border: none;
   padding: 0.25rem 0.4rem;
   border-radius: 4px;
@@ -615,7 +615,7 @@ body {
 }
 
 .copy-btn-simple:hover {
-  background-color: #5a6fd8;
+  background-color: #1b1c1e;
   transform: scale(1.05);
 }
 
@@ -635,7 +635,7 @@ body {
 .pins-count {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #28a745;
+  color: #59d499;
   margin-bottom: 0.25rem;
 }
 
@@ -650,8 +650,8 @@ body {
 }
 
 .copy-all-btn-simple {
-  background-color: #28a745;
-  color: white;
+  background-color: #13261d;
+  color: #ffffff;
   border: none;
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
@@ -664,7 +664,7 @@ body {
 }
 
 .copy-all-btn-simple:hover {
-  background-color: #218838;
+  background-color: #13261d;
   transform: translateY(-1px);
 }
 
@@ -682,7 +682,7 @@ body {
   padding-top: 0.5rem;
   border-top: 1px solid rgba(255,255,255,0.08);
   font-size: 0.8rem;
-  color: #8896a6;
+  color: #9c9c9d;
 }
 
 .date-simple {
@@ -710,11 +710,11 @@ body {
 .empty-icon {
   width: 64px;
   height: 64px;
-  fill: #4a5568;
+  fill: #9c9c9d;
 }
 
 .empty-state p {
-  color: #8896a6;
+  color: #9c9c9d;
   font-size: 1.1rem;
   font-weight: 500;
 }
@@ -758,7 +758,7 @@ body {
   background-color: rgba(255,255,255,0.05);
   border-radius: 4px;
   text-decoration: none;
-  color: #c0c8d4;
+  color: #9c9c9d;
   transition: all 0.2s ease;
   min-width: 40px;
   text-align: center;
@@ -769,13 +769,13 @@ body {
   background-color: rgba(255,255,255,0.12);
 }
 .page.active {
-  background-color: #a78bfa;
-  color: #fff;
-  border-color: #a78bfa;
+  background-color: #1b1c1e;
+  color: #ffffff;
+  border-color: #363739;
 }
 .page.disabled {
   background-color: rgba(255,255,255,0.03);
-  color: #4a5568;
+  color: #9c9c9d;
   border-color: rgba(255,255,255,0.06);
   cursor: not-allowed;
   pointer-events: none;
@@ -932,7 +932,7 @@ body {
   max-width: 600px;
   margin: 2rem auto;
   padding: 2rem;
-  background: #fff;
+  background: #07080a;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
@@ -941,7 +941,7 @@ body {
   text-align: center;
   font-size: 2rem;
   margin-bottom: 2rem;
-  color: #333;
+  color: #ffffff;
   font-weight: 700;
 }
 
@@ -953,13 +953,13 @@ body {
 
 .juego-form label {
   font-weight: 600;
-  color: #333;
+  color: #ffffff;
   margin-bottom: 0.5rem;
 }
 
 .form-control {
   padding: 0.75rem;
-  border: 2px solid #ddd;
+  border: 2px solid #2a2b2d;
   border-radius: 8px;
   font-size: 1rem;
   transition: border-color 0.3s ease;
@@ -967,14 +967,14 @@ body {
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #363739;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 
 .juego-form button {
   padding: 1rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
+  background: linear-gradient(135deg, #1b1c1e, #1b1c1e);
+  color: #ffffff;
   border: none;
   border-radius: 8px;
   font-size: 1.1rem;
@@ -985,21 +985,21 @@ body {
 
 .juego-form button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .juego-descripcion {
   margin-top: 2rem;
   padding: 1.5rem;
-  background: #f8f9fa;
+  background: #07080a;
   border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #363739;
 }
 
 .juego-descripcion p {
   margin-bottom: 1rem;
   font-weight: 600;
-  color: #333;
+  color: #ffffff;
 }
 
 .juego-descripcion ul {
@@ -1013,14 +1013,14 @@ body {
 .nota-importante {
   margin-top: 1.5rem;
   padding: 1rem;
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
+  background: #2e2612;
+  border: 1px solid #ffc531;
   border-radius: 6px;
 }
 
 .nota-importante p {
   margin: 0;
-  color: #856404;
+  color: #ffc531;
   font-size: 0.9rem;
 }
 
@@ -1032,8 +1032,8 @@ body {
 .volver-btn {
   display: inline-block;
   padding: 0.75rem 1.5rem;
-  background: #6c757d;
-  color: white;
+  background: #2f3031;
+  color: #ffffff;
   text-decoration: none;
   border-radius: 6px;
   font-weight: 500;
@@ -1041,27 +1041,27 @@ body {
 }
 
 .volver-btn:hover {
-  background: #5a6268;
+  background: #2f3031;
 }
 
 /* Estilos para compra exitosa */
 .compra-exitosa {
   margin-top: 2rem;
   padding: 2rem;
-  background: #ffffff;
-  border: 2px solid #28a745;
+  background: #07080a;
+  border: 2px solid #59d499;
   border-radius: 12px;
   text-align: center;
 }
 
 .compra-exitosa h3 {
-  color: #155724;
+  color: #59d499;
   margin-bottom: 1.5rem;
   font-size: 1.5rem;
 }
 
 .pin-container, .solicitud-container {
-  background: white;
+  background: #07080a;
   padding: 1.5rem;
   border-radius: 8px;
   margin: 1rem 0;
@@ -1078,7 +1078,7 @@ body {
 
 .pin-label {
   font-weight: 700;
-  color: #333;
+  color: #ffffff;
   margin: 0;
 }
 
@@ -1086,17 +1086,17 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #28a745;
-  background: #f8f9fa;
+  color: #59d499;
+  background: #07080a;
   padding: 0.5rem 1rem;
   border-radius: 6px;
-  border: 2px solid #28a745;
+  border: 2px solid #59d499;
   margin: 0;
 }
 
 .copy-btn {
-  background: #28a745;
-  color: white;
+  background: #13261d;
+  color: #ffffff;
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 6px;
@@ -1106,7 +1106,7 @@ body {
 }
 
 .copy-btn:hover {
-  background: #218838;
+  background: #13261d;
   transform: scale(1.05);
 }
 
@@ -1117,12 +1117,12 @@ body {
 .monto-info p {
   margin: 0;
   font-size: 1.1rem;
-  color: #333;
+  color: #ffffff;
 }
 
 .entrega-info {
   margin-top: 1rem;
-  color: #155724;
+  color: #59d499;
 }
 
 .entrega-info p {
@@ -1141,7 +1141,7 @@ body {
 
 .solicitud-label {
   font-weight: 700;
-  color: #333;
+  color: #ffffff;
   margin: 0;
 }
 
@@ -1149,11 +1149,11 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #ffc107;
-  background: #f8f9fa;
+  color: #ffc531;
+  background: #07080a;
   padding: 0.5rem 1rem;
   border-radius: 6px;
-  border: 2px solid #ffc107;
+  border: 2px solid #ffc531;
   margin: 0;
 }
 
@@ -1163,7 +1163,7 @@ body {
 
 .detalles-info p {
   margin: 0.5rem 0;
-  color: #333;
+  color: #ffffff;
 }
 
 /* Responsive para páginas de juegos */
@@ -1261,30 +1261,30 @@ body {
 }
 
 .block-btn.approve {
-  background-color: #28a745;
-  color: white;
+  background-color: #13261d;
+  color: #ffffff;
 }
 
 .block-btn.approve:hover {
-  background-color: #218838;
+  background-color: #13261d;
 }
 
 .block-btn.reject {
-  background-color: #dc3545;
-  color: white;
+  background-color: #452324;
+  color: #ffffff;
 }
 
 .block-btn.reject:hover {
-  background-color: #c82333;
+  background-color: #452324;
 }
 
 .block-btn.pending {
-  background-color: #ffc107;
-  color: #212529;
+  background-color: #2e2612;
+  color: #ffffff;
 }
 
 .block-btn.pending:hover {
-  background-color: #e0a800;
+  background-color: #2e2612;
 }
 
 /* Responsive para botones de block */

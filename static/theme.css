@@ -1,0 +1,263 @@
+/* ============================================================
+   3sRevendedores — Tema global "Midnight + Coral"
+   Canvas casi negro, superficies con borde fino y sombra tipo
+   tecla, un único acento coral y acciones neutras (Mist).
+   Se carga AL FINAL en todas las páginas.
+   ============================================================ */
+
+:root {
+  --rc-canvas: #040506;
+  --rc-card: #07080a;
+  --rc-recess: #111214;
+  --rc-graphite: #1b1c1e;
+  --rc-slate: #2f3031;
+  --rc-border: #2a2b2d;
+  --rc-border-strong: #363739;
+  --rc-text: #ffffff;
+  --rc-mist: #e6e6e6;
+  --rc-ash: #9c9c9d;       /* texto secundario (7.3:1) */
+  --rc-smoke: #6a6b6c;     /* solo placeholders / deshabilitado (no pasa 4.5:1) */
+  --rc-iron: #454647;
+  --rc-coral: #ff6363;
+  --rc-ember: #452324;
+  --rc-green: #59d499;
+  --rc-blue: #56c2ff;
+  --rc-yellow: #ffc531;
+  --rc-key-shadow: rgba(255, 255, 255, 0.05) 0 1px 0 0 inset, rgba(255, 255, 255, 0.08) 0 0 0 1px, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
+  --rc-lift: rgba(0, 0, 0, 0.03) 0 7px 3px 0, rgba(0, 0, 0, 0.25) 0 4px 4px 0;
+  --rc-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --rc-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+
+/* ---------- Base ---------- */
+html { background: var(--rc-canvas); }
+body {
+  background: var(--rc-canvas) !important;
+  background-image: none !important;
+  color: var(--rc-text);
+  font-family: var(--rc-font);
+  font-feature-settings: 'calt', 'kern', 'liga', 'ss03';
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4, h5, h6 { color: var(--rc-text); letter-spacing: 0.004em; }
+p, li, td, label, small { font-family: inherit; }
+a { color: var(--rc-text); text-decoration-color: var(--rc-border-strong); text-underline-offset: 3px; }
+a:hover { color: var(--rc-text); text-decoration-color: var(--rc-ash); }
+hr { border: 0; border-top: 1px solid var(--rc-border); }
+::selection { background: rgba(255, 99, 99, 0.35); color: #fff; }
+code, kbd, pre, samp { font-family: var(--rc-mono); }
+
+/* Barra de desplazamiento discreta */
+* { scrollbar-color: var(--rc-slate) transparent; scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rc-slate); border-radius: 999px; border: 2px solid var(--rc-canvas); }
+
+/* ---------- Campos (pozo hundido) ---------- */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),
+select, textarea {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: var(--rc-text) !important;
+  border: 1px solid var(--rc-border) !important;
+  border-radius: 8px;
+  font-family: var(--rc-font);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input::placeholder, textarea::placeholder { color: var(--rc-smoke) !important; opacity: 1; }
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: var(--rc-ash) !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08) !important;
+}
+select option { background: var(--rc-recess); color: var(--rc-text); }
+input:disabled, select:disabled, textarea:disabled { opacity: 0.55; cursor: not-allowed; }
+input[type=checkbox], input[type=radio], input[type=range] { accent-color: var(--rc-coral); }
+
+/* Evita el fondo amarillo del autocompletado */
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--rc-text) !important;
+  -webkit-box-shadow: 0 0 0 100px var(--rc-recess) inset !important;
+  caret-color: var(--rc-text);
+}
+
+/* ---------- Botones ---------- */
+button, .btn, input[type=submit], input[type=button] {
+  font-family: var(--rc-font);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+button:disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Acción principal: relleno Mist + texto Iron (sin color cromático) */
+.submit-btn, .juego-form button, .btn-primary, .btn-create-news, .btn-update-price,
+.btn-update-name, .btn-admin-manual, .btn-external-api, .btn-test-api,
+.recargar-btn, .btn-recargar, .generar-btn, .btn-guardar, button.primary,
+.recarga-btn:not(.recarga-btn-secondary), .save-btn, .btn-save, .gc-btn-save, .btn-approve, .block-btn.approve {
+  background: var(--rc-mist) !important;
+  background-image: none !important;
+  color: #07080a !important;
+  border: 1px solid transparent !important;
+  box-shadow: var(--rc-lift) !important;
+  font-weight: 600 !important;
+  text-shadow: none !important;
+}
+.submit-btn:hover, .juego-form button:hover, .btn-primary:hover, .btn-create-news:hover,
+.btn-update-price:hover, .btn-update-name:hover, .btn-admin-manual:hover,
+.btn-external-api:hover, .btn-test-api:hover {
+  background: #ffffff !important;
+  transform: none !important;
+}
+
+/* Acciones secundarias: fantasma con borde fino */
+.btn-secondary, .volver-btn, .copy-all-btn, .btn-clear-id, .btn-local, .btn-api, .stat-link {
+  background: var(--rc-graphite) !important;
+  background-image: none !important;
+  color: var(--rc-text) !important;
+  border: 1px solid var(--rc-border-strong) !important;
+  box-shadow: none !important;
+}
+.btn-secondary:hover, .volver-btn:hover, .copy-all-btn:hover, .btn-local:hover, .btn-api:hover, .stat-link:hover {
+  background: var(--rc-slate) !important;
+  transform: none !important;
+}
+.recarga-btn-secondary, .btn-outline, .copy-btn, .copy-btn-simple, .copy-all-btn-simple,
+.day-btn, .day-btn-admin, .profit-switch-btn, .costo-subtab, .btn-load, .gc-btn-load, .cleanup-button {
+  background: var(--rc-graphite) !important;
+  background-image: none !important;
+  color: var(--rc-text) !important;
+  border: 1px solid var(--rc-border-strong) !important;
+  box-shadow: none !important;
+}
+.recarga-btn-secondary:hover, .btn-outline:hover, .copy-btn:hover, .copy-btn-simple:hover,
+.copy-all-btn-simple:hover, .day-btn:hover, .day-btn-admin:hover, .profit-switch-btn:hover,
+.costo-subtab:hover, .btn-load:hover, .gc-btn-load:hover, .cleanup-button:hover {
+  background: var(--rc-slate) !important;
+}
+/* Segmentos activos (pestañas, filtros de día) */
+.btn-local.active, .btn-api.active, .day-btn.active, .day-btn-admin.active,
+.profit-switch-btn.active, .costo-subtab.active {
+  background: var(--rc-mist) !important;
+  color: #07080a !important;
+  border-color: transparent !important;
+}
+.btn-reject, .block-btn.reject {
+  background: var(--rc-ember) !important;
+  color: var(--rc-coral) !important;
+  border: 1px solid rgba(255, 99, 99, 0.3) !important;
+}
+/* Encabezados que parecían botones: pasan a ser títulos */
+.recarga-card-header {
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--rc-text) !important;
+  box-shadow: none !important;
+  font-weight: 600;
+}
+
+/* Estados: tinte oscuro + texto de color (legible, no chillón) */
+.btn-success { background: #13261d !important; color: var(--rc-green) !important; border: 1px solid rgba(89, 212, 153, 0.25) !important; }
+.btn-warning { background: #2e2612 !important; color: var(--rc-yellow) !important; border: 1px solid rgba(255, 197, 49, 0.25) !important; }
+.btn-danger  { background: var(--rc-ember) !important; color: var(--rc-coral) !important; border: 1px solid rgba(255, 99, 99, 0.3) !important; }
+.btn-info    { background: #0f2233 !important; color: var(--rc-blue) !important; border: 1px solid rgba(86, 194, 255, 0.25) !important; }
+.btn-success:hover, .btn-warning:hover, .btn-danger:hover, .btn-info:hover { filter: brightness(1.25); }
+
+/* Foco visible para teclado (skill: accesibilidad #1) */
+a:focus-visible, button:focus-visible, .btn:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--rc-mist) !important;
+  outline-offset: 2px;
+}
+
+/* ---------- Tablas ---------- */
+table { border-color: var(--rc-border); }
+th {
+  color: var(--rc-ash) !important;
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+thead, thead tr, thead th { background: var(--rc-card) !important; }
+td, th { border-color: var(--rc-border) !important; }
+tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+/* ---------- Superficies con sombra tipo "tecla" ---------- */
+.juego-container, .stat-card, .stats-admin-section, .tabs-container, .admin-sidebar,
+.users-section, .auth-container, .auth-box, .card, .panel, .modal-content,
+.billetera-container, .recarga-card, .noticia-card, .news-card, .transaction-card,
+.profit-panel, .gc-card {
+  background-color: var(--rc-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--rc-border) !important;
+  box-shadow: var(--rc-key-shadow) !important;
+}
+
+/* Sin brillos ni degradados de color en títulos */
+.juego-titulo, .auth-header h1 {
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  color: var(--rc-text) !important;
+  text-shadow: none !important;
+}
+.juego-container::before { display: none !important; }
+
+/* Cifras técnicas en monoespaciada */
+.stat-number, .user-value.balance, .saldo-valor, .user-id-badge, .trans-id, .control-number {
+  font-family: var(--rc-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Cabecera pública ---------- */
+.icon { stroke: var(--rc-ash); }
+.icon:hover, .icon.active { stroke: var(--rc-text) !important; filter: none !important; }
+/* Globo de notificación = uso de marca del coral (texto oscuro: 6.9:1) */
+.wallet-notification-badge, .notification-badge, .notif-badge, .badge-count {
+  background: var(--rc-coral) !important;
+  color: #07080a !important;
+  border-color: var(--rc-canvas) !important;
+  box-shadow: none !important;
+}
+
+/* ---------- Panel admin ---------- */
+.side-tab-button {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--rc-ash) !important;
+  box-shadow: none !important;
+}
+.side-tab-button:hover { background: var(--rc-graphite) !important; color: var(--rc-text) !important; }
+.side-tab-button.active {
+  background: var(--rc-graphite) !important;
+  background-image: none !important;
+  color: var(--rc-text) !important;
+  border-color: var(--rc-border-strong) !important;
+  box-shadow: inset 2px 0 0 var(--rc-coral) !important;
+}
+.admin-sidebar .label { font-size: 0.875rem; }
+.admin-shell .tabs-container { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.section-header, .users-section h2 { background: transparent !important; border-color: var(--rc-border) !important; }
+
+/* Mensajes flash */
+.flash-message-main, .flash-message, .flash, .alert {
+  background: var(--rc-graphite) !important;
+  color: var(--rc-text) !important;
+  border: 1px solid var(--rc-border-strong) !important;
+  border-left-width: 3px !important;
+  box-shadow: var(--rc-lift) !important;
+}
+.flash-success, .flash-message-main.flash-success, .alert-success { border-left-color: var(--rc-green) !important; }
+.flash-error, .flash-danger, .flash-message-main.flash-error, .alert-danger { border-left-color: var(--rc-coral) !important; }
+.flash-warning, .alert-warning { border-left-color: var(--rc-yellow) !important; }
+.flash-info, .alert-info { border-left-color: var(--rc-blue) !important; }
+
+/* ---------- Móvil: sin desplazamiento horizontal de la página (skill #5) ---------- */
+@media (max-width: 720px) {
+  form:not(.um-field) { flex-wrap: wrap; }
+  table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* ---------- Movimiento reducido (skill) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

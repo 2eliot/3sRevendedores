@@ -12,17 +12,17 @@
   font-family: 'Inter', sans-serif;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   background: rgba(255,255,255,0.08);
-  color: #e0e0e0;
+  color: #e6e6e6;
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #a78bfa;
-  box-shadow: 0 0 0 3px rgba(167,139,250,0.15);
+  border-color: #363739;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
 }
 
 .form-control::placeholder {
-  color: #6b7280;
+  color: #9c9c9d;
 }
 
 /* Override freefire.css select margin-bottom:0 for vertical form layout */
@@ -32,8 +32,8 @@
 
 /* Force select option readability */
 .form-control option {
-  background: #1a1a2e;
-  color: #e0e0e0;
+  background: #1b1c1e;
+  color: #e6e6e6;
 }
 
 /* Solicitud container */
@@ -52,20 +52,20 @@
   justify-content: center;
   margin-bottom: 1rem;
   padding: 0.75rem;
-  background: rgba(167,139,250,0.1);
+  background: rgba(255, 255, 255, 0.035);
   border-radius: 8px;
 }
 
 .solicitud-label {
   font-weight: 600;
-  color: #a78bfa;
+  color: #ffffff;
   margin-right: 10px;
   margin-bottom: 0;
 }
 
 .solicitud-estado {
-  background: linear-gradient(135deg, #a78bfa, #7c3aed);
-  color: white;
+  background: linear-gradient(135deg, #1b1c1e, #1b1c1e);
+  color: #ffffff;
   padding: 5px 15px;
   border-radius: 20px;
   font-weight: 600;
@@ -80,7 +80,7 @@
 
 .detalles-info p {
   margin: 8px 0;
-  color: #c0c8d4;
+  color: #9c9c9d;
 }
 
 /* Compra exitosa override for dark theme */
@@ -91,10 +91,10 @@
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   text-align: left;
-  color: #e0e0e0;
+  color: #e6e6e6;
 }
 .compra-exitosa h3 {
-  color: #fff;
+  color: #ffffff;
 }
 
 /* Entrega info */
@@ -102,15 +102,15 @@
   background: rgba(255,255,255,0.04);
   padding: 0.8rem;
   border-radius: 6px;
-  border-left: 4px solid #4ade80;
-  color: #c0c8d4;
+  border-left: 4px solid #59d499;
+  color: #9c9c9d;
 }
 .entrega-info p {
   margin: 4px 0;
-  color: #c0c8d4;
+  color: #9c9c9d;
 }
 
 /* Volver */
 .volver-container { text-align: center; margin-top: 1.5rem; }
-.volver-btn { color: #a78bfa; text-decoration: none; font-weight: 600; }
-.volver-btn:hover { color: #c4b5fd; }
+.volver-btn { color: #ffffff; text-decoration: none; font-weight: 600; }
+.volver-btn:hover { color: #ffffff; }

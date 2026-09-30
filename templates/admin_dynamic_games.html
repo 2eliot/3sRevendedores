@@ -7,62 +7,65 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet"/>
   <style>
-    body { font-family: 'Inter', sans-serif; background: #080810; color: #e0e0e0; padding: 20px; }
-    .back-link { color: #a78bfa; text-decoration: none; font-weight: 600; margin-bottom: 20px; display: inline-block; }
-    .back-link:hover { color: #c4b5fd; }
-    h1 { color: #fff; margin-bottom: 8px; }
-    .subtitle { color: #8896a6; margin-bottom: 24px; font-size: 0.95em; }
+    body { font-family: 'Inter', sans-serif; background: #07080a; color: #e6e6e6; padding: 20px; }
+    .back-link { color: #ffffff; text-decoration: none; font-weight: 600; margin-bottom: 20px; display: inline-block; }
+    .back-link:hover { color: #ffffff; }
+    h1 { color: #ffffff; margin-bottom: 8px; }
+    .subtitle { color: #9c9c9d; margin-bottom: 24px; font-size: 0.95em; }
 
     .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
     .card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-    .card-title { font-size: 1.15em; font-weight: 700; color: #fff; }
+    .card-title { font-size: 1.15em; font-weight: 700; color: #ffffff; }
     .badge { padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 600; }
-    .badge-on { background: rgba(74,222,128,0.15); color: #4ade80; }
-    .badge-off { background: rgba(255,107,107,0.15); color: #ff6b6b; }
-    .badge-mode { background: rgba(167,139,250,0.15); color: #a78bfa; }
-    .meta { font-size: 0.85em; color: #8896a6; }
+    .badge-on { background: rgba(89, 212, 153, 0.15); color: #59d499; }
+    .badge-off { background: rgba(255, 99, 99, 0.15); color: #ff6363; }
+    .badge-mode { background: rgba(255, 255, 255, 0.052); color: #ffffff; }
+    .meta { font-size: 0.85em; color: #9c9c9d; }
     .meta span { margin-right: 14px; }
 
     .btn { padding: 8px 16px; border: none; border-radius: 8px; font-size: 0.85em; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .btn-primary { background: #a78bfa; color: #fff; }
-    .btn-primary:hover { background: #8b5cf6; }
-    .btn-danger { background: #ff6b6b; color: #fff; }
-    .btn-danger:hover { background: #e05555; }
-    .btn-success { background: #4ade80; color: #000; }
-    .btn-success:hover { background: #22c55e; }
+    .btn-primary { background: #1b1c1e; color: #ffffff; }
+    .btn-primary:hover { background: #1b1c1e; }
+    .btn-danger { background: #452324; color: #ffffff; }
+    .btn-danger:hover { background: #452324; }
+    .btn-success { background: #13261d; color: #ffffff; }
+    .btn-success:hover { background: #13261d; }
     .btn-sm { padding: 5px 12px; font-size: 0.8em; }
-    .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #c0c8d4; }
+    .btn-outline { background: transparent; border: 1px solid rgba(255,255,255,0.15); color: #9c9c9d; }
     .btn-outline:hover { background: rgba(255,255,255,0.06); }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .form-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-    .form-section h3 { margin-top: 0; color: #a78bfa; font-size: 1em; }
+    .form-section h3 { margin-top: 0; color: #ffffff; font-size: 1em; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
     .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 0.85em; color: #8896a6; margin-bottom: 4px; font-weight: 600; }
+    .form-group label { display: block; font-size: 0.85em; color: #9c9c9d; margin-bottom: 4px; font-weight: 600; }
     .form-group input, .form-group select, .form-group textarea {
       width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px; color: #e0e0e0; font-size: 0.9em; font-family: inherit;
+      border-radius: 8px; color: #e6e6e6; font-size: 0.9em; font-family: inherit;
     }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #a78bfa; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #363739; }
     .form-group textarea { resize: vertical; min-height: 60px; }
     .form-check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .form-check input[type=checkbox] { width: 18px; height: 18px; accent-color: #a78bfa; }
+    .form-check input[type=checkbox] { width: 18px; height: 18px; accent-color: #ffffff; }
 
     .pkg-table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 12px; }
-    .pkg-table th { text-align: left; color: #8896a6; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 600; }
+    .pkg-table th { text-align: left; color: #9c9c9d; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 600; }
     .pkg-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .pkg-table td input { width: 100%; padding: 6px 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #e0e0e0; font-size: 0.9em; }
+    .pkg-table td input { width: 100%; padding: 6px 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #e6e6e6; font-size: 0.9em; }
 
     .catalog-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85em; }
     .catalog-item:hover { background: rgba(255,255,255,0.03); }
     #create-game-form { display: none; }
     .section-divider { border: 0; border-top: 1px solid rgba(255,255,255,0.06); margin: 24px 0; }
     .status-msg { padding: 8px 12px; border-radius: 8px; font-size: 0.85em; margin: 8px 0; }
-    .status-ok { background: rgba(74,222,128,0.1); color: #4ade80; }
-    .status-err { background: rgba(255,107,107,0.1); color: #ff6b6b; }
+    .status-ok { background: rgba(89, 212, 153, 0.1); color: #59d499; }
+    .status-err { background: rgba(255, 99, 99, 0.1); color: #ff6363; }
   </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   <a href="/admin" class="back-link">← Volver al Panel Admin</a>
@@ -72,13 +75,13 @@
   <!-- Tasa de cambio MYR → USD -->
   <div class="form-section" style="margin-bottom:20px;max-width:480px;">
     <h3>💱 Tasa de cambio GamePoint: MYR → USD</h3>
-    <p style="color:#8896a6;font-size:0.85em;margin:0 0 12px 0;">Se usa en sincronización de precios para <strong>Blood Strike</strong> y todos los <strong>juegos dinámicos</strong>. El precio de venta = (precio MYR × tasa) + ganancia.</p>
+    <p style="color:#9c9c9d;font-size:0.85em;margin:0 0 12px 0;">Se usa en sincronización de precios para <strong>Blood Strike</strong> y todos los <strong>juegos dinámicos</strong>. El precio de venta = (precio MYR × tasa) + ganancia.</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <div class="form-group" style="margin:0;">
         <label style="margin-bottom:4px;display:block;">1 MYR =</label>
         <div style="display:flex;align-items:center;gap:6px;">
           <input type="number" step="0.0001" min="0.0001" id="gp-myr-rate" placeholder="0.2357" style="width:130px;">
-          <span style="color:#8896a6;">USD</span>
+          <span style="color:#9c9c9d;">USD</span>
         </div>
       </div>
       <button class="btn btn-primary" style="margin-top:18px;" onclick="saveGpRate()">&#128190; Guardar tasa</button>
@@ -200,7 +203,7 @@
 
     <!-- PACKAGES -->
     <div style="margin-top: 16px;">
-      <strong style="color:#c0c8d4;">Paquetes ({{ game._packages|length }}):</strong>
+      <strong style="color:#9c9c9d;">Paquetes ({{ game._packages|length }}):</strong>
       <button class="btn btn-sm btn-outline" style="margin-left:8px;" onclick="showAddPkg({{ game.id }})">+ Agregar</button>
       <div id="add-pkg-{{ game.id }}" style="display:none; margin-top:10px;">
         <div class="form-grid">
@@ -222,7 +225,7 @@
             <td><input value="{{ p.nombre }}" id="pkg-name-{{ p.id }}" style="min-width:120px;"></td>
             <td>
               <input type="number" step="0.01" value="{{ p.precio }}" id="pkg-price-{{ p.id }}" style="width:80px;">
-              <div id="pkg-profit-{{ p.id }}" data-cost="{{ p._costo_compra if p._costo_compra is not none else '' }}" style="margin-top:4px;color:#8896a6;font-size:0.8em;"></div>
+              <div id="pkg-profit-{{ p.id }}" data-cost="{{ p._costo_compra if p._costo_compra is not none else '' }}" style="margin-top:4px;color:#9c9c9d;font-size:0.8em;"></div>
             </td>
             <td><input type="number" value="{{ p.gamepoint_package_id or '' }}" id="pkg-gpid-{{ p.id }}" style="width:80px;"></td>
             <td style="text-align:center;">{{ '✅' if p.activo else '❌' }}</td>
@@ -236,7 +239,7 @@
         </tbody>
       </table>
       {% else %}
-      <p style="color:#666; font-size:0.85em; margin-top:8px;">Sin paquetes. Agrega manualmente o usa "Ver Catálogo GP" para importar.</p>
+      <p style="color:#9c9c9d; font-size:0.85em; margin-top:8px;">Sin paquetes. Agrega manualmente o usa "Ver Catálogo GP" para importar.</p>
       {% endif %}
     </div>
 
@@ -248,7 +251,7 @@
 
   {% if not games %}
   <div class="card" style="text-align:center; padding:40px;">
-    <p style="color:#666;">No hay juegos dinámicos creados. Usa el botón "Crear Nuevo Juego" para comenzar.</p>
+    <p style="color:#9c9c9d;">No hay juegos dinámicos creados. Usa el botón "Crear Nuevo Juego" para comenzar.</p>
   </div>
   {% endif %}
 
@@ -315,7 +318,7 @@
       const res = await fetch(`/admin/dynamic-games/${id}/gp-catalog`);
       const data = await res.json();
       if (data.error) { el.innerHTML = '<div class="status-msg status-err">❌ '+data.error+'</div>'; return; }
-      let html = '<strong style="color:#c0c8d4;">Catálogo GamePoint ('+data.packages.length+' paquetes):</strong>';
+      let html = '<strong style="color:#9c9c9d;">Catálogo GamePoint ('+data.packages.length+' paquetes):</strong>';
       data.packages.forEach(p => {
         html += `<div class="catalog-item"><span>${p.id} — ${p.name} (${p.price} MYR)</span><button class="btn btn-sm btn-outline" onclick="autoAddPkg(${id}, ${p.id}, '${(p.name||'').replace(/'/g,"\\'")}', ${p.price})">+ Agregar</button></div>`;
       });

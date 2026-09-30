@@ -6,6 +6,9 @@
   <title>Panel Principal</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -47,7 +50,7 @@
           {% endfor %}
         </ul>
 
-        <li style="border-top:1px solid #000000; margin:6px 0; list-style:none;"></li>
+        <li style="border-top:1px solid #2a2b2d; margin:6px 0; list-style:none;"></li>
         <ul>
           <li><a href="/billetera">Recargar Usuario</a></li>
         </ul>
@@ -113,18 +116,18 @@
 
   <!-- Popup modal de noticias -->
   <div id="news-popup-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:10000; align-items:center; justify-content:center; padding:20px;">
-    <div id="news-popup" style="background:linear-gradient(135deg, #0f0f0f, #1a1a2e); color:#e0e0e0; border-radius:16px; max-width:480px; width:100%; box-shadow:0 8px 40px rgba(0,0,0,0.6); overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.1);">
+    <div id="news-popup" style="background:linear-gradient(135deg, #07080a, #1b1c1e); color:#e6e6e6; border-radius:16px; max-width:480px; width:100%; box-shadow:0 8px 40px rgba(0,0,0,0.6); overflow:hidden; position:relative; border:1px solid rgba(255,255,255,0.1);">
       <!-- X arriba a la derecha del popup -->
-      <button onclick="hideNewsPopupTemporarily()" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.45); border:none; color:#fff; border-radius:50%; width:32px; height:32px; font-size:1em; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2; line-height:1;">✕</button>
+      <button onclick="hideNewsPopupTemporarily()" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.45); border:none; color:#ffffff; border-radius:50%; width:32px; height:32px; font-size:1em; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2; line-height:1;">✕</button>
       <!-- Imagen manteniendo relación de aspecto -->
       <div id="news-popup-img-wrap" style="display:none; width:100%;">
-        <img id="news-popup-img" src="" alt="" style="width:100%; height:auto; display:block; max-height:260px; object-fit:contain; background:#0d1f1f;">
+        <img id="news-popup-img" src="" alt="" style="width:100%; height:auto; display:block; max-height:260px; object-fit:contain; background:#111214;">
       </div>
       <!-- Contenido -->
       <div style="padding:18px 20px 20px;">
-        <div style="font-size:0.95em; line-height:1.65; color:#ddd;" id="news-popup-content"></div>
-        <label style="display:flex; align-items:center; gap:10px; margin-top:16px; cursor:pointer; font-size:0.87em; color:#aaa; user-select:none;">
-          <input type="checkbox" id="news-popup-dismiss" style="width:18px; height:18px; accent-color:#4dd9ac; cursor:pointer;" onchange="onDismissChange(this)">
+        <div style="font-size:0.95em; line-height:1.65; color:#e6e6e6;" id="news-popup-content"></div>
+        <label style="display:flex; align-items:center; gap:10px; margin-top:16px; cursor:pointer; font-size:0.87em; color:#9c9c9d; user-select:none;">
+          <input type="checkbox" id="news-popup-dismiss" style="width:18px; height:18px; accent-color:#59d499; cursor:pointer;" onchange="onDismissChange(this)">
           No volver a mostrar
         </label>
       </div>
@@ -229,14 +232,14 @@
               <div class="ffid-voucher-details">
                 <div class="ffid-voucher-line"><strong>Paquete:</strong> {{ transaction.paquete }}</div>
                 {% if transaction.get('is_dynamic_game') and transaction.get('serial_key') %}
-                <div style="margin:8px 0;padding:10px 14px;background:rgba(40,167,69,0.15);border:1px solid #28a745;border-radius:10px;">
-                  <div style="color:#8896a6;font-size:0.8em;margin-bottom:4px;">Tu código / serial:</div>
-                  <div style="font-weight:700;letter-spacing:2px;color:#fff;font-size:1.05em;word-break:break-all;">{{ transaction.serial_key }}</div>
+                <div style="margin:8px 0;padding:10px 14px;background:rgba(89, 212, 153, 0.15);border:1px solid #59d499;border-radius:10px;">
+                  <div style="color:#9c9c9d;font-size:0.8em;margin-bottom:4px;">Tu código / serial:</div>
+                  <div style="font-weight:700;letter-spacing:2px;color:#ffffff;font-size:1.05em;word-break:break-all;">{{ transaction.serial_key }}</div>
                   <button class="copy-btn-simple" style="margin-top:6px;" data-pin="{{ transaction.serial_key }}" onclick="copyTransactionPin(this.getAttribute('data-pin'))">📋 Copiar código</button>
                 </div>
                 {% elif transaction.get('is_dynamic_game') and (transaction.get('estado') or '')|lower == 'pendiente' %}
-                <div style="margin:8px 0;padding:8px 12px;background:rgba(245,158,11,0.12);border:1px solid #f59e0b;border-radius:8px;">
-                  <span style="color:#f59e0b;font-size:0.88em;">⏳ Código en proceso — se actualizará automáticamente en este historial</span>
+                <div style="margin:8px 0;padding:8px 12px;background:rgba(255, 197, 49, 0.12);border:1px solid #ffc531;border-radius:8px;">
+                  <span style="color:#ffc531;font-size:0.88em;">⏳ Código en proceso — se actualizará automáticamente en este historial</span>
                 </div>
                 {% endif %}
                 {% if transaction.get('player_name') %}

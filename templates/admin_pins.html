@@ -6,6 +6,9 @@
   <title>Gestión de Pines</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -23,7 +26,7 @@
       <h1>📌 Gestión de Pines{% if game_display_name %} - {{ game_display_name }}{% endif %}</h1>
     </div>
     <div class="admin-info">
-      <a href="/admin" class="btn" style="background:#007bff;color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;margin-right:10px;">🏠 Volver al Panel</a>
+      <a href="/admin" class="btn" style="background:#0f2233;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:4px;margin-right:10px;">🏠 Volver al Panel</a>
       <a href="/logout" class="logout-btn">Cerrar Sesión</a>
     </div>
   </header>
@@ -83,7 +86,7 @@
             <tbody>
               {% for grp in pin_groups %}
                 <tr>
-                  <td colspan="8" style="background:#f6f7f9;font-weight:600;">
+                  <td colspan="8" style="background:#07080a;font-weight:600;">
                     {{ grp.fecha_agregado }}
                     {% if grp.batch_id %}
                       | Lote: <code>{{ grp.batch_id }}</code>

@@ -6,6 +6,9 @@
   <title>Acceso - 3SRevendedores</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 </head>
 <body>
   {% if aviso and aviso.activo %}
@@ -54,7 +57,7 @@
         <div class="input-group" style="position: relative;">
           <label for="login-password">Contraseña</label>
           <input type="password" id="login-password" name="contraseña" placeholder="••••••••" required>
-          <button type="button" onclick="togglePassword('login-password', this)" style="position: absolute; right: 10px; top: 38px; background: none; border: none; cursor: pointer; padding: 5px; color: #666; font-size: 18px;" aria-label="Mostrar contraseña">
+          <button type="button" onclick="togglePassword('login-password', this)" style="position: absolute; right: 10px; top: 38px; background: none; border: none; cursor: pointer; padding: 5px; color: #9c9c9d; font-size: 18px;" aria-label="Mostrar contraseña">
             👁️
           </button>
         </div>
@@ -81,7 +84,7 @@
         <div class="input-group" style="position: relative;">
           <label for="register-password">Contraseña</label>
           <input type="password" id="register-password" name="contraseña" placeholder="••••••••" required>
-          <button type="button" onclick="togglePassword('register-password', this)" style="position: absolute; right: 10px; top: 38px; background: none; border: none; cursor: pointer; padding: 5px; color: #666; font-size: 18px;" aria-label="Mostrar contraseña">
+          <button type="button" onclick="togglePassword('register-password', this)" style="position: absolute; right: 10px; top: 38px; background: none; border: none; cursor: pointer; padding: 5px; color: #9c9c9d; font-size: 18px;" aria-label="Mostrar contraseña">
             👁️
           </button>
         </div>
