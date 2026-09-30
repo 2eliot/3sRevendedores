@@ -1204,3 +1204,18 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
   .idg-pkg-name { font-size: 11px !important; overflow-wrap: normal !important; word-break: normal !important; }
   .idg-pkg.is-selected::after { top: -5px !important; right: -5px !important; width: 14px !important; height: 14px !important; box-shadow: 0 0 0 2px var(--rc-recess); }
 }
+
+/* Paquetes: nombre y precio centrados */
+.juego-form button.idg-pkg {
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 8px 10px !important;
+  overflow: visible !important;
+}
+.idg-pkg-name, .idg-pkg-price { text-align: center !important; }
+.idg-pkg.is-selected::after { top: -6px !important; right: -6px !important; width: 16px !important; height: 16px !important; background-size: 10px !important; box-shadow: 0 0 0 2px var(--rc-recess); }
+@media (max-width: 720px) {
+  .juego-form button.idg-pkg { padding: 7px 5px !important; }
+  .idg-pkg.is-selected::after { top: -5px !important; right: -5px !important; width: 14px !important; height: 14px !important; background-size: 8px !important; }
+}
