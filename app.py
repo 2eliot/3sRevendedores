@@ -355,6 +355,9 @@ app.register_blueprint(whitelabel_bp)
 # Verificación de ID de jugador (API configurable por juego)
 from id_verify import bp as id_verify_bp, verify_api_enabled
 app.register_blueprint(id_verify_bp)
+from branding import bp as branding_bp, brand_css_url
+app.register_blueprint(branding_bp)
+app.jinja_env.globals['brand_css_url'] = brand_css_url
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 

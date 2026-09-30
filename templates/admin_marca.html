@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logo del sitio — Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <style>
+    .mk-wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+    .mk-wrap h1 { margin: 16px 0 4px; font-size: 26px; font-weight: 600; }
+    .mk-lead { margin: 0 0 20px; color: var(--rc-ash); font-size: 14px; line-height: 1.5; }
+    .mk-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+    .mk-card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+    .mk-preview { display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 16px; border-radius: 12px; background: var(--rc-canvas); border: 1px solid var(--rc-border); }
+    .mk-preview img { height: 34px; max-width: 70%; object-fit: contain; object-position: left center; }
+    .mk-preview .mk-text { font-weight: 600; font-size: 15px; }
+    .mk-specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .mk-specs li { background: var(--rc-recess); border: 1px solid var(--rc-border); border-radius: 10px; padding: 10px 12px; }
+    .mk-specs span { display: block; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; }
+    .mk-specs strong { font-size: 14px; font-family: var(--rc-mono); }
+    .mk-drop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px; border: 1px dashed var(--rc-border-strong); border-radius: 12px; background: var(--rc-recess); cursor: pointer; text-align: center; color: var(--rc-ash); font-size: 13px; }
+    .mk-drop strong { color: var(--rc-text); font-size: 14px; }
+    .mk-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .mk-drop:focus-within { outline: 2px solid var(--rc-blue); outline-offset: 2px; }
+    .mk-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .mk-actions button { min-height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .mk-save { background: var(--rc-mist); color: #07080a; border: 0; }
+    .mk-del { background: transparent; color: var(--rc-coral); border: 1px solid var(--rc-ember); }
+  </style>
+</head>
+<body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages-main">
+        {% for category, message in messages %}
+          <div class="flash-message-main flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="mk-wrap">
+    <a href="/admin" class="back-button">← Volver al Panel Admin</a>
+    <h1>Logo del sitio</h1>
+    <p class="mk-lead">El logo reemplaza el texto <strong>◆ 3sRevendedores</strong> en la cabecera de la tienda y en la barra lateral del panel.</p>
+
+    <section class="mk-card">
+      <h2>Vista previa de la cabecera</h2>
+      <div class="mk-preview" id="mk-preview">
+        {% if logo %}<img src="/brand/logo?v={{ logo.ver }}" alt="Logo actual">{% else %}<span class="mk-text">◆ 3sRevendedores</span>{% endif %}
+      </div>
+    </section>
+
+    <section class="mk-card">
+      <h2>Medidas recomendadas</h2>
+      <ul class="mk-specs">
+        <li><span>Tamaño</span><strong>480 × 120 px</strong></li>
+        <li><span>Proporción</span><strong>4 : 1</strong></li>
+        <li><span>Formato</span><strong>PNG / WEBP / SVG</strong></li>
+        <li><span>Fondo</span><strong>Transparente</strong></li>
+        <li><span>Peso máximo</span><strong>512 KB</strong></li>
+      </ul>
+      <p class="mk-lead" style="margin:12px 0 0;">Se muestra a 34 px de alto; un logo cuadrado (p. ej. 256 × 256 px) también funciona. Usa colores claros: el fondo del sitio es oscuro.</p>
+    </section>
+
+    <section class="mk-card">
+      <h2>Subir logo</h2>
+      <form method="POST" action="/admin/marca" enctype="multipart/form-data">
+        <label class="mk-drop">
+          <input type="file" name="logo" id="mk-file" accept=".png,.jpg,.jpeg,.webp,.svg,.gif" required>
+          <strong id="mk-file-name">Elegir imagen</strong>
+          <span>PNG, JPG, WEBP, SVG o GIF · máx. 512 KB</span>
+        </label>
+        <div class="mk-actions">
+          <button type="submit" class="mk-save">Guardar logo</button>
+        </div>
+      </form>
+      {% if logo %}
+      <form method="POST" action="/admin/marca" onsubmit="return confirm('¿Quitar el logo y volver a mostrar el nombre del sitio?');">
+        <input type="hidden" name="accion" value="quitar">
+        <div class="mk-actions"><button type="submit" class="mk-del">Quitar logo</button></div>
+      </form>
+      {% endif %}
+    </section>
+  </div>
+
+  <script>
+    document.getElementById('mk-file').addEventListener('change', function () {
+      var f = this.files[0]; if (!f) return;
+      document.getElementById('mk-file-name').textContent = f.name;
+      var img = document.createElement('img'); img.alt = 'Vista previa'; img.src = URL.createObjectURL(f);
+      document.getElementById('mk-preview').replaceChildren(img);
+    });
+  </script>
+</body>
+</html>
