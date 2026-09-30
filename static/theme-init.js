@@ -1,7 +1,7 @@
 /* Tema del sitio: se ejecuta en <head> (sin defer) para aplicar el tema antes de pintar.
-   Preferencia en localStorage 'tema' = {"mode": "system"|"dark"|"light", "accent": "coral"|...} */
+   Preferencia en localStorage 'tema' = {"mode": "system"|"dark"|"light", "accent": "original"|"coral"|...}  (original = Predeterminado, coral = Rojo) */
 (function () {
-  var ACCENTS = ['coral', 'morado', 'azul', 'verde', 'ambar', 'rosa'];
+  var ACCENTS = ['original', 'coral', 'morado', 'azul', 'verde', 'ambar', 'rosa'];
   var root = document.documentElement;
   var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
 
@@ -9,7 +9,7 @@
     var t = {};
     try { t = JSON.parse(localStorage.getItem('tema') || '{}') || {}; } catch (e) { t = {}; }
     if (['system', 'dark', 'light'].indexOf(t.mode) < 0) t.mode = 'dark';
-    if (ACCENTS.indexOf(t.accent) < 0) t.accent = 'coral';
+    if (ACCENTS.indexOf(t.accent) < 0) t.accent = 'original';
     return t;
   }
   function apply(t) {

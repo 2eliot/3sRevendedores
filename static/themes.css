@@ -1,8 +1,16 @@
 /* ============================================================
    Temas del sitio (menú de usuario → Tema)
-   html[data-theme="dark"|"light"] + html[data-accent="coral"|"morado"|"azul"|"verde"|"ambar"|"rosa"]
+   html[data-theme="dark"|"light"] + html[data-accent="original"|"coral"|"morado"|"azul"|"verde"|"ambar"|"rosa"]
    Solo redefine variables de theme.css; el tema por defecto (oscuro + coral) no cambia nada.
    ============================================================ */
+
+/* ---------- Predeterminado: aspecto original (acento blanco, datos en verde, bordes neutros) ---------- */
+:root[data-accent="original"] {
+  --rc-accent: #e6e6e6;
+  --rc-hl: var(--rc-green);
+  --rc-border: var(--rc-border-base);
+  --rc-border-strong: var(--rc-border-strong-base);
+}
 
 /* ---------- Acentos en modo oscuro (fondos ligeramente teñidos) ---------- */
 :root[data-accent="morado"] {
@@ -53,6 +61,7 @@
   --rc-lift: rgba(0, 0, 0, 0.04) 0 1px 2px 0, rgba(0, 0, 0, 0.06) 0 4px 12px 0;
 }
 :root[data-theme="light"] { --rc-border: color-mix(in srgb, var(--rc-accent) 35%, var(--rc-border-base)); --rc-border-strong: color-mix(in srgb, var(--rc-accent) 45%, var(--rc-border-strong-base)); }
+:root[data-theme="light"][data-accent="original"] { --rc-accent: #0e1013; --rc-border: var(--rc-border-base); --rc-border-strong: var(--rc-border-strong-base); }
 :root[data-theme="light"][data-accent="morado"] { --rc-accent: #7c3aed; }
 :root[data-theme="light"][data-accent="azul"]   { --rc-accent: #0a6fa8; }
 :root[data-theme="light"][data-accent="verde"]  { --rc-accent: #0f7a50; }
@@ -83,13 +92,13 @@
 }
 
 /* ---------- Con un color elegido, las selecciones usan el acento ---------- */
-:root:not([data-accent="coral"]) .idg-pkg.is-selected,
-:root:not([data-accent="coral"]) .juego-form button.idg-pkg.is-selected {
+:root:not([data-accent="original"]) .idg-pkg.is-selected,
+:root:not([data-accent="original"]) .juego-form button.idg-pkg.is-selected {
   border-color: var(--rc-accent) !important;
   box-shadow: 0 0 0 1px var(--rc-accent) inset !important;
 }
-:root:not([data-accent="coral"]) .dash-seg .filter-btn.active { background: var(--rc-accent) !important; color: var(--rc-accent-ink) !important; }
-:root:not([data-accent="coral"]) .menu-juegos a.menu-item.is-current { box-shadow: inset 2px 0 0 var(--rc-accent); }
+:root:not([data-accent="original"]) .dash-seg .filter-btn.active { background: var(--rc-accent) !important; color: var(--rc-accent-ink) !important; }
+:root:not([data-accent="original"]) .menu-juegos a.menu-item.is-current { box-shadow: inset 2px 0 0 var(--rc-accent); }
 :root[data-theme="light"] .dash-seg .filter-btn.active { color: var(--rc-card) !important; }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--rc-accent); }
 
