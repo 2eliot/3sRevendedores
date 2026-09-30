@@ -122,54 +122,62 @@
                 <span class="um-balance-value">${{ "%.2f"|format(user.saldo) }}</span>
               </div>
 
-              <dl class="um-meta">
-                <div><dt>Teléfono</dt><dd>{{ user.telefono }}</dd></div>
-                <div><dt>Registro</dt><dd>{{ (user.fecha_registro|format_date('%Y-%m-%d %H:%M'))[:16] }}</dd></div>
-              </dl>
+              <details class="um-more">
+                <summary class="um-more-toggle">
+                  <span>Detalles y acciones</span>
+                  <svg class="um-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </summary>
+                <div class="um-more-body">
+                <dl class="um-meta">
+                  <div><dt>Teléfono</dt><dd>{{ user.telefono }}</dd></div>
+                  <div><dt>Registro</dt><dd>{{ (user.fecha_registro|format_date('%Y-%m-%d %H:%M'))[:16] }}</dd></div>
+                </dl>
 
-              <div class="um-toggles">
-                <form method="POST" action="/admin/toggle_sin_ganancia">
+                <div class="um-toggles">
+                  <form method="POST" action="/admin/toggle_sin_ganancia">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <button type="submit" class="um-chip {{ 'is-danger' if user.sin_ganancia else 'is-on' }}" aria-pressed="{{ 'true' if user.sin_ganancia else 'false' }}" title="Si está activo 'Sin ganancia', esta cuenta no genera profit, no suma al saldo activo total y no compite en el top clientes">
+                      <span class="um-chip-dot"></span>{{ 'Sin ganancia' if user.sin_ganancia else 'Con ganancia' }}
+                    </button>
+                  </form>
+                  <form method="POST" action="/admin/toggle_bono_activo">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <button type="submit" class="um-chip {{ 'is-on' if user.bono_activo else 'is-off' }}" aria-pressed="{{ 'true' if user.bono_activo else 'false' }}" title="Si está activo y la recarga Binance es >= $1000, se aplica un bono del 1.5% sobre el monto recargado">
+                      <span class="um-chip-dot"></span>Bono 1.5% {{ 'ON' if user.bono_activo else 'OFF' }}
+                    </button>
+                  </form>
+                </div>
+
+                <div class="um-actions">
+                  <form method="POST" action="/admin/add_credit" class="um-field">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <label class="um-field-label" for="um-credit-{{ user.id }}">Crédito</label>
+                    <input type="number" id="um-credit-{{ user.id }}" name="amount" placeholder="0.00" step="0.01" min="0.01" inputmode="decimal" required>
+                    <button type="submit" class="um-btn um-btn-success">Agregar</button>
+                  </form>
+                  <form method="POST" action="/admin/update_balance" class="um-field">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <label class="um-field-label" for="um-balance-{{ user.id }}">Saldo</label>
+                    <input type="number" id="um-balance-{{ user.id }}" name="new_balance" placeholder="0.00" step="0.01" min="0" inputmode="decimal" required>
+                    <button type="submit" class="um-btn um-btn-warning">Fijar</button>
+                  </form>
+                  <form method="POST" action="/admin/change_password" class="um-field" onsubmit="const pw = this.querySelector('input[name=new_password]').value; if(pw.length < 6) { alert('La contraseña debe tener al menos 6 caracteres'); return false; } return confirm('¿Cambiar contraseña de este usuario?')">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <label class="um-field-label" for="um-pass-{{ user.id }}">Clave</label>
+                    <input type="password" id="um-pass-{{ user.id }}" name="new_password" placeholder="Mín. 6" minlength="6" autocomplete="new-password" required>
+                    <button type="submit" class="um-btn um-btn-accent">Cambiar</button>
+                  </form>
+                </div>
+
+                <form method="POST" action="/admin/delete_user" class="um-delete" onsubmit="return confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')">
                   <input type="hidden" name="user_id" value="{{ user.id }}">
-                  <button type="submit" class="um-chip {{ 'is-danger' if user.sin_ganancia else 'is-on' }}" aria-pressed="{{ 'true' if user.sin_ganancia else 'false' }}" title="Si está activo 'Sin ganancia', esta cuenta no genera profit, no suma al saldo activo total y no compite en el top clientes">
-                    <span class="um-chip-dot"></span>{{ 'Sin ganancia' if user.sin_ganancia else 'Con ganancia' }}
+                  <button type="submit" class="um-btn-ghost-danger">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                    Eliminar usuario
                   </button>
                 </form>
-                <form method="POST" action="/admin/toggle_bono_activo">
-                  <input type="hidden" name="user_id" value="{{ user.id }}">
-                  <button type="submit" class="um-chip {{ 'is-on' if user.bono_activo else 'is-off' }}" aria-pressed="{{ 'true' if user.bono_activo else 'false' }}" title="Si está activo y la recarga Binance es >= $1000, se aplica un bono del 1.5% sobre el monto recargado">
-                    <span class="um-chip-dot"></span>Bono 1.5% {{ 'ON' if user.bono_activo else 'OFF' }}
-                  </button>
-                </form>
-              </div>
-
-              <div class="um-actions">
-                <form method="POST" action="/admin/add_credit" class="um-field">
-                  <input type="hidden" name="user_id" value="{{ user.id }}">
-                  <label class="um-field-label" for="um-credit-{{ user.id }}">Crédito</label>
-                  <input type="number" id="um-credit-{{ user.id }}" name="amount" placeholder="0.00" step="0.01" min="0.01" inputmode="decimal" required>
-                  <button type="submit" class="um-btn um-btn-success">Agregar</button>
-                </form>
-                <form method="POST" action="/admin/update_balance" class="um-field">
-                  <input type="hidden" name="user_id" value="{{ user.id }}">
-                  <label class="um-field-label" for="um-balance-{{ user.id }}">Saldo</label>
-                  <input type="number" id="um-balance-{{ user.id }}" name="new_balance" placeholder="0.00" step="0.01" min="0" inputmode="decimal" required>
-                  <button type="submit" class="um-btn um-btn-warning">Fijar</button>
-                </form>
-                <form method="POST" action="/admin/change_password" class="um-field" onsubmit="const pw = this.querySelector('input[name=new_password]').value; if(pw.length < 6) { alert('La contraseña debe tener al menos 6 caracteres'); return false; } return confirm('¿Cambiar contraseña de este usuario?')">
-                  <input type="hidden" name="user_id" value="{{ user.id }}">
-                  <label class="um-field-label" for="um-pass-{{ user.id }}">Clave</label>
-                  <input type="password" id="um-pass-{{ user.id }}" name="new_password" placeholder="Mín. 6" minlength="6" autocomplete="new-password" required>
-                  <button type="submit" class="um-btn um-btn-accent">Cambiar</button>
-                </form>
-              </div>
-
-              <form method="POST" action="/admin/delete_user" class="um-delete" onsubmit="return confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')">
-                <input type="hidden" name="user_id" value="{{ user.id }}">
-                <button type="submit" class="um-btn-ghost-danger">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
-                  Eliminar usuario
-                </button>
-              </form>
+                </div>
+              </details>
             </article>
             {% endfor %}
           </div>
