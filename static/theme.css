@@ -28,6 +28,10 @@
   --rc-blue-bg: #0f2233;
   --rc-ink: 255, 255, 255;       /* rgb del texto, para rgba(var(--rc-ink), a) */
   --rc-canvas-rgb: 4, 5, 6;
+  --rc-panel: #0c0d0f;
+  --rc-hover-bg: #0e0f11;
+  --rc-sel-bg: #121315;
+  --rc-sel-bg2: #141517;
   --rc-accent: #ff6363;          /* color de acento (elegible en Tema) */
   --rc-accent-ink: #07080a;      /* texto sobre el acento */
   --rc-key-shadow: rgba(255, 255, 255, 0.05) 0 1px 0 0 inset, rgba(255, 255, 255, 0.08) 0 0 0 1px, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
@@ -239,7 +243,7 @@ tbody tr:hover { background: rgba(var(--rc-ink), 0.02); }
   background-image: none !important;
   color: var(--rc-text) !important;
   border-color: var(--rc-border-strong) !important;
-  box-shadow: inset 2px 0 0 var(--rc-coral) !important;
+  box-shadow: inset 2px 0 0 var(--rc-accent) !important;
 }
 .admin-sidebar .label { font-size: 0.875rem; }
 .admin-shell .tabs-container { background: transparent !important; border: 0 !important; box-shadow: none !important; }

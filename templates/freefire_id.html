@@ -55,7 +55,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
   <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
   <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
   <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
@@ -138,19 +140,27 @@
       <div class="user-icon" onclick="toggleUserBox()">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">
-          <p><strong>Correo:</strong> {{ session.get('usuario', '---') }}</p>
+          <div class="ub-head">
+            <span class="ub-avatar" aria-hidden="true">{{ (session.get('usuario') or '?')[:1]|upper }}</span>
+            <span class="ub-who"><span class="ub-label">Sesión iniciada</span><span class="ub-mail">{{ session.get('usuario', '---') }}</span></span>
+          </div>
           <label class="price-toggle" onclick="event.stopPropagation()">
             <span class="price-toggle-text">Ocultar precios<small>Para capturas a tus clientes</small></span>
             <input type="checkbox" class="price-toggle-input" role="switch" aria-checked="false">
             <span class="price-toggle-switch" aria-hidden="true"></span>
           </label>
+          <button type="button" class="ub-theme" data-open-theme>
+            <span class="ub-theme-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></span>
+            <span class="ub-theme-text">Tema<small class="ub-theme-now">Oscuro · Coral</small></span>
+            <svg class="ub-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
           {% if session.get('is_admin') %}
-          <a href="/admin" class="admin-btn">🛠️ Panel Admin</a>
+          <a href="/admin" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Panel Admin</a>
           {% endif %}
           {% if not session.get('is_admin') %}
           <a href="https://wa.me/17868522128?text=Hola%2C%20quiero%20recargar%20saldo.%20Mi%20ID%20es%20{{ user_id }}" target="_blank" rel="noopener noreferrer" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg>Contactar al admin</a>
           {% endif %}
-          <a href="/logout" class="logout-btn">Cerrar sesión</a>
+          <a href="/logout" class="logout-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Cerrar sesión</a>
         </div>
       </div>
     </div>

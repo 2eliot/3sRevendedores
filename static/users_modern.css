@@ -4,25 +4,25 @@
 
 .um-section {
   --um-bg: transparent;
-  --um-surface: #07080a;
-  --um-surface-2: #111214;
-  --um-border: #2a2b2d;
-  --um-border-strong: #363739;
-  --um-text: #ffffff;
-  --um-muted: #9c9c9d;
-  --um-input-bg: rgba(255, 255, 255, 0.05);
-  --um-accent: #e6e6e6;
-  --um-accent-soft: rgba(255, 255, 255, 0.08);
-  --um-success: #59d499;
+  --um-surface: var(--rc-card);
+  --um-surface-2: var(--rc-recess);
+  --um-border: var(--rc-border);
+  --um-border-strong: var(--rc-border-strong);
+  --um-text: var(--rc-text);
+  --um-muted: var(--rc-ash);
+  --um-input-bg: rgba(var(--rc-ink), 0.05);
+  --um-accent: var(--rc-mist);
+  --um-accent-soft: rgba(var(--rc-ink), 0.08);
+  --um-success: var(--rc-green);
   --um-success-soft: rgba(89, 212, 153, 0.1);
-  --um-warning: #ffc531;
+  --um-warning: var(--rc-yellow);
   --um-warning-soft: rgba(255, 197, 49, 0.1);
-  --um-danger: #ff6363;
+  --um-danger: var(--rc-coral);
   --um-danger-soft: rgba(255, 99, 99, 0.12);
-  --um-on-solid: #07080a;
-  --um-ring: #9c9c9d;
-  --um-shadow: rgba(255, 255, 255, 0.05) 0 1px 0 0 inset, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
-  --um-shadow-hover: rgba(255, 255, 255, 0.07) 0 1px 0 0 inset, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
+  --um-on-solid: var(--rc-card);
+  --um-ring: var(--rc-ash);
+  --um-shadow: rgba(var(--rc-ink), 0.05) 0 1px 0 0 inset, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
+  --um-shadow-hover: rgba(var(--rc-ink), 0.07) 0 1px 0 0 inset, rgba(0, 0, 0, 0.2) 0 -1px 0 0 inset;
   --um-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, Consolas, monospace;
   color-scheme: dark;
 }
@@ -525,7 +525,7 @@
   padding: 0;
   border: 1px solid var(--um-border-strong);
   border-radius: 16px;
-  background: #0c0d0f;
+  background: var(--rc-panel);
   color: var(--um-text);
   box-shadow: rgba(var(--rc-ink), 0.06) 0 1px 0 0 inset, rgba(0, 0, 0, 0.6) 0 24px 64px -12px;
   font-family: 'Inter', system-ui, sans-serif;
