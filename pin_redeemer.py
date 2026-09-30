@@ -545,7 +545,7 @@ async def redeem_pin_async(pin_code, player_id, config=None):
                     const urlChanged = (window.location && window.location.href) ? (window.location.href !== urlBefore) : false;
 
                     const bodyText = (document.body && document.body.innerText) ? document.body.innerText : '';
-                    const snippet = bodyText.replace(/\s+/g, ' ').trim().slice(0, 220);
+                    const snippet = bodyText.replace(/\\s+/g, ' ').trim().slice(0, 220);
 
                     return {
                         status: 'waiting',
