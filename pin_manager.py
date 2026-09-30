@@ -15,10 +15,9 @@ class PinManager:
         self.inefable_client = get_inefable_client()
         
     def get_db_connection(self):
-        """Obtiene una conexión a la base de datos"""
-        conn = sqlite3.connect(self.database_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        """Obtiene una conexión a la base de datos (PostgreSQL en producción, SQLite en local)"""
+        from pg_compat import get_db_connection
+        return get_db_connection()
     
     def get_local_stock(self, monto_id=None):
         """Obtiene el stock local de pines"""
@@ -55,6 +54,22 @@ class PinManager:
         conn.close()
         return pin
     
+    def take_local_pin(self, monto_id):
+        """Saca un pin del stock local de forma atómica: dos compras simultáneas nunca reciben el mismo."""
+        for _ in range(5):
+            pin = self.get_local_pin(monto_id)
+            if not pin:
+                return None
+            conn = self.get_db_connection()
+            try:
+                deleted = conn.execute('DELETE FROM pines_freefire WHERE id = ? AND usado = FALSE', (pin['id'],))
+                conn.commit()
+                if deleted.rowcount == 1:
+                    return pin
+            finally:
+                conn.close()
+        return None
+
     def remove_local_pin(self, pin_id):
         """Elimina un pin del stock local completamente"""
         conn = self.get_db_connection()
@@ -144,10 +159,8 @@ class PinManager:
                 
                 if local_stock > 0:
                     # Hay stock local disponible
-                    local_pin = self.get_local_pin(monto_id)
+                    local_pin = self.take_local_pin(monto_id)
                     if local_pin:
-                        # Eliminar pin del stock local
-                        self.remove_local_pin(local_pin['id'])
                         
                         logger.info(f"Pin obtenido del stock local - Monto: {monto_id}")
                         return {
@@ -299,9 +312,8 @@ class PinManager:
         
         # Obtener pines del stock local
         for i in range(cantidad):
-            local_pin = self.get_local_pin(monto_id)
+            local_pin = self.take_local_pin(monto_id)
             if local_pin:
-                self.remove_local_pin(local_pin['id'])
                 pines_obtenidos.append({
                     'pin_code': local_pin['pin_codigo'],
                     'source': 'local_stock'

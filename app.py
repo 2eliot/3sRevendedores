@@ -1316,6 +1316,27 @@ def get_pin_stock_freefire_global_optimized():
     finally:
         return_db_connection(conn)
 
+class SaldoInsuficiente(Exception):
+    """El saldo no alcanzó al descontar (p. ej. otra compra simultánea lo gastó antes)."""
+
+
+def debitar_saldo(conn, user_id, monto):
+    """Descuenta `monto` solo si hay saldo suficiente, en una única sentencia atómica.
+    Evita que dos compras simultáneas gasten el mismo saldo. Devuelve True si se descontó."""
+    cur = conn.execute('UPDATE usuarios SET saldo = saldo - ? WHERE id = ? AND saldo >= ?', (monto, user_id, monto))
+    return cur.rowcount == 1
+
+
+def _devolver_pines_latam(monto_id, pines):
+    """Devuelve al stock local de Free Fire Latam pines que no llegaron a venderse."""
+    try:
+        pm = create_pin_manager(DATABASE)
+        for codigo in pines:
+            pm.add_local_pin(monto_id, codigo, source='devolucion')
+    except Exception as e:
+        logger.error(f"[FreeFire Latam] No se pudieron devolver {len(pines)} pines al stock: {e}")
+
+
 def hash_password(password):
     """Hashea la contraseña usando Werkzeug (más seguro que SHA256)"""
     return generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
@@ -5396,9 +5417,9 @@ def validar_freefire_latam():
         # Procesar la transacción
         conn = get_db_connection()
         try:
-            # Solo actualizar saldo si no es admin
-            if not is_admin:
-                conn.execute('UPDATE usuarios SET saldo = saldo - ? WHERE id = ?', (precio_total, user_id))
+            # Solo actualizar saldo si no es admin (atómico: falla si otra compra ya lo gastó)
+            if not is_admin and not debitar_saldo(conn, user_id, precio_total):
+                raise SaldoInsuficiente()
             
             # Registrar la transacción
             pines_texto = '\n'.join(pines_codigos)
@@ -5449,7 +5470,13 @@ def validar_freefire_latam():
             ''', (user_id, user_id))
             
             conn.commit()
-            
+
+        except SaldoInsuficiente:
+            conn.rollback()
+            if 'local_stock' in sources_used:
+                _devolver_pines_latam(monto_id, pines_codigos)
+            flash('Saldo insuficiente para completar la compra.', 'error')
+            return redirect('/juego/freefire_latam')
         except Exception as e:
             conn.rollback()
             flash('Error al procesar la transacción. Intente nuevamente.', 'error')
@@ -9224,9 +9251,9 @@ def validar_freefire():
     # Procesar la transacción
     conn = get_db_connection()
     try:
-        # Solo actualizar saldo si no es admin
-        if not is_admin:
-            conn.execute('UPDATE usuarios SET saldo = saldo - ? WHERE id = ?', (precio_total, user_id))
+        # Solo actualizar saldo si no es admin (atómico: falla si otra compra ya lo gastó)
+        if not is_admin and not debitar_saldo(conn, user_id, precio_total):
+            raise SaldoInsuficiente()
         
         # Registrar la transacción
         pines_texto = '\n'.join(pines_obtenidos)
@@ -9292,7 +9319,10 @@ def validar_freefire():
         except Exception as return_error:
             logger.error(f"[FreeFire Global] Error devolviendo PINs al stock: {str(return_error)}")
         
-        flash('Error al procesar la transacción. Los PINs han sido devueltos al stock. Intente nuevamente.', 'error')
+        if isinstance(e, SaldoInsuficiente):
+            flash('Saldo insuficiente para completar la compra.', 'error')
+        else:
+            flash('Error al procesar la transacción. Los PINs han sido devueltos al stock. Intente nuevamente.', 'error')
         return redirect('/juego/freefire')
     finally:
         conn.close()
@@ -9943,10 +9973,20 @@ def api_simple_endpoint():
                 quantity = len(pins_list)
                 precio_total = precio_unitario * quantity
         
-        # Descontar saldo
+        # Descontar saldo (atómico: si otra petición simultánea ya lo gastó, no se entrega nada)
         conn = get_db_connection()
-        nuevo_saldo = saldo_actual - precio_total
-        conn.execute('UPDATE usuarios SET saldo = ? WHERE id = ?', (nuevo_saldo, user['id']))
+        if not debitar_saldo(conn, user['id'], precio_total):
+            conn.rollback()
+            conn.close()
+            _devolver_pines_latam(package_id, pins_list)
+            return jsonify({
+                'status': 'error',
+                'code': '402',
+                'message': 'Saldo insuficiente'
+            }), 402
+        _saldo_row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (user['id'],)).fetchone()
+        nuevo_saldo = _saldo_row['saldo'] if _saldo_row else saldo_actual - precio_total
+        saldo_actual = nuevo_saldo + precio_total
         
         # Crear registro de transacción
         pins_texto = '\n'.join(pins_list)
