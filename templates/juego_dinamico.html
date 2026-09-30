@@ -62,6 +62,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='id-game.js') }}" defer></script>
 </head>
 <body>
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -157,7 +158,7 @@
   <section class="juego-container">
     <h1 class="juego-titulo">{{ game.icono }} {{ game.nombre }}</h1>
 
-    <form method="POST" action="/validar/dinamico/{{ game.slug }}" class="juego-form" id="dg-form">
+    <form method="POST" action="/validar/dinamico/{{ game.slug }}" class="juego-form" id="dg-form"{% if game.modo == 'id' %} data-id-game="dyn_{{ game.slug }}" data-game-name="{{ game.nombre }}" data-verify="{{ '1' if verify_api_enabled('dyn_' ~ game.slug) else '0' }}"{% endif %}>
       <input type="hidden" name="dg_form_nonce" value="{{ dg_form_nonce }}">
       {% if game.modo == 'id' %}
         {% if campos.get('campo_id2', {}).get('enabled') %}

@@ -352,6 +352,11 @@ app.register_blueprint(admin_stats_bp, url_prefix='/admin/stats')
 app.register_blueprint(dynamic_games_bp)
 app.register_blueprint(whitelabel_bp)
 
+# Verificación de ID de jugador (API configurable por juego)
+from id_verify import bp as id_verify_bp, verify_api_enabled
+app.register_blueprint(id_verify_bp)
+app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
+
 @app.context_processor
 def inject_dynamic_games_menu():
     """Inyecta la lista de juegos dinámicos activos en todas las plantillas."""

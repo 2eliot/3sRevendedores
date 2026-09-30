@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificación de IDs — Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <style>
+    .vi-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+    .vi-head h1 { margin: 16px 0 4px; font-size: 26px; font-weight: 600; }
+    .vi-head p { margin: 0 0 20px; color: var(--rc-ash); font-size: 14px; line-height: 1.5; }
+    .vi-head code, .vi-help code { font-family: var(--rc-mono); font-size: 12px; background: var(--rc-graphite); padding: 1px 6px; border-radius: 5px; color: var(--rc-mist); }
+    .vi-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; margin-bottom: 12px; }
+    .vi-card > summary { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none; }
+    .vi-card > summary::-webkit-details-marker { display: none; }
+    .vi-card > summary .vi-name { flex: 1; font-weight: 600; font-size: 15px; }
+    .vi-badge { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; }
+    .vi-on { background: rgba(89,212,153,.12); color: var(--rc-green); }
+    .vi-off { background: var(--rc-graphite); color: var(--rc-ash); }
+    .vi-body { padding: 4px 16px 16px; border-top: 1px solid var(--rc-border); }
+    .vi-grid { display: grid; grid-template-columns: 120px 1fr; gap: 12px; margin-top: 14px; }
+    .vi-field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+    .vi-field label, .vi-grid label { font-size: 13px; font-weight: 500; color: var(--rc-ash); }
+    .vi-field input, .vi-field textarea, .vi-grid input, .vi-grid select { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; }
+    .vi-field textarea { min-height: 70px; font-family: var(--rc-mono); font-size: 13px; resize: vertical; }
+    .vi-hint { font-size: 12px; color: var(--rc-ash); margin: 0; }
+    .vi-toggle { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 14px; color: var(--rc-text); }
+    .vi-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+    .vi-actions button { min-height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .vi-save { background: var(--rc-mist); color: #07080a; border: 0; }
+    .vi-test { background: var(--rc-graphite); color: var(--rc-text); border: 1px solid var(--rc-border-strong); }
+    .vi-test-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--rc-border); }
+    .vi-test-row input { width: 160px; padding: 8px 10px; font-size: 13px; }
+    .vi-result { font-size: 13px; }
+    .vi-result.ok { color: var(--rc-green); } .vi-result.err { color: var(--rc-coral); }
+    .vi-help { background: var(--rc-card); border: 1px dashed var(--rc-border-strong); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; color: var(--rc-ash); line-height: 1.6; }
+    .vi-help pre { margin: 8px 0 0; white-space: pre-wrap; font-family: var(--rc-mono); font-size: 12px; color: var(--rc-mist); }
+    @media (max-width: 600px) { .vi-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages-main">
+        {% for category, message in messages %}
+          <div class="flash-message-main flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="vi-wrap">
+    <a href="/admin" class="back-button">← Volver al Panel Admin</a>
+    <div class="vi-head">
+      <h1>Verificación de IDs</h1>
+      <p>Configura la API que usa el botón <strong>Verificar ID</strong> en cada juego por ID. El botón solo aparece a los clientes cuando la verificación está <strong>activa</strong>. La API se llama desde tu servidor, así que las claves nunca llegan al navegador.</p>
+    </div>
+
+    <details class="vi-help">
+      <summary style="cursor:pointer;color:var(--rc-text);font-weight:600;">Cómo rellenar los campos (ejemplo)</summary>
+      <p style="margin:10px 0 0;">En la URL, el cuerpo y las cabeceras puedes usar <code>{player_id}</code>, <code>{player_id2}</code> (Zone ID / Server ID) y <code>{servidor}</code>. En <em>Ruta del nombre</em> indica dónde viene el nombre del jugador en la respuesta, separando con puntos.</p>
+      <pre>URL:            https://api.tuproveedor.com/v1/check?uid={player_id}&amp;zone={player_id2}
+Cabeceras:      {"X-API-Key": "tu-clave-secreta"}
+Respuesta:      {"status": "ok", "data": {"nickname": "ProPlayer99"}}
+Ruta nombre:    data.nickname
+Ruta error:     message   (opcional: mensaje que devuelve el proveedor si falla)</pre>
+    </details>
+
+    {% for g in games %}
+    {% set c = g.cfg %}
+    <details class="vi-card" id="{{ g.key }}" {% if c.get('url') %}open{% endif %}>
+      <summary>
+        <span class="vi-name">{{ g.nombre }}</span>
+        {% if g.dual %}<span class="vi-badge vi-off">+ Zone ID</span>{% endif %}
+        {% if g.servidor %}<span class="vi-badge vi-off">+ Servidor</span>{% endif %}
+        {% if c.get('enabled') %}<span class="vi-badge vi-on">Activa</span>{% else %}<span class="vi-badge vi-off">Sin configurar</span>{% endif %}
+      </summary>
+      <div class="vi-body">
+        <form method="POST" action="/admin/verificacion-ids">
+          <input type="hidden" name="game_key" value="{{ g.key }}">
+          <div class="vi-grid">
+            <div>
+              <label for="m-{{ g.key }}">Método</label>
+              <select id="m-{{ g.key }}" name="method">
+                <option value="GET" {% if c.get('method', 'GET') == 'GET' %}selected{% endif %}>GET</option>
+                <option value="POST" {% if c.get('method') == 'POST' %}selected{% endif %}>POST</option>
+              </select>
+            </div>
+            <div>
+              <label for="u-{{ g.key }}">URL de la API</label>
+              <input id="u-{{ g.key }}" name="url" value="{{ c.get('url', '') }}" placeholder="https://api.proveedor.com/check?uid={player_id}" autocomplete="off">
+            </div>
+          </div>
+          <div class="vi-field">
+            <label for="h-{{ g.key }}">Cabeceras (JSON, opcional)</label>
+            <textarea id="h-{{ g.key }}" name="headers" placeholder='{"X-API-Key": "tu-clave"}'>{{ c.get('headers', '') }}</textarea>
+          </div>
+          <div class="vi-field">
+            <label for="b-{{ g.key }}">Cuerpo para POST (JSON, opcional)</label>
+            <textarea id="b-{{ g.key }}" name="body" placeholder='{"player_id": "{player_id}"}'>{{ c.get('body', '') }}</textarea>
+          </div>
+          <div class="vi-grid" style="grid-template-columns:1fr 1fr;">
+            <div>
+              <label for="n-{{ g.key }}">Ruta del nombre en la respuesta</label>
+              <input id="n-{{ g.key }}" name="name_path" value="{{ c.get('name_path', '') }}" placeholder="data.nickname">
+            </div>
+            <div>
+              <label for="e-{{ g.key }}">Ruta del mensaje de error (opcional)</label>
+              <input id="e-{{ g.key }}" name="error_path" value="{{ c.get('error_path', '') }}" placeholder="message">
+            </div>
+          </div>
+          <label class="vi-toggle"><input type="checkbox" name="enabled" {% if c.get('enabled') %}checked{% endif %}> Verificación activa (mostrar el botón a los clientes)</label>
+          <div class="vi-actions">
+            <button type="submit" class="vi-save">Guardar</button>
+          </div>
+        </form>
+        <div class="vi-test-row" data-game="{{ g.key }}">
+          <span class="vi-hint">Probar con la configuración guardada:</span>
+          <input type="text" placeholder="ID de jugador" class="vi-t-id">
+          {% if g.dual %}<input type="text" placeholder="Zone ID" class="vi-t-id2">{% endif %}
+          {% if g.servidor %}<input type="text" placeholder="Servidor" class="vi-t-srv">{% endif %}
+          <button type="button" class="vi-test">Probar</button>
+          <span class="vi-result" aria-live="polite"></span>
+        </div>
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+
+  <script>
+    document.querySelectorAll('.vi-test-row').forEach(function (row) {
+      row.querySelector('.vi-test').addEventListener('click', async function () {
+        const out = row.querySelector('.vi-result');
+        const v = function (s) { const el = row.querySelector(s); return el ? el.value.trim() : ''; };
+        out.className = 'vi-result'; out.textContent = 'Consultando…';
+        try {
+          const r = await fetch('/admin/verificacion-ids/probar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game: row.dataset.game, player_id: v('.vi-t-id'), player_id2: v('.vi-t-id2'), servidor: v('.vi-t-srv') })
+          });
+          const d = await r.json();
+          out.className = 'vi-result ' + (d.ok ? 'ok' : 'err');
+          out.textContent = d.ok ? '✓ Jugador: ' + d.name : '✗ ' + (d.error || 'Error');
+        } catch (e) { out.className = 'vi-result err'; out.textContent = '✗ Error de red'; }
+      });
+    });
+  </script>
+</body>
+</html>

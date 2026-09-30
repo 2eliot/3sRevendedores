@@ -58,6 +58,19 @@ def recharge():
     return jsonify(ok=True, reference_no=ref, player_name=name, pin=pin)
 
 
+@app.get('/api/v1/verify-player')
+def verify_player():
+    """Verificación de ID falsa: /api/v1/verify-player?player_id=...&zone=...
+    Respuesta: {"ok": true, "data": {"nickname": "..."}}; IDs terminados en 0000 no existen."""
+    if not _auth_ok():
+        return jsonify(ok=False, message='API key inválida (mock)'), 401
+    player = request.args.get('player_id', '')
+    if not player or player.endswith('0000'):
+        return jsonify(ok=False, message='Jugador no encontrado (simulado)'), 404
+    zone = request.args.get('zone', '')
+    return jsonify(ok=True, data={'nickname': f'Jugador_{player[-4:]}' + (f'#{zone}' if zone else ''), 'region': 'LATAM'})
+
+
 @app.get('/api/v1/balance')
 def balance():
     if not _auth_ok():

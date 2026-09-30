@@ -56,6 +56,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
   <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='id-game.js') }}" defer></script>
 </head>
 <body>
   <!-- Mensajes flash -->
@@ -161,7 +162,7 @@
   <section class="juego-container">
     <h1 class="juego-titulo">🔥 Free Fire ID</h1>
 
-    <form method="POST" action="/validar/freefire_id" class="juego-form" id="ffid-form">
+    <form method="POST" action="/validar/freefire_id" class="juego-form" id="ffid-form" data-id-game="freefire_id" data-game-name="Free Fire ID" data-verify="{{ '1' if verify_api_enabled('freefire_id') else '0' }}">
       <div class="form-row">
         <div class="form-col">
           <label for="player_id">ID de Jugador:</label>
