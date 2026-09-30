@@ -899,3 +899,79 @@ select.ui-select-open {
 .ui-select-label { overflow-wrap: anywhere; }
 .ui-select-empty { padding: 12px 10px; font-size: 13px; color: var(--rc-ash); }
 .ui-select-option[hidden], .ui-select-group[hidden], .ui-select-empty[hidden] { display: none !important; }
+
+/* ============================================================
+   MENÚ LATERAL v2: secciones en contenedores
+   ============================================================ */
+.menu-juegos { gap: 12px !important; padding: 14px !important; background: var(--rc-canvas) !important; }
+.menu-group {
+  background: var(--rc-card);
+  border: 1px solid var(--rc-border);
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: rgba(255, 255, 255, 0.04) 0 1px 0 0 inset;
+}
+.menu-group-head { display: flex; align-items: center; gap: 10px; padding: 8px 8px 10px; }
+.menu-ico-tile {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 32px; height: 32px; border-radius: 9px;
+  background: var(--rc-graphite);
+  border: 1px solid var(--rc-border-strong);
+}
+.menu-ico-tile .menu-ico { width: 17px; height: 17px; color: var(--rc-text); }
+.menu-group-title { flex: 1; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--rc-text); }
+.menu-count {
+  min-width: 22px; padding: 1px 7px; border-radius: 999px;
+  background: var(--rc-graphite); color: var(--rc-ash);
+  font-family: var(--rc-mono); font-size: 11px; text-align: center;
+}
+.menu-group ul { border-top: 1px solid var(--rc-border); padding-top: 6px !important; }
+.menu-group ul:empty { display: none; }
+.menu-empty { margin: 0; padding: 6px 10px 10px; font-size: 12px; color: var(--rc-ash); }
+
+.menu-juegos a.menu-item {
+  position: relative;
+  display: flex !important; align-items: center; gap: 10px;
+  min-height: 38px;
+  padding: 0 28px 0 8px !important;
+  border-radius: 9px !important;
+  font-size: 13.5px !important; font-weight: 500 !important;
+  color: var(--rc-ash) !important;
+  transition: background-color 0.15s, color 0.15s;
+}
+.menu-juegos a.menu-item:hover { background: rgba(255, 255, 255, 0.05) !important; color: var(--rc-text) !important; }
+.menu-juegos a.menu-item::after {
+  content: ''; position: absolute; right: 10px; top: 50%;
+  width: 14px; height: 14px; margin-top: -7px; opacity: 0;
+  background: var(--rc-ash);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform: translateX(-3px);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.menu-juegos a.menu-item:hover::after { opacity: 1; transform: none; }
+.menu-item-ini {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 24px; height: 24px; border-radius: 7px;
+  background: var(--rc-graphite); color: var(--rc-mist);
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+}
+.menu-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-juegos a.menu-item.is-current { background: rgba(255, 255, 255, 0.07) !important; color: var(--rc-text) !important; }
+.menu-juegos a.menu-item.is-current .menu-item-ini { background: var(--rc-coral); color: #07080a; }
+
+/* Pie: botón principal "Recargar saldo" */
+.menu-juegos .menu-footer { margin-top: auto !important; padding-top: 4px !important; border-top: 0 !important; }
+.menu-juegos .menu-footer a.menu-recargar {
+  display: flex !important; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  background: var(--rc-mist) !important;
+  color: #07080a !important;
+  font-size: 14px !important; font-weight: 600 !important;
+  box-shadow: var(--rc-lift);
+}
+.menu-juegos .menu-footer a.menu-recargar:hover { background: #ffffff !important; }
+.menu-juegos .menu-footer .menu-ico { color: #07080a; }
+.menu-juegos { width: min(330px, 88vw) !important; }
