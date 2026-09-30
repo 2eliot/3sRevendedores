@@ -75,7 +75,7 @@ def verify_api_enabled(game_key):
 
 def list_id_games():
     """Juegos por ID configurables: Free Fire ID + dinámicos en modo 'id'."""
-    games = [{'key': 'freefire_id', 'nombre': 'Free Fire ID', 'dual': False, 'servidor': False}]
+    games = [{'key': 'freefire_id', 'nombre': 'Bot Free Fire', 'dual': False, 'servidor': False}]
     try:
         from dynamic_games import get_all_dynamic_games, parse_campos_config
         for g in get_all_dynamic_games():

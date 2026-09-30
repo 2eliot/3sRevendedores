@@ -32,7 +32,7 @@
         <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <div id="menu-juegos" class="menu-juegos" onclick="event.stopPropagation()">
-        {% set n_id = (dynamic_games_id_menu|length) + (1 if ((games_active and games_active.freefire_id) or session.get('is_admin')) else 0) %}
+        {% set n_id = (dynamic_games_id_menu|length) %}
         {% set n_cod = (dynamic_games_pinjuego_menu|length) + (dynamic_games_pin_menu|length) + (1 if ((games_active and games_active.freefire_global) or session.get('is_admin')) else 0) %}
         <section class="menu-group">
           <div class="menu-group-head">
@@ -41,9 +41,6 @@
             <span class="menu-count">{{ n_id }}</span>
           </div>
           <ul>
-            {% if (games_active and games_active.freefire_id) or session.get('is_admin') %}
-            <li><a href="/juego/freefire_id" class="menu-item{% if request.path == '/juego/freefire_id' %} is-current{% endif %}"><span class="menu-item-ini">F</span><span class="menu-item-name">Free Fire ID</span></a></li>
-            {% endif %}
             {% for dg in dynamic_games_id_menu %}
             <li><a href="/juego/d/{{ dg.slug }}" class="menu-item{% if request.path == '/juego/d/' ~ dg.slug %} is-current{% endif %}"><span class="menu-item-ini">{{ (dg.nombre)[:1] }}</span><span class="menu-item-name">{{ dg.nombre }}</span></a></li>
             {% endfor %}
@@ -182,7 +179,7 @@
           {% elif transaction.get('is_bloodstriker') %}
             {% set juego = 'Blood Striker' %}
           {% elif transaction.get('is_freefire_id') %}
-            {% set juego = 'Free Fire ID' %}
+            {% set juego = 'Bot Free Fire' %}
           {% elif '💎' in transaction.paquete or 'Free Fire' in transaction.paquete or 'Tarjeta' in transaction.paquete %}
             {% set juego = 'Free Fire' %}
           {% endif %}

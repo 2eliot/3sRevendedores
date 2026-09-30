@@ -1215,7 +1215,7 @@
             ? '<span style="background:rgba(89, 212, 153, 0.15);color:#59d499;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">✅ Exitosa</span>'
             : '<span style="background:rgba(255, 99, 99, 0.15);color:#ff6363;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">❌ Fallida</span>';
           const fecha = (r.fecha||'').replace('T',' ').substring(0,16);
-          const gameName = r.game_name || 'Free Fire ID';
+          const gameName = r.game_name || 'Bot Free Fire';
           const pkgName = r.package_name || ('Pkg ' + r.package_id);
           const playerName = r.player_name || '-';
           const errTip = (!ok && r.error_msg) ? '<div style="margin-top:4px;font-size:11px;color:#ff6363;word-break:break-word;">⚠ ' + (r.error_msg||'').substring(0,80) + '</div>' : '';

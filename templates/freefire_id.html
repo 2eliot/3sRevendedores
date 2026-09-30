@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Free Fire ID</title>
+  <title>Bot Free Fire</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='freefire_latam.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
   <style>
@@ -78,7 +78,7 @@
         <path d="M3 6h18M3 12h18M3 18h18" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <div id="menu-juegos" class="menu-juegos" onclick="event.stopPropagation()">
-        {% set n_id = (dynamic_games_id_menu|length) + (1 if ((games_active and games_active.freefire_id) or session.get('is_admin')) else 0) %}
+        {% set n_id = (dynamic_games_id_menu|length) %}
         {% set n_cod = (dynamic_games_pinjuego_menu|length) + (dynamic_games_pin_menu|length) + (1 if ((games_active and games_active.freefire_global) or session.get('is_admin')) else 0) %}
         <section class="menu-group">
           <div class="menu-group-head">
@@ -87,9 +87,6 @@
             <span class="menu-count">{{ n_id }}</span>
           </div>
           <ul>
-            {% if (games_active and games_active.freefire_id) or session.get('is_admin') %}
-            <li><a href="/juego/freefire_id" class="menu-item{% if request.path == '/juego/freefire_id' %} is-current{% endif %}"><span class="menu-item-ini">F</span><span class="menu-item-name">Free Fire ID</span></a></li>
-            {% endif %}
             {% for dg in dynamic_games_id_menu %}
             <li><a href="/juego/d/{{ dg.slug }}" class="menu-item{% if request.path == '/juego/d/' ~ dg.slug %} is-current{% endif %}"><span class="menu-item-ini">{{ (dg.nombre)[:1] }}</span><span class="menu-item-name">{{ dg.nombre }}</span></a></li>
             {% endfor %}
@@ -166,9 +163,9 @@
   </section>
 
   <section class="juego-container">
-    <h1 class="juego-titulo">🔥 Free Fire ID</h1>
+    <h1 class="juego-titulo">🔥 Bot Free Fire</h1>
 
-    <form method="POST" action="/validar/freefire_id" class="juego-form" id="ffid-form" data-id-game="freefire_id" data-game-name="Free Fire ID" data-verify="{{ '1' if verify_api_enabled('freefire_id') else '0' }}">
+    <form method="POST" action="/validar/freefire_id" class="juego-form" id="ffid-form" data-id-game="freefire_id" data-game-name="Bot Free Fire" data-verify="{{ '1' if verify_api_enabled('freefire_id') else '0' }}">
       <div class="form-row">
         <div class="form-col">
           <label for="player_id">ID de Jugador:</label>

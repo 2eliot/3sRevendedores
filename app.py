@@ -7040,7 +7040,7 @@ def admin_update_freefire_id_price():
             return redirect('/admin')
         
         update_freefire_id_price(int(package_id), new_price)
-        flash(f'Precio de Free Fire ID actualizado exitosamente para {package["nombre"]}: ${new_price:.2f}', 'success')
+        flash(f'Precio de Bot Free Fire actualizado exitosamente para {package["nombre"]}: ${new_price:.2f}', 'success')
         
     except ValueError:
         flash('Precio inválido. Debe ser un número válido.', 'error')
@@ -7083,7 +7083,7 @@ def admin_update_freefire_id_name():
         old_name = package['nombre']
         
         update_freefire_id_name(int(package_id), new_name)
-        flash(f'Nombre de Free Fire ID actualizado exitosamente: "{old_name}" → "{new_name}"', 'success')
+        flash(f'Nombre de Bot Free Fire actualizado exitosamente: "{old_name}" → "{new_name}"', 'success')
         
     except Exception as e:
         flash(f'Error al actualizar nombre: {str(e)}', 'error')
@@ -7526,8 +7526,8 @@ def approve_freefire_id_transaction(transaction_id):
             )
         
         # Crear notificación personalizada para el usuario
-        titulo = "Free Fire ID - Recarga realizada"
-        mensaje = f"Free Fire ID: Recarga realizada con exito. {fi_transaction['paquete_nombre']} por ${fi_transaction['precio']:.2f}. ID: {fi_transaction['player_id']}"
+        titulo = "Bot Free Fire - Recarga realizada"
+        mensaje = f"Bot Free Fire: Recarga realizada con exito. {fi_transaction['paquete_nombre']} por ${fi_transaction['precio']:.2f}. ID: {fi_transaction['player_id']}"
         if redeem_result and redeem_result.success:
             mensaje += " (Automatica)"
         try:
