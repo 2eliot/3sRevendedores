@@ -358,15 +358,21 @@ def inject_dynamic_games_menu():
     try:
         games = get_dynamic_games_list(only_active=True)
         games = [g for g in games if g.get('slug') != 'bloodstriker']
+        from dynamic_games import get_game_categoria
         id_games = [g for g in games if (g.get('modo') or 'id') == 'id']
-        pin_games = [g for g in games if (g.get('modo') or 'id') != 'id']
+        otros = [g for g in games if (g.get('modo') or 'id') != 'id']
+        # Menú: "Juegos PIN" (categoria pin) y "Gift Cards" (dynamic_games_pin_menu, resto)
+        pin_juegos = [g for g in otros if get_game_categoria(g) == 'pin']
+        gift_cards = [g for g in otros if get_game_categoria(g) != 'pin']
         return {
             'dynamic_games_menu': games,
             'dynamic_games_id_menu': id_games,
-            'dynamic_games_pin_menu': pin_games,
+            'dynamic_games_pinjuego_menu': pin_juegos,
+            'dynamic_games_pin_menu': gift_cards,
+            'games_active': get_games_active(),
         }
     except Exception:
-        return {'dynamic_games_menu': [], 'dynamic_games_id_menu': [], 'dynamic_games_pin_menu': []}
+        return {'dynamic_games_menu': [], 'dynamic_games_id_menu': [], 'dynamic_games_pinjuego_menu': [], 'dynamic_games_pin_menu': []}
 
 # PostgreSQL: la URL se lee de DATABASE_URL en .env
 # get_db_connection y get_db_connection_optimized vienen de pg_compat
@@ -4170,6 +4176,7 @@ def admin_panel():
         dg['_edit_dual_id'] = bool((campos_cfg.get('campo_id2') or {}).get('enabled'))
         dg['_edit_server_enabled'] = bool((campos_cfg.get('servidor') or {}).get('enabled'))
         dg['_edit_server_options'] = ', '.join((campos_cfg.get('servidor') or {}).get('opciones') or [])
+        dg['_edit_categoria'] = 'pin' if campos_cfg.get('categoria') == 'pin' else 'giftcard'
     dynamic_stock_games = [dg for dg in dyn_games if dg.get('usa_stock_local')]
     
     return render_template('admin.html', 

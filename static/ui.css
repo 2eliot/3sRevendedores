@@ -398,6 +398,48 @@ body { line-height: 1.5; font-size: 16px; }
 }
 .transaction-footer .user-simple { font-size: 13px; font-weight: 500; color: var(--rc-ash) !important; }
 
+/* Tarjetas de juegos por ID / dinámicos: el "comprobante" es el cuerpo de la tarjeta */
+.transaction-card-simple:has(.ffid-voucher) .transaction-row:not(:has(.transaction-actions)) { display: none !important; }
+.transaction-footer:has(.ffid-voucher) {
+  display: block !important;
+  margin: 0 !important; padding: 0 !important; border: 0 !important;
+}
+.ffid-voucher {
+  background: none !important; border: 0 !important; box-shadow: none !important;
+  padding: 0 !important; margin: 0 !important;
+  font-family: var(--rc-font) !important;
+}
+.ffid-voucher-status {
+  display: flex !important; align-items: center; justify-content: flex-start !important; gap: 8px;
+  background: none !important; border: 0 !important; padding: 0 !important; margin: 0 0 10px !important;
+}
+.ffid-voucher-status-label { font-size: 13px !important; color: var(--rc-ash) !important; font-weight: 500 !important; }
+.ffid-voucher-status-value {
+  font-size: 11px !important; font-weight: 600 !important; letter-spacing: 0.06em;
+  padding: 3px 10px !important; border-radius: 999px !important;
+  background: rgba(89, 212, 153, 0.12) !important; color: var(--rc-green) !important;
+  border: 0 !important;
+}
+.ffid-voucher-details { padding: 0 !important; background: none !important; border: 0 !important; font-family: var(--rc-font) !important; }
+.ffid-voucher-line {
+  font-family: var(--rc-font) !important; font-size: 14px !important;
+  color: var(--rc-text) !important; margin: 4px 0 !important; text-align: left !important;
+}
+.ffid-voucher-line strong { font-weight: 500 !important; color: var(--rc-ash) !important; }
+/* Código/serial entregado */
+.ffid-voucher-details > div[style] { border-radius: 12px !important; }
+.ffid-voucher-details > div[style] > div:nth-child(2) { font-family: var(--rc-mono) !important; letter-spacing: 0.04em !important; }
+.tx-corner-date {
+  position: static !important;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rc-border);
+  font-family: var(--rc-mono); font-size: 12px !important; color: var(--rc-ash) !important;
+  text-align: left !important; background: none !important;
+}
+
+/* Formulario en modo PIN/tarjeta: etiqueta + selector + botón sin contenedor */
+.juego-form > label { display: block; }
+.juego-form > select + button, .juego-form > .form-control + button { margin-top: 16px !important; }
+
 /* ============================================================
    DASHBOARD DE USUARIO (bento)
    ============================================================ */

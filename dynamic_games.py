@@ -165,6 +165,12 @@ def parse_campos_config(game):
         return {}
 
 
+def get_game_categoria(game):
+    """Categoría de menú para juegos no-ID: 'pin' (Juegos PIN) o 'giftcard' (Gift Cards).
+    Los juegos creados antes de existir este campo siguen siendo 'giftcard'."""
+    return 'pin' if parse_campos_config(game).get('categoria') == 'pin' else 'giftcard'
+
+
 def slugify(text):
     """Generate a URL-safe slug from text."""
     text = text.lower().strip()
@@ -342,6 +348,9 @@ def admin_create_game():
             'opciones': opciones,
         }
 
+    if data.get('categoria') in ('pin', 'giftcard'):
+        campos['categoria'] = data.get('categoria')
+
     if not nombre or (not product_id and not usa_stock_local):
         return jsonify({'error': 'Nombre y Product ID son obligatorios, excepto para tarjetas con stock local'}), 400
 
@@ -427,6 +436,9 @@ def admin_update_game(game_id):
             'label': data.get('servidor_label', 'Servidor'),
             'opciones': opciones,
         }
+    categoria = data.get('categoria') or parse_campos_config(game).get('categoria')
+    if categoria in ('pin', 'giftcard'):
+        campos['categoria'] = categoria
 
     conn = _get_conn()
     conn.execute('''
