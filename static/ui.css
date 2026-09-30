@@ -1276,3 +1276,26 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
   top: 50%;
   transform: translateY(-50%);
 }
+
+/* Ventana de confirmación: filas etiqueta/valor como antes, pero centradas */
+.idg-dlg-head { position: relative; display: block !important; text-align: center; padding: 22px 48px 6px !important; }
+.idg-dlg-head h3 { text-align: center; }
+.idg-dlg-game { text-align: center; margin: 4px 0 0 !important; padding: 0 !important; }
+.idg-dlg-x { position: absolute; top: 12px; right: 12px; }
+.idg-dlg-rows {
+  display: grid !important;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 8px 28px !important;
+  width: fit-content;
+  max-width: calc(100% - 40px);
+  margin: 6px auto 0 !important;
+  padding: 10px 0 !important;
+}
+.idg-dlg-rows dt { text-align: left !important; }
+.idg-dlg-rows dd { text-align: right !important; }
+.idg-dlg-total { max-width: 320px; margin: 8px auto 0 !important; }
+.idg-dlg-saldo { text-align: center !important; }
+.idg-dlg-actions { justify-content: center !important; }
+/* El importe va envuelto en <span class="money">: que herede el estilo del total */
+.idg-dlg-total strong .money, .idg-pkg-price .money, .cost .money { color: inherit !important; font-size: inherit !important; font-family: inherit; }
