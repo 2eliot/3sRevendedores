@@ -1235,3 +1235,44 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
   .juego-container:has(form.idg) { padding: 16px !important; margin: 12px 10px 24px !important; }
   .juego-container:has(form.idg) .juego-form { padding: 12px !important; }
 }
+
+/* Juegos por ID: formato móvil también en escritorio (≈420px) */
+.juego-container:has(form.idg) {
+  box-sizing: border-box !important;
+  max-width: 420px !important;
+  width: calc(100% - 20px) !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+}
+.juego-container:has(form.idg) .juego-titulo { font-size: 20px !important; margin-bottom: 12px !important; }
+.juego-container:has(form.idg) .juego-form { padding: 12px !important; border-radius: 14px !important; }
+.juego-container:has(form.idg) .juego-form label { font-size: 12px !important; }
+.juego-container:has(form.idg) .juego-form input:not([type=checkbox]):not([type=radio]),
+.juego-container:has(form.idg) .juego-form select { min-height: 42px !important; font-size: 14px !important; }
+.juego-container:has(form.idg) .form-row { gap: 10px !important; }
+.juego-container:has(form.idg) button.idg-verify-btn { min-height: 42px !important; padding: 0 12px !important; font-size: 13px !important; }
+.juego-container:has(form.idg) .idg-grid { gap: 6px !important; }
+.juego-container:has(form.idg) button.idg-pkg { padding: 7px 5px !important; border-radius: 8px !important; }
+.juego-container:has(form.idg) .idg-pkg-name { font-size: 11.5px !important; overflow-wrap: normal !important; word-break: normal !important; }
+.juego-container:has(form.idg) .idg-pkg-price { font-size: 11px !important; }
+.juego-container:has(form.idg) .idg-pkg.is-selected::after { top: -5px !important; right: -5px !important; width: 14px !important; height: 14px !important; background-size: 8px !important; }
+.juego-container:has(form.idg) form.idg.idg-has-pkg > button[type=submit] { min-height: 44px !important; font-size: 14px !important; margin-top: 12px !important; }
+.juego-container:has(form.idg) .juego-descripcion,
+.juego-container:has(form.idg) .entrega-info { padding: 12px !important; font-size: 12px !important; }
+.juego-container:has(form.idg) .juego-descripcion li,
+.juego-container:has(form.idg) .entrega-info li { font-size: 12.5px !important; }
+
+/* Pasos numerados: el texto fluye como párrafo (el HTML original usa flex y separa las negritas) */
+.juego-container li[style*="display: flex"] {
+  display: block !important;
+  position: relative;
+  padding-left: 36px !important;
+  text-align: left !important;
+  line-height: 1.45;
+}
+.juego-container li[style*="display: flex"] > span:first-child {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
