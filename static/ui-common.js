@@ -28,12 +28,12 @@
 (function () {
   'use strict';
   var MODES = [['system', 'Sistema', 'th-prev-sys'], ['dark', 'Oscuro', 'th-prev-dark'], ['light', 'Claro', 'th-prev-light']];
-  var ACCENTS = [['coral', 'Coral', '#ff6363'], ['morado', 'Morado', '#a78bfa'], ['azul', 'Azul', '#56c2ff'],
+  var ACCENTS = [['coral', 'Rojo', '#ff1a1a'], ['morado', 'Morado', '#a78bfa'], ['azul', 'Azul', '#56c2ff'],
                  ['verde', 'Verde', '#59d499'], ['ambar', 'Ámbar', '#ffc531'], ['rosa', 'Rosa', '#f472b6']];
   function label(t) {
     var m = MODES.filter(function (x) { return x[0] === t.mode; })[0];
     var a = ACCENTS.filter(function (x) { return x[0] === t.accent; })[0];
-    return (m ? m[1] : 'Oscuro') + ' · ' + (a ? a[1] : 'Coral');
+    return (m ? m[1] : 'Oscuro') + ' · ' + (a ? a[1] : 'Rojo');
   }
   function refreshLabels() {
     if (!window.siteTheme) return;

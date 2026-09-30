@@ -36,10 +36,6 @@
   --rc-panel: #110c10; --rc-hover-bg: #140e13; --rc-sel-bg: #1a1218; --rc-sel-bg2: #1d141b;
 }
 
-/* Resalte de datos (nombres, IDs, montos, saldo) con el color elegido.
-   Con coral se queda en verde: un monto en rojo parecería un error. */
-:root:not([data-accent="coral"]) { --rc-hl: var(--rc-accent); }
-
 /* ---------- Modo claro ---------- */
 :root[data-theme="light"] {
   color-scheme: light;
@@ -52,7 +48,7 @@
   --rc-green: #0f7a50; --rc-blue: #0a6fa8; --rc-yellow: #9a6700;
   --rc-green-bg: #e2f5ec; --rc-yellow-bg: #fbf0d9; --rc-blue-bg: #e1f0fa;
   --rc-panel: #ffffff; --rc-hover-bg: #f5f6f8; --rc-sel-bg: #eef0f4; --rc-sel-bg2: #eef0f4;
-  --rc-accent: #d93d42; --rc-accent-ink: #ffffff;
+  --rc-accent: #e00000; --rc-accent-ink: #ffffff;
   --rc-key-shadow: rgba(0, 0, 0, 0.06) 0 0 0 1px;
   --rc-lift: rgba(0, 0, 0, 0.04) 0 1px 2px 0, rgba(0, 0, 0, 0.06) 0 4px 12px 0;
 }
