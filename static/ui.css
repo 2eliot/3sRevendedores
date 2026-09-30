@@ -431,7 +431,7 @@ body { line-height: 1.5; font-size: 16px; }
 .tx-corner-date {
   position: static !important;
   margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--rc-border);
-  font-family: var(--rc-mono); font-size: 12px !important; color: var(--rc-ash) !important;
+  font-family: var(--rc-mono); font-size: 12px !important; color: var(--rc-text) !important; font-weight: 800 !important;
   text-align: left !important; background: none !important;
 }
 
