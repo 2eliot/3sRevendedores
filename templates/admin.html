@@ -1246,9 +1246,18 @@
     }
 
     // AJAX submit para pines (sin recargar página)
+    function countBatchPins(text) {
+      return (text || '').split(/[\n,]/).map(x => x.trim()).filter(Boolean).length;
+    }
+
     async function submitPinAjax(evt, form, url) {
       evt.preventDefault();
       const st = form.querySelector('.pin-ajax-status');
+      const batch = form.querySelector('textarea[name="pins_batch"]');
+      if (batch && countBatchPins(batch.value) > 110) {
+        if (st) st.innerHTML = '<span style="color:#ff6363;">Máximo 110 pines por lote (tienes ' + countBatchPins(batch.value) + ')</span>';
+        return false;
+      }
       const formData = new FormData(form);
       if (st) st.innerHTML = '<span style="color:#9c9c9d;">Enviando...</span>';
       try {
@@ -1290,36 +1299,23 @@
         const card = document.createElement('div');
         card.className = 'package-card';
         card.innerHTML = `
-          <div class="package-card-header">
-            <div class="package-left">
-              <span class="package-stock">${(stockMap[String(pkg.id)]||0)} pines</span>
-              <div class="package-title">${pkg.nombre}</div>
-              <div class="package-price">$${pkg.precio.toFixed(2)}</div>
-            </div>
-            <div class="package-right">
-              <div class="package-actions">
-                <a href="/admin/pins?game=${game}&estado=unused&monto=${pkg.id}" class="btn btn-outline btn-small btn-compact">Ver/Eliminar</a>
-                <button type="button" class="btn btn-primary btn-small btn-compact btn-toggle-ind" data-id="${pkg.id}">Agregar pin</button>
-                <button type="button" class="btn btn-success btn-small btn-compact btn-toggle-batch" data-id="${pkg.id}">Agregar lote</button>
-                <button type="button" class="btn btn-warning btn-small btn-compact btn-toggle-csv" data-id="${pkg.id}">Importar CSV</button>
-              </div>
-            </div>
+          <div class="package-card-header pk-info">
+            <span class="package-stock">${(stockMap[String(pkg.id)]||0)} pines</span>
+            <div class="package-title">${pkg.nombre}</div>
+            <div class="package-price">$${pkg.precio.toFixed(2)}</div>
+          </div>
+          <div class="package-actions pk-actions">
+            <a href="/admin/pins?game=${game}&estado=unused&monto=${pkg.id}" class="btn btn-outline btn-small btn-compact">Ver/Eliminar</a>
+            <button type="button" class="btn btn-success btn-small btn-compact btn-toggle-batch" data-id="${pkg.id}">Agregar lote</button>
+            <button type="button" class="btn btn-warning btn-small btn-compact btn-toggle-csv" data-id="${pkg.id}">Importar CSV</button>
           </div>
           <div class="package-forms">
-            <form class="package-form collapse" id="ind-form-${pkg.id}" onsubmit="return submitPinAjax(event, this, '/admin/add_pin')">
-              <input type="hidden" name="game_type" value="${game}">
-              <input type="hidden" name="monto_id" value="${pkg.id}">
-              <label>Código individual</label>
-              <input type="text" name="pin_codigo" placeholder="PIN123456" required>
-              <button type="submit" class="btn btn-primary btn-small">Agregar</button>
-              <span class="pin-ajax-status" style="font-size:11px;margin-left:6px;"></span>
-            </form>
             <form class="package-form collapse" id="batch-form-${pkg.id}" onsubmit="return submitPinAjax(event, this, '/admin/add_pins_batch')">
               <input type="hidden" name="game_type" value="${game}">
               <input type="hidden" name="batch_monto_id" value="${pkg.id}">
-              <label>Lote (máx 10)</label>
-              <textarea name="pins_batch" rows="2" placeholder="PIN1, PIN2, PIN3" required></textarea>
-              <button type="submit" class="btn btn-success btn-small">Agregar Lote</button>
+              <label>Lote de pines (máx 110) <span class="batch-count">0 / 110</span></label>
+              <textarea name="pins_batch" rows="4" placeholder="Un pin por línea o separados por coma" required></textarea>
+              <button type="submit" class="btn btn-success btn-small">Agregar lote</button>
               <span class="pin-ajax-status" style="font-size:11px;margin-left:6px;"></span>
             </form>
             <form method="POST" action="/admin/import_pins_csv" enctype="multipart/form-data" class="package-form collapse" id="csv-form-${pkg.id}">
@@ -1335,12 +1331,12 @@
         container.appendChild(card);
       });
 
-      // Wire up toggle buttons
-      container.querySelectorAll('.btn-toggle-ind').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('data-id');
-          const f = document.getElementById(`ind-form-${id}`);
-          if (f) f.classList.toggle('show');
+      // Contador del lote (máximo 110 pines)
+      container.querySelectorAll('textarea[name="pins_batch"]').forEach(t => {
+        t.addEventListener('input', () => {
+          const n = countBatchPins(t.value);
+          const c = t.form.querySelector('.batch-count');
+          if (c) { c.textContent = n + ' / 110'; c.classList.toggle('is-over', n > 110); }
         });
       });
       container.querySelectorAll('.btn-toggle-batch').forEach(btn => {

@@ -4896,6 +4896,14 @@ def admin_add_pins_batch():
     if not pins_list:
         flash('No se encontraron pines válidos en el texto', 'error')
         return redirect('/admin')
+
+    MAX_PINES_LOTE = 110
+    if len(pins_list) > MAX_PINES_LOTE:
+        msg = f'El lote tiene {len(pins_list)} pines; el máximo por lote es {MAX_PINES_LOTE}.'
+        if request.headers.get('Accept') == 'application/json':
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'error')
+        return redirect('/admin')
     
     try:
         if game_type == 'freefire_latam':

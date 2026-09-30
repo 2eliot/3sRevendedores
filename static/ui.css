@@ -1598,3 +1598,36 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
   .admin-shell:not(.sb-collapsed)::before { content: ''; width: 68px; }
   .admin-shell:not(.sb-collapsed) .admin-sidebar::before { display: block !important; }
 }
+
+/* ============================================================
+   ADMIN · PINES: 3 tarjetas por fila, info arriba, botones iguales abajo
+   ============================================================ */
+#package-list { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; }
+#package-list .package-card {
+  display: flex !important; flex-direction: column; gap: 10px;
+  padding: 14px !important; min-width: 0;
+  background: var(--rc-card) !important; border: 1px solid var(--rc-border) !important; border-radius: 14px !important;
+}
+#package-list .pk-info { display: flex !important; flex-direction: column; align-items: flex-start; gap: 6px; margin: 0 !important; }
+#package-list .package-stock { font-size: 12px !important; padding: 2px 10px !important; border-radius: 999px !important; background: var(--rc-graphite) !important; color: var(--rc-ash) !important; }
+#package-list .package-title { font-size: 16px !important; font-weight: 700 !important; color: var(--rc-text) !important; }
+#package-list .package-price { font-family: var(--rc-mono); font-size: 13px !important; color: var(--rc-green) !important; background: none !important; padding: 0 !important; }
+#package-list .pk-actions { display: grid !important; grid-template-columns: 1fr !important; gap: 6px !important; margin-top: auto; }
+#package-list .pk-actions .btn {
+  display: flex !important; align-items: center; justify-content: center;
+  width: 100% !important; min-height: 36px !important; margin: 0 !important; padding: 0 10px !important;
+  font-size: 13px !important; font-weight: 600 !important; border-radius: 9px !important; text-align: center;
+}
+#package-list .package-form.show { display: flex !important; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--rc-border); }
+#package-list .package-form label { display: flex; justify-content: space-between; font-size: 12px; color: var(--rc-ash); }
+#package-list .package-form textarea { min-height: 90px; font-family: var(--rc-mono); font-size: 12.5px; }
+#package-list .package-form .btn { width: 100%; min-height: 36px; }
+.batch-count { font-family: var(--rc-mono); color: var(--rc-ash); }
+.batch-count.is-over { color: var(--rc-coral); font-weight: 700; }
+@media (max-width: 720px) {
+  #package-list { gap: 6px !important; }
+  #package-list .package-card { padding: 10px !important; }
+  #package-list .package-title { font-size: 13px !important; }
+  #package-list .pk-actions .btn { font-size: 11px !important; min-height: 32px !important; padding: 0 4px !important; }
+}
+#package-list .pk-actions { margin: auto 0 0 !important; padding: 0 !important; width: 100% !important; }
