@@ -975,3 +975,20 @@ select.ui-select-open {
 .menu-juegos .menu-footer a.menu-recargar:hover { background: #ffffff !important; }
 .menu-juegos .menu-footer .menu-ico { color: #07080a; }
 .menu-juegos { width: min(330px, 88vw) !important; }
+
+/* ---------- Historial: formato recibo (estrecho y compacto) ---------- */
+.transactions { max-width: 520px !important; }
+.transaction-container { gap: 10px !important; }
+.transaction-card-simple:has(.ffid-voucher) { padding: 12px 14px !important; border-radius: 14px !important; }
+.transaction-card-simple:has(.ffid-voucher) .transaction-header {
+  margin-bottom: 8px !important; padding-bottom: 8px !important; font-size: 10.5px !important;
+}
+.ffid-voucher-status { margin: 0 0 4px !important; }
+.ffid-voucher-line, .ffid-voucher-amount { padding: 2px 0 !important; font-size: 12.5px !important; line-height: 1.35 !important; gap: 10px; }
+.ffid-voucher-line strong, .ffid-voucher-amount strong { font-size: 12.5px !important; }
+.ffid-voucher-amount { margin-top: 4px !important; padding-top: 6px !important; }
+.ffid-voucher-details > div[style] { margin: 4px 0 !important; padding: 6px 10px !important; }
+.ffid-voucher-details > div[style] > div:first-child { font-size: 11px !important; margin-bottom: 2px !important; }
+.ffid-voucher-details > div[style] > div:nth-child(2) { font-size: 13px !important; }
+.ffid-voucher-details > div[style] .copy-btn-simple { min-height: 26px !important; margin-top: 4px !important; font-size: 11.5px !important; }
+.transaction-card-simple:has(.ffid-voucher) .tx-corner-date { margin-top: 4px !important; padding-top: 6px !important; font-size: 10.5px !important; }
