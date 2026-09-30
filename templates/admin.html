@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel de Administrador</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='users_modern.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -80,77 +81,98 @@
 
       <!-- Pestaña de Usuarios -->
       <div id="tab-usuarios" class="tab-content active">
-        <section class="users-section">
-      <div class="section-header">
-        <h2>Gestión de Usuarios</h2>
-        <div class="search-inline">
-          <input type="number" id="user-id-search" placeholder="id">
-          <button type="button" id="user-id-clear" class="btn btn-clear-id" aria-label="Limpiar">×</button>
-        </div>
-      </div>
-      
+        <section class="um-section" id="um-section" data-theme="dark">
+          <header class="um-header">
+            <div class="um-title">
+              <h2>Gestión de Usuarios</h2>
+              <p class="um-subtitle">
+                <span>{{ users|length }} usuario{{ '' if users|length == 1 else 's' }}</span>
+                <span class="um-dot"></span>
+                <span>Saldo total <strong>${{ "%.2f"|format(users|sum(attribute='saldo')) }}</strong></span>
+              </p>
+            </div>
+            <div class="um-toolbar">
+              <label class="um-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input type="search" id="user-id-search" placeholder="Buscar por ID, nombre o email" autocomplete="off">
+                <button type="button" id="user-id-clear" class="um-search-clear" aria-label="Limpiar">×</button>
+              </label>
+              <button type="button" id="um-theme-toggle" class="um-icon-btn" aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
+                <svg class="um-ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                <svg class="um-ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              </button>
+            </div>
+          </header>
+
       {% if users %}
-        <div class="users-grid">
-          {% for user in users %}
-          <div class="user-card">
-            <div class="user-card-header">
-              <div class="user-name">{{ user.nombre }} {{ user.apellido }}</div>
-              <div class="user-id">ID: {{ user.id }}</div>
-            </div>
-            <div class="user-card-body">
-              <div class="user-row">
-                <div class="user-label">Email</div>
-                <div class="user-value">{{ user.correo }}</div>
+          <div class="um-grid">
+            {% for user in users %}
+            <article class="um-card" data-id="{{ user.id }}" data-search="{{ (user.nombre ~ ' ' ~ user.apellido ~ ' ' ~ user.correo)|lower }}">
+              <div class="um-card-top">
+                <div class="um-avatar um-avatar-{{ user.id % 6 }}">{{ (user.nombre or '?')[:1]|upper }}{{ (user.apellido or '')[:1]|upper }}</div>
+                <div class="um-ident">
+                  <div class="um-name">{{ user.nombre }} {{ user.apellido }}</div>
+                  <div class="um-email" title="{{ user.correo }}">{{ user.correo }}</div>
+                </div>
+                <span class="um-id">#{{ user.id }}</span>
               </div>
-              <div class="user-row">
-                <div class="user-label">Teléfono</div>
-                <div class="user-value">{{ user.telefono }}</div>
+
+              <div class="um-balance">
+                <span class="um-balance-label">Saldo disponible</span>
+                <span class="um-balance-value {{ 'is-zero' if not user.saldo else '' }}">${{ "%.2f"|format(user.saldo) }}</span>
               </div>
-              <div class="user-row">
-                <div class="user-label">Saldo</div>
-                <div class="user-value balance">${{ "%.2f"|format(user.saldo) }}</div>
+
+              <dl class="um-meta">
+                <div><dt>Teléfono</dt><dd>{{ user.telefono }}</dd></div>
+                <div><dt>Registro</dt><dd>{{ user.fecha_registro|format_date('%Y-%m-%d') }}</dd></div>
+              </dl>
+
+              <div class="um-toggles">
+                <form method="POST" action="/admin/toggle_sin_ganancia">
+                  <input type="hidden" name="user_id" value="{{ user.id }}">
+                  <button type="submit" class="um-chip {{ 'is-danger' if user.sin_ganancia else 'is-on' }}" title="Si está activo 'Sin ganancia', esta cuenta no genera profit, no suma al saldo activo total y no compite en el top clientes">
+                    <span class="um-chip-dot"></span>{{ 'Sin ganancia' if user.sin_ganancia else 'Con ganancia' }}
+                  </button>
+                </form>
+                <form method="POST" action="/admin/toggle_bono_activo">
+                  <input type="hidden" name="user_id" value="{{ user.id }}">
+                  <button type="submit" class="um-chip {{ 'is-on' if user.bono_activo else 'is-off' }}" title="Si está activo y la recarga Binance es >= $1000, se aplica un bono del 1.5% sobre el monto recargado">
+                    <span class="um-chip-dot"></span>Bono 1.5% {{ 'ON' if user.bono_activo else 'OFF' }}
+                  </button>
+                </form>
               </div>
-              <div class="user-row">
-                <div class="user-label">Fecha</div>
-                <div class="user-value">{{ user.fecha_registro|format_date('%Y-%m-%d') }}</div>
+
+              <div class="um-actions">
+                <form method="POST" action="/admin/add_credit" class="um-field">
+                  <input type="hidden" name="user_id" value="{{ user.id }}">
+                  <input type="number" name="amount" placeholder="Monto" step="0.01" min="0.01" required aria-label="Monto a acreditar">
+                  <button type="submit" class="um-btn um-btn-success">+ Crédito</button>
+                </form>
+                <form method="POST" action="/admin/update_balance" class="um-field">
+                  <input type="hidden" name="user_id" value="{{ user.id }}">
+                  <input type="number" name="new_balance" placeholder="Nuevo saldo" step="0.01" min="0" required aria-label="Nuevo saldo">
+                  <button type="submit" class="um-btn um-btn-warning">Fijar</button>
+                </form>
+                <form method="POST" action="/admin/change_password" class="um-field" onsubmit="const pw = this.querySelector('input[name=new_password]').value; if(pw.length < 6) { alert('La contraseña debe tener al menos 6 caracteres'); return false; } return confirm('¿Cambiar contraseña de este usuario?')">
+                  <input type="hidden" name="user_id" value="{{ user.id }}">
+                  <input type="password" name="new_password" placeholder="Nueva contraseña" minlength="6" required aria-label="Nueva contraseña">
+                  <button type="submit" class="um-btn um-btn-accent">Cambiar</button>
+                </form>
               </div>
-            </div>
-            <div class="user-card-actions">
-              <form method="POST" action="/admin/add_credit" class="inline-form">
+
+              <form method="POST" action="/admin/delete_user" class="um-delete" onsubmit="return confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')">
                 <input type="hidden" name="user_id" value="{{ user.id }}">
-                <input type="number" name="amount" placeholder="Monto" step="0.01" min="0.01" required class="small-input">
-                <button type="submit" class="btn btn-success">+ Crédito</button>
+                <button type="submit" class="um-btn-ghost-danger">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                  Eliminar usuario
+                </button>
               </form>
-              <form method="POST" action="/admin/update_balance" class="inline-form">
-                <input type="hidden" name="user_id" value="{{ user.id }}">
-                <input type="number" name="new_balance" placeholder="Nuevo saldo" step="0.01" min="0" required class="small-input">
-                <button type="submit" class="btn btn-warning">Modificar</button>
-              </form>
-              <form method="POST" action="/admin/toggle_sin_ganancia" class="inline-form">
-                <input type="hidden" name="user_id" value="{{ user.id }}">
-                <button type="submit" class="btn {{ 'btn-danger' if user.sin_ganancia else 'btn-secondary' }}" title="Si está activo, esta cuenta no genera profit, no suma al saldo activo total y no compite en el top clientes">{{ '🚫 Sin ganancia' if user.sin_ganancia else '💰 Con ganancia' }}</button>
-              </form>
-              <form method="POST" action="/admin/toggle_bono_activo" class="inline-form">
-                <input type="hidden" name="user_id" value="{{ user.id }}">
-                <button type="submit" class="btn {{ 'btn-success' if user.bono_activo else 'btn-secondary' }}" title="Si está activo y la recarga Binance es >= $1000, se aplica un bono del 1.5% sobre el monto recargado">{{ '🎁 Bono 1.5% ON' if user.bono_activo else '🎁 Bono 1.5% OFF' }}</button>
-              </form>
-              <form method="POST" action="/admin/delete_user" class="inline-form" onsubmit="return confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')">
-                <input type="hidden" name="user_id" value="{{ user.id }}">
-                <button type="submit" class="btn btn-danger">Eliminar</button>
-              </form>
-              <form method="POST" action="/admin/change_password" class="inline-form" onsubmit="const pw = this.querySelector('input[name=new_password]').value; if(pw.length < 6) { alert('La contraseña debe tener al menos 6 caracteres'); return false; } return confirm('¿Cambiar contraseña de este usuario?')">
-                <input type="hidden" name="user_id" value="{{ user.id }}">
-                <input type="password" name="new_password" placeholder="Nueva contraseña" minlength="6" required class="small-input">
-                <button type="submit" class="btn btn-password">🔑 Contraseña</button>
-              </form>
-            </div>
+            </article>
+            {% endfor %}
           </div>
-          {% endfor %}
-        </div>
+          <p class="um-empty" id="um-no-results" hidden>Ningún usuario coincide con la búsqueda.</p>
       {% else %}
-        <div class="no-users">
-          <p>No hay usuarios registrados en el sistema.</p>
-        </div>
+          <div class="um-empty">No hay usuarios registrados en el sistema.</div>
       {% endif %}
         </section>
       </div>
@@ -1560,21 +1582,36 @@
       } catch(e) { alert('Error de red'); }
     }
 
-    // Buscador por ID de usuario
+    // Buscador de usuarios: ID exacto si es numérico, si no nombre/email
     window.filterUsersById = function() {
-      const q = (document.getElementById('user-id-search')?.value || '').trim();
-      const cards = document.querySelectorAll('.users-grid .user-card');
-      if (!q) {
-        cards.forEach(c => c.style.display = '');
-        return;
-      }
+      const q = (document.getElementById('user-id-search')?.value || '').trim().toLowerCase().replace(/^#/, '');
+      const cards = document.querySelectorAll('.um-grid .um-card');
+      const isId = /^\d+$/.test(q);
+      let visible = 0;
       cards.forEach(card => {
-        const idEl = card.querySelector('.user-id');
-        const txt = idEl ? idEl.textContent : '';
-        const match = txt.replace(/[^0-9]/g, '') === q;
+        const match = !q || (isId ? card.dataset.id === q : (card.dataset.search || '').includes(q));
         card.style.display = match ? '' : 'none';
+        if (match) visible++;
       });
-    }
+      const empty = document.getElementById('um-no-results');
+      if (empty) empty.hidden = visible > 0;
+    };
+
+    // Tema claro/oscuro de Gestión de Usuarios (oscuro por defecto)
+    (function() {
+      const section = document.getElementById('um-section');
+      const toggle = document.getElementById('um-theme-toggle');
+      if (!section || !toggle) return;
+      try {
+        const saved = localStorage.getItem('umTheme');
+        if (saved === 'light' || saved === 'dark') section.dataset.theme = saved;
+      } catch (e) {}
+      toggle.addEventListener('click', function() {
+        const next = section.dataset.theme === 'dark' ? 'light' : 'dark';
+        section.dataset.theme = next;
+        try { localStorage.setItem('umTheme', next); } catch (e) {}
+      });
+    })();
     const userSearch = document.getElementById('user-id-search');
     if (userSearch) {
       userSearch.addEventListener('keyup', function(e){ if (e.key === 'Enter') filterUsersById(); });
