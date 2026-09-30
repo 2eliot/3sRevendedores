@@ -1214,29 +1214,33 @@
         <div class="dashboard-info-section">
           
           
-          <!-- Filtros de fecha -->
-          <div class="filter-buttons-integrated">
-            <a href="?preset=hoy" class="filter-btn {% if request.args.get('preset') == 'hoy' %}active{% endif %}">
-              📅 Hoy
-            </a>
-            <a href="?preset=ayer" class="filter-btn {% if request.args.get('preset') == 'ayer' %}active{% endif %}">
-              📅 Ayer
-            </a>
-            <a href="?preset=antes_ayer" class="filter-btn {% if request.args.get('preset') == 'antes_ayer' %}active{% endif %}">
-              📅 Antes de ayer
-            </a>
+          {% set _preset = request.args.get('preset') or 'hoy' %}
+          <div class="dash-head">
+            <div>
+              <h1 class="dash-title">Resumen del día</h1>
+              <p class="dash-date">{{ fin }}</p>
+            </div>
+            <!-- Filtros de fecha -->
+            <nav class="filter-buttons-integrated dash-seg" aria-label="Elegir día">
+              <a href="?preset=hoy" class="filter-btn {% if _preset == 'hoy' %}active{% endif %}" {% if _preset == 'hoy' %}aria-current="page"{% endif %}>Hoy</a>
+              <a href="?preset=ayer" class="filter-btn {% if _preset == 'ayer' %}active{% endif %}" {% if _preset == 'ayer' %}aria-current="page"{% endif %}>Ayer</a>
+              <a href="?preset=antes_ayer" class="filter-btn {% if _preset == 'antes_ayer' %}active{% endif %}" {% if _preset == 'antes_ayer' %}aria-current="page"{% endif %}>Antes de ayer</a>
+            </nav>
           </div>
         </div>
       </div>
 
       <!-- Tarjetas de estadísticas (estilo imagen) -->
-      <div class="stats-grid single-kpi">
-        <div class="stat-card">
-          <div class="stat-header">
-            <div class="stat-title">Gasto del día</div>
-          </div>
-          <div id="kpi-gasto-dia" class="stat-value">${{ "%.2f"|format(gasto_dia) }} $</div>
+      <div class="stats-grid dash-kpis">
+        <div class="stat-card dash-kpi">
+          <div class="stat-title">Gasto del día</div>
+          <div id="kpi-gasto-dia" class="stat-value">${{ "%.2f"|format(gasto_dia) }}</div>
           <div class="stat-subtitle" id="kpi-gasto-dia-fecha">{{ fin }}</div>
+        </div>
+        <div class="stat-card dash-kpi">
+          <div class="stat-title">Compras del día</div>
+          <div class="stat-value">{{ compras_paquete|sum(attribute='cantidad') }}</div>
+          <div class="stat-subtitle">{{ compras_paquete|length }} paquete{{ '' if compras_paquete|length == 1 else 's' }} distinto{{ '' if compras_paquete|length == 1 else 's' }}</div>
         </div>
       </div>
 
@@ -1483,7 +1487,7 @@
               // Actualizar KPI de gasto del día
               const kpiVal = document.getElementById('kpi-gasto-dia');
               const kpiFecha = document.getElementById('kpi-gasto-dia-fecha');
-              if (kpiVal) kpiVal.textContent = '$' + Number(gastoSel).toFixed(2) + ' ';
+              if (kpiVal) kpiVal.textContent = '$' + Number(gastoSel).toFixed(2);
               if (kpiFecha) kpiFecha.textContent = dateSel;
               // Actualizar tabla
               const selectedDateSpan = document.getElementById('selected-date');

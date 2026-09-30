@@ -1502,3 +1502,48 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .dx-copy.is-copied { color: var(--rc-green) !important; border-color: rgba(89, 212, 153, 0.5) !important; }
 .dx-copy.is-copied svg { display: none; }
 .dx-copy.is-copied::after { content: '✓'; font-size: 14px; font-weight: 700; }
+
+/* ============================================================
+   DASHBOARD (Resumen del día)
+   ============================================================ */
+.dashboard-container { max-width: 760px !important; }
+.dashboard-container .stats-header, .dashboard-container .dashboard-info-section { background: none !important; border: 0 !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; }
+.dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.dash-title { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; color: var(--rc-text); }
+.dash-date { margin: 2px 0 0; font-family: var(--rc-mono); font-size: 13px; color: var(--rc-ash); }
+.dash-seg {
+  display: inline-flex !important; gap: 2px !important; padding: 3px !important;
+  background: var(--rc-card) !important; border: 1px solid var(--rc-border) !important; border-radius: 12px !important;
+}
+.dash-seg .filter-btn {
+  display: inline-flex !important; align-items: center; justify-content: center;
+  min-height: 34px !important; padding: 0 14px !important;
+  border: 0 !important; border-radius: 9px !important;
+  background: transparent !important; color: var(--rc-ash) !important;
+  font-size: 13px !important; font-weight: 600 !important; text-decoration: none !important;
+  box-shadow: none !important; transition: background-color .15s, color .15s;
+}
+.dash-seg .filter-btn:hover { color: var(--rc-text) !important; background: rgba(255,255,255,.05) !important; }
+.dash-seg .filter-btn.active { background: var(--rc-mist) !important; color: #07080a !important; }
+.dash-kpis { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; margin-bottom: 14px; }
+.dash-kpi { padding: 12px 14px !important; border-radius: 12px !important; text-align: left !important; }
+.dash-kpi .stat-title { font-size: 11px !important; margin-bottom: 4px; }
+.dash-kpi .stat-value { font-size: 22px !important; line-height: 1.2; margin: 0 !important; }
+.dash-kpi .stat-subtitle { font-size: 12px !important; margin-top: 2px; }
+.dashboard-container .games-section { padding: 14px !important; }
+.dashboard-container .games-section .section-title { font-size: 15px !important; margin: 0 !important; }
+.dashboard-container .games-section td, .dashboard-container .games-section th { padding: 10px 12px !important; font-size: 13px; }
+@media (max-width: 560px) {
+  .dash-head { align-items: stretch; }
+  .dash-seg { width: 100%; }
+  .dash-seg .filter-btn { flex: 1; padding: 0 8px !important; }
+}
+@media (max-width: 560px) {
+  .dash-seg .filter-btn { white-space: nowrap; font-size: 12.5px !important; padding: 0 6px !important; }
+  .dashboard-container .games-section th:first-child,
+  .dashboard-container .games-section td:first-child { display: none !important; }
+  .dashboard-container .item-mobile { display: none !important; }
+  .dashboard-container .item-desktop { display: inline !important; }
+  .dashboard-container .games-section td, .dashboard-container .games-section th { padding: 9px 8px !important; font-size: 12.5px; }
+  .dashboard-container .games-section > div:first-child { flex-wrap: wrap; gap: 4px; }
+}
