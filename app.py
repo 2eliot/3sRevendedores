@@ -1345,46 +1345,67 @@ def create_user(nombre, apellido, telefono, correo, contraseña):
             return None
         raise
 
-def get_user_transactions(user_id, is_admin=False, page=1, per_page=10):
-    """Obtiene las transacciones de un usuario con información del paquete y paginación"""
+# Campos de una orden en los que busca el buscador del historial
+_TX_SEARCH_FIELDS = (
+    't.numero_control', 't.pin', 't.transaccion_id', 't.paquete_nombre',
+    'CAST(t.monto AS TEXT)', 'CAST(t.fecha AS TEXT)', 'CAST(t.usuario_id AS TEXT)',
+    "(u.nombre || ' ' || u.apellido)",
+)
+
+
+def _tx_search_clause(search):
+    """(sql, params) para filtrar por texto en cualquier dato de la orden, sin distinguir mayúsculas."""
+    if not search:
+        return '', ()
+    like = '%' + search.lower() + '%'
+    sql = ' AND (' + ' OR '.join(f"LOWER(COALESCE({f}, '')) LIKE ?" for f in _TX_SEARCH_FIELDS) + ')'
+    return sql, (like,) * len(_TX_SEARCH_FIELDS)
+
+
+def get_user_transactions(user_id, is_admin=False, page=1, per_page=10, search=None):
+    """Obtiene las transacciones de un usuario con información del paquete y paginación.
+    Con `search`, filtra por cualquier dato de la orden."""
     conn = get_db_connection()
-    
+
     # Calcular offset para paginación
     offset = (page - 1) * per_page
-    
+    search_sql, search_params = _tx_search_clause(search)
+
     if is_admin:
         # Admin ve todas las transacciones de todos los usuarios (incluyendo las propias)
-        transactions = conn.execute('''
+        transactions = conn.execute(f'''
             SELECT t.*, u.nombre, u.apellido
             FROM transacciones t
             JOIN usuarios u ON t.usuario_id = u.id
+            WHERE 1=1{search_sql}
             ORDER BY t.fecha DESC
             LIMIT ? OFFSET ?
-        ''', (per_page, offset)).fetchall()
-        
+        ''', (*search_params, per_page, offset)).fetchall()
+
         # Obtener total de transacciones para paginación
-        total_count = conn.execute('''
+        total_count = conn.execute(f'''
             SELECT COUNT(*) FROM transacciones t
             JOIN usuarios u ON t.usuario_id = u.id
-        ''').fetchone()[0]
+            WHERE 1=1{search_sql}
+        ''', search_params).fetchone()[0]
     else:
         # Usuario normal ve solo sus transacciones
         if user_id:
-            transactions = conn.execute('''
+            transactions = conn.execute(f'''
                 SELECT t.*, u.nombre, u.apellido
                 FROM transacciones t
                 JOIN usuarios u ON t.usuario_id = u.id
-                WHERE t.usuario_id = ? 
+                WHERE t.usuario_id = ?{search_sql}
                 ORDER BY t.fecha DESC
                 LIMIT ? OFFSET ?
-            ''', (user_id, per_page, offset)).fetchall()
-            
+            ''', (user_id, *search_params, per_page, offset)).fetchall()
+
             # Obtener total de transacciones del usuario para paginación
-            total_count = conn.execute('''
+            total_count = conn.execute(f'''
                 SELECT COUNT(*) FROM transacciones t
                 JOIN usuarios u ON t.usuario_id = u.id
-                WHERE t.usuario_id = ?
-            ''', (user_id,)).fetchone()[0]
+                WHERE t.usuario_id = ?{search_sql}
+            ''', (user_id, *search_params)).fetchone()[0]
         else:
             transactions = []
             total_count = 0
@@ -2670,6 +2691,13 @@ def index():
     # Obtener parámetros de paginación
     page = request.args.get('page', 1, type=int)
     per_page = 30  # Transacciones por página
+    search_q = (request.args.get('q') or '').strip()[:80]  # Buscador del historial
+
+    def _match_search(tx):
+        """Filtro en memoria para las órdenes que se añaden aparte (Blood Striker pendientes)."""
+        if not search_q:
+            return True
+        return search_q.lower() in ' '.join(str(v) for v in dict(tx).values() if v is not None).lower()
     
     user_id = session.get('id', '00000')
     transactions_data = {}
@@ -2683,12 +2711,12 @@ def index():
     
     if is_admin:
         # Admin ve todas las transacciones de todos los usuarios con paginación
-        transactions_data = get_user_transactions(None, is_admin=True, page=page, per_page=per_page)
+        transactions_data = get_user_transactions(None, is_admin=True, page=page, per_page=per_page, search=search_q)
         
         # Para admin, también agregar transacciones pendientes de Blood Striker solo en la primera página
         # (Free Fire ID es 100% automático, no requiere aprobación manual)
         if page == 1:
-            bloodstriker_transactions = get_pending_bloodstriker_transactions()
+            bloodstriker_transactions = [tx for tx in get_pending_bloodstriker_transactions() if _match_search(tx)]
             # Combinar transacciones normales con las de Blood Striker
             all_transactions = list(transactions_data['transactions']) + list(bloodstriker_transactions)
             # Ordenar por fecha
@@ -2711,12 +2739,12 @@ def index():
             conn.close()
             
             # Obtener transacciones normales del usuario con paginación
-            transactions_data = get_user_transactions(session['user_db_id'], is_admin=False, page=page, per_page=per_page)
+            transactions_data = get_user_transactions(session['user_db_id'], is_admin=False, page=page, per_page=per_page, search=search_q)
             
             # Para usuario normal, también agregar transacciones pendientes de Blood Striker solo en la primera página
             # (Free Fire ID es 100% automático, no requiere aprobación manual)
             if page == 1:
-                user_bloodstriker_transactions = get_user_pending_bloodstriker_transactions(session['user_db_id'])
+                user_bloodstriker_transactions = [tx for tx in get_user_pending_bloodstriker_transactions(session['user_db_id']) if _match_search(tx)]
                 # Combinar transacciones normales con las de Blood Striker del usuario
                 all_user_transactions = list(transactions_data['transactions']) + list(user_bloodstriker_transactions)
                 # Ordenar por fecha
@@ -2749,6 +2777,8 @@ def index():
                          balance=balance, 
                          transactions=transactions_data['transactions'],
                          pagination=transactions_data['pagination'],
+                         search_q=search_q,
+                         total_results=(transactions_data.get('pagination') or {}).get('total'),
                          is_admin=is_admin,
                          wallet_notification_count=wallet_notification_count,
                          news_notification_count=news_notification_count,

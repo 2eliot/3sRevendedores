@@ -1426,3 +1426,32 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .compra-exitosa .detalles-info > p:first-child strong { color: var(--rc-green) !important; }
 .compra-exitosa .detalles-info > p.dx-control, .compra-exitosa .detalles-info > p.dx-ref { display: none !important; }
 .compra-exitosa .detalles-info > p.dx-id, .compra-exitosa .detalles-info > p.dx-player { color: var(--rc-green) !important; font-weight: 600 !important; }
+
+/* ---------- Buscador del historial ---------- */
+.tx-search {
+  position: relative;
+  display: flex; align-items: center; gap: 8px;
+  margin: -8px 0 16px;
+}
+.tx-search-ico { position: absolute; left: 12px; width: 16px; height: 16px; color: var(--rc-ash); pointer-events: none; }
+.tx-search input[type=search] {
+  flex: 1; min-width: 0; height: 42px;
+  padding: 0 34px 0 38px !important;
+  font-size: 14px !important; border-radius: 10px !important;
+}
+.tx-search input[type=search]::-webkit-search-cancel-button { display: none; }
+.tx-search-clear {
+  position: absolute; right: 96px; width: 26px; height: 26px;
+  display: grid; place-items: center; border-radius: 7px;
+  color: var(--rc-ash) !important; text-decoration: none !important; font-size: 18px; line-height: 1;
+}
+.tx-search-clear:hover { background: var(--rc-graphite); color: var(--rc-text) !important; }
+.tx-search-btn {
+  flex-shrink: 0; height: 42px; padding: 0 16px !important;
+  border-radius: 10px !important; border: 0 !important;
+  background: var(--rc-mist) !important; color: #07080a !important;
+  font-size: 14px !important; font-weight: 600 !important;
+}
+.tx-search-btn:hover { background: #fff !important; }
+.tx-search-info { margin: -6px 0 14px; font-size: 13px; color: var(--rc-ash); }
+.tx-search-info strong { color: var(--rc-text); }
