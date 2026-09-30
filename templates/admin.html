@@ -45,7 +45,11 @@
 
     <!-- Layout con sidebar lateral -->
     <div class="admin-shell">
-      <aside class="admin-sidebar">
+      <aside class="admin-sidebar" id="admin-sidebar">
+        <button type="button" class="sb-toggle" id="sb-toggle" aria-label="Plegar o desplegar menú" aria-expanded="true" title="Plegar / desplegar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path d="M15 10l-2 2 2 2"/></svg>
+          <span class="label">Plegar menú</span>
+        </button>
         <button class="side-tab-button active" data-tab="usuarios" onclick="showTab('usuarios', event)" aria-label="Usuarios">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="label">Usuarios</span>
         </button>
@@ -1755,6 +1759,26 @@
     if (clearBtn && userSearch) {
       clearBtn.addEventListener('click', function(){ userSearch.value = ''; filterUsersById(); userSearch.focus(); });
     }
+
+    // Barra lateral plegable (se recuerda en este navegador)
+    (function () {
+      var shell = document.querySelector('.admin-shell');
+      var btn = document.getElementById('sb-toggle');
+      if (!shell || !btn) return;
+      var pref = null;
+      try { pref = localStorage.getItem('adminSidebar'); } catch (e) {}
+      function apply(collapsed) {
+        shell.classList.toggle('sb-collapsed', collapsed);
+        btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        btn.querySelector('.label').textContent = collapsed ? 'Desplegar menú' : 'Plegar menú';
+      }
+      apply(pref ? pref === 'compact' : window.innerWidth < 992);
+      btn.addEventListener('click', function () {
+        var collapsed = !shell.classList.contains('sb-collapsed');
+        apply(collapsed);
+        try { localStorage.setItem('adminSidebar', collapsed ? 'compact' : 'full'); } catch (e) {}
+      });
+    })();
 
     // Sistema de pestañas
     function showTab(tabName, evt) {
