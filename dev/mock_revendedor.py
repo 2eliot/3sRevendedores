@@ -90,6 +90,25 @@ def order_status():
     return jsonify(ok=True, found=True, status=order['status'], order=order)
 
 
+@app.route('/api/v1/verify-name', methods=['POST'])
+def verify_name():
+    """Imita la API verify-name de Inefable. ID terminado en 404 = no existe."""
+    if (request.headers.get('X-API-Key') or '') != 'inef-prueba':
+        return jsonify(ok=False, error='invalid api key'), 401
+    d = request.get_json(silent=True) or {}
+    game = str(d.get('game') or '').lower()
+    alias = {'freefire': 'freefire', 'free-fire': 'freefire', 'inefable-bloodstriker': 'bs', 'bloodstrike': 'bs',
+             'blood-strike': 'bs', 'inefable-mobilelegends': 'ml', 'mobilelegends': 'ml', 'mobile-legends': 'ml'}
+    if game not in alias:
+        return jsonify(ok=False, error='unknown game'), 400
+    pid = str(d.get('player_id') or '')
+    if alias[game] == 'ml' and not d.get('player_id2'):
+        return jsonify(ok=False, error='player_id2 required'), 400
+    if pid.endswith('404'):
+        return jsonify(ok=False, error='not found'), 404
+    return jsonify(ok=True, player_id=pid, player_id2=d.get('player_id2'), player_name=f'Jugador_{pid[-4:]}', cached=False)
+
+
 if __name__ == '__main__':
     print('Proveedor FALSO escuchando en http://127.0.0.1:5055  (clave: %s)' % API_KEY)
     app.run(host='127.0.0.1', port=5055, debug=False)

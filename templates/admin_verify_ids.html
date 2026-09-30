@@ -28,7 +28,7 @@
     .vi-grid { display: grid; grid-template-columns: 120px 1fr; gap: 12px; margin-top: 14px; }
     .vi-field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
     .vi-field label, .vi-grid label { font-size: 13px; font-weight: 500; color: var(--rc-ash); }
-    .vi-field input, .vi-field textarea, .vi-grid input, .vi-grid select { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; }
+    .vi-field input, .vi-field textarea, .vi-field select, .vi-grid input, .vi-grid select { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; }
     .vi-field textarea { min-height: 70px; font-family: var(--rc-mono); font-size: 13px; resize: vertical; }
     .vi-hint { font-size: 12px; color: var(--rc-ash); margin: 0; }
     .vi-toggle { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 14px; color: var(--rc-text); }
@@ -44,6 +44,20 @@
     .vi-result.ok { color: var(--rc-green); } .vi-result.err { color: var(--rc-coral); }
     .vi-help { background: var(--rc-card); border: 1px dashed var(--rc-border-strong); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; color: var(--rc-ash); line-height: 1.6; }
     .vi-help pre { margin: 8px 0 0; white-space: pre-wrap; font-family: var(--rc-mono); font-size: 12px; color: var(--rc-mist); }
+    .vi-inef { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 16px; margin: 0 0 16px; }
+    .vi-inef-head { display: flex; align-items: center; gap: 10px; }
+    .vi-inef-head h2 { margin: 0; font-size: 16px; font-weight: 600; flex: 1; }
+    .vi-inef p { margin: 6px 0 12px; color: var(--rc-ash); font-size: 13px; line-height: 1.5; }
+    .vi-inef-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .vi-inef-row input[type=password], .vi-inef-row input[type=text] { flex: 1; min-width: 220px; padding: 10px 12px; font-size: 14px; font-family: var(--rc-mono); }
+    .vi-inef-row button { min-height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .vi-prov { display: inline-flex; gap: 4px; padding: 4px; margin-top: 14px; background: var(--rc-recess); border: 1px solid var(--rc-border); border-radius: 10px; }
+    .vi-prov label { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--rc-ash); cursor: pointer; }
+    .vi-prov input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .vi-prov label:has(input:checked) { background: var(--rc-graphite); color: var(--rc-text); }
+    .vi-prov label:has(input:focus-visible) { outline: 2px solid var(--rc-blue); }
+    .vi-card[data-prov="inefable"] .vi-custom, .vi-card[data-prov="custom"] .vi-inef-opts { display: none; }
+    .vi-warn { margin: 10px 0 0; font-size: 12px; color: var(--rc-yellow); }
     @media (max-width: 600px) { .vi-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -65,6 +79,22 @@
       <p>Configura la API que usa el botón <strong>Verificar ID</strong> en cada juego por ID. El botón solo aparece a los clientes cuando la verificación está <strong>activa</strong>. La API se llama desde tu servidor, así que las claves nunca llegan al navegador.</p>
     </div>
 
+    <section class="vi-inef" id="inefable">
+      <div class="vi-inef-head">
+        <h2>Inefable · verificación de nombres</h2>
+        {% if inefable_has_key %}<span class="vi-badge vi-on">API key guardada</span>{% else %}<span class="vi-badge vi-off">Sin API key</span>{% endif %}
+      </div>
+      <p>Pega tu API key de Inefable y listo: se activa sola en los juegos compatibles (<strong>Free Fire</strong>, <strong>Blood Strike</strong> y <strong>Mobile Legends</strong>, este último con Zone ID). Límite del proveedor: 30 consultas por minuto.</p>
+      <form method="POST" action="/admin/verificacion-ids">
+        <input type="hidden" name="accion" value="inefable_key">
+        <div class="vi-inef-row">
+          <input type="password" name="api_key" id="inef-key" placeholder="Pega aquí tu API key" value="{{ '********' if inefable_has_key else '' }}" autocomplete="off" aria-label="API key de Inefable">
+          <button type="submit" class="vi-save">Guardar API key</button>
+        </div>
+        <label class="vi-toggle"><input type="checkbox" name="auto" checked> Activar automáticamente en los juegos compatibles</label>
+      </form>
+    </section>
+
     <details class="vi-help">
       <summary style="cursor:pointer;color:var(--rc-text);font-weight:600;">Cómo rellenar los campos (ejemplo)</summary>
       <p style="margin:10px 0 0;">En la URL, el cuerpo y las cabeceras puedes usar <code>{player_id}</code>, <code>{player_id2}</code> (Zone ID / Server ID) y <code>{servidor}</code>. En <em>Ruta del nombre</em> indica dónde viene el nombre del jugador en la respuesta, separando con puntos.</p>
@@ -77,16 +107,36 @@ Ruta error:     message   (opcional: mensaje que devuelve el proveedor si falla)
 
     {% for g in games %}
     {% set c = g.cfg %}
-    <details class="vi-card" id="{{ g.key }}" {% if c.get('url') %}open{% endif %}>
+    {% set prov = c.get('provider') or ('custom' if c.get('url') or not g.inefable_guess else 'inefable') %}
+    <details class="vi-card" id="{{ g.key }}" data-prov="{{ prov }}" {% if c.get('url') or c.get('provider') %}open{% endif %}>
       <summary>
         <span class="vi-name">{{ g.nombre }}</span>
         {% if g.dual %}<span class="vi-badge vi-off">+ Zone ID</span>{% endif %}
         {% if g.servidor %}<span class="vi-badge vi-off">+ Servidor</span>{% endif %}
+        {% if c.get('provider') == 'inefable' %}<span class="vi-badge vi-off">Inefable</span>{% endif %}
         {% if c.get('enabled') %}<span class="vi-badge vi-on">Activa</span>{% else %}<span class="vi-badge vi-off">Sin configurar</span>{% endif %}
       </summary>
       <div class="vi-body">
         <form method="POST" action="/admin/verificacion-ids">
           <input type="hidden" name="game_key" value="{{ g.key }}">
+          <div class="vi-prov" role="radiogroup" aria-label="Proveedor">
+            <label><input type="radio" name="provider" value="inefable" {% if prov == 'inefable' %}checked{% endif %}>Inefable</label>
+            <label><input type="radio" name="provider" value="custom" {% if prov == 'custom' %}checked{% endif %}>API personalizada</label>
+          </div>
+          <div class="vi-inef-opts">
+            <div class="vi-field">
+              <label for="ig-{{ g.key }}">Juego en Inefable</label>
+              <select id="ig-{{ g.key }}" name="inefable_game">
+                {% set sel_code = c.get('inefable_game') or g.inefable_guess %}
+                <option value="">— Elegir —</option>
+                {% for code, label in inefable_games %}
+                <option value="{{ code }}" {% if sel_code == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% if not inefable_has_key %}<p class="vi-warn">Guarda primero tu API key de Inefable (arriba).</p>{% endif %}
+          </div>
+          <div class="vi-custom">
           <div class="vi-grid">
             <div>
               <label for="m-{{ g.key }}">Método</label>
@@ -118,6 +168,7 @@ Ruta error:     message   (opcional: mensaje que devuelve el proveedor si falla)
               <input id="e-{{ g.key }}" name="error_path" value="{{ c.get('error_path', '') }}" placeholder="message">
             </div>
           </div>
+          </div>
           <label class="vi-toggle"><input type="checkbox" name="enabled" {% if c.get('enabled') %}checked{% endif %}> Verificación activa (mostrar el botón a los clientes)</label>
           <div class="vi-actions">
             <button type="submit" class="vi-save">Guardar</button>
@@ -137,6 +188,11 @@ Ruta error:     message   (opcional: mensaje que devuelve el proveedor si falla)
   </div>
 
   <script>
+    document.querySelectorAll('.vi-card').forEach(function (card) {
+      card.querySelectorAll('input[name=provider]').forEach(function (r) {
+        r.addEventListener('change', function () { card.dataset.prov = r.value; });
+      });
+    });
     document.querySelectorAll('.vi-test-row').forEach(function (row) {
       row.querySelector('.vi-test').addEventListener('click', async function () {
         const out = row.querySelector('.vi-result');
