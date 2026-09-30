@@ -810,3 +810,92 @@ body:has(#menu-juegos.visible)::after {
   color: var(--rc-text) !important;
   font-weight: 600 !important;
 }
+
+/* ============================================================
+   LISTAS DESPLEGABLES (ver static/ui-select.js)
+   ============================================================ */
+select:not([multiple]):not([size]) {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c9c9d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 16px 16px !important;
+  padding-right: 38px !important;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+select:not([multiple]):not([size]):hover { border-color: var(--rc-border-strong) !important; }
+select.ui-select-open {
+  border-color: var(--rc-ash) !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E") !important;
+}
+
+.ui-select-panel {
+  position: fixed;
+  z-index: 10050;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 6px;
+  background: #0c0d0f;
+  border: 1px solid var(--rc-border-strong);
+  border-radius: 12px;
+  box-shadow: rgba(255, 255, 255, 0.05) 0 1px 0 0 inset, rgba(0, 0, 0, 0.55) 0 16px 40px -8px;
+  font-family: var(--rc-font);
+  animation: ui-pop 0.14s var(--ui-ease);
+  transform-origin: top;
+}
+.ui-select-panel.is-up { transform-origin: bottom; }
+.ui-select-search {
+  flex-shrink: 0;
+  height: 36px !important;
+  margin: 0 0 6px !important;
+  padding: 0 10px 0 32px !important;
+  font-size: 14px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239c9c9d' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 10px center / 14px 14px !important;
+}
+.ui-select-list { overflow-y: auto; overscroll-behavior: contain; outline: none; }
+.ui-select-group {
+  padding: 10px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rc-ash);
+}
+.ui-select-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 34px 8px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--rc-mist);
+  cursor: pointer;
+  user-select: none;
+}
+.ui-select-option.is-grouped { padding-left: 18px; }
+.ui-select-option.is-active { background: rgba(255, 255, 255, 0.07); color: var(--rc-text); }
+.ui-select-option.is-placeholder { color: var(--rc-ash); }
+.ui-select-option.is-selected { color: var(--rc-text); font-weight: 600; }
+.ui-select-option.is-selected::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  background: var(--rc-coral);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.ui-select-option.is-disabled { color: var(--rc-smoke); cursor: not-allowed; }
+.ui-select-label { overflow-wrap: anywhere; }
+.ui-select-empty { padding: 12px 10px; font-size: 13px; color: var(--rc-ash); }
+.ui-select-option[hidden], .ui-select-group[hidden], .ui-select-empty[hidden] { display: none !important; }
