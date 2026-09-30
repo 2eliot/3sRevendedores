@@ -504,9 +504,18 @@ def init_db():
         except Exception:
             pass
 
-        # Columna bono_activo: si True y recarga Binance >= 1000$, se aplica bono del 1.5%
+        # Columna bono_activo: si True y la recarga Binance >= bono_minimo, se aplica bono_porcentaje
         try:
             cursor.execute("ALTER TABLE usuarios ADD COLUMN bono_activo BOOLEAN DEFAULT FALSE")
+        except Exception:
+            pass
+        # Bono configurable por usuario (defaults = comportamiento anterior: 1.5% desde $1000)
+        try:
+            cursor.execute("ALTER TABLE usuarios ADD COLUMN bono_porcentaje REAL DEFAULT 1.5")
+        except Exception:
+            pass
+        try:
+            cursor.execute("ALTER TABLE usuarios ADD COLUMN bono_minimo REAL DEFAULT 1000")
         except Exception:
             pass
     
@@ -2015,15 +2024,18 @@ def verificar_recarga_binance(recarga_id, _binance_tx_kwargs=None):
                     conn2.close()
                     return {'status': 'ya_procesada', 'message': 'Esta transacción ya fue procesada'}
 
-                # Calcular bono 1.5% si el usuario tiene bono_activo y monto >= 1000
+                # Calcular bono del usuario (porcentaje y recarga mínima configurables por usuario)
                 try:
                     user_row = conn2.execute(
-                        'SELECT bono_activo FROM usuarios WHERE id = ?', (usuario_id,)
+                        'SELECT bono_activo, bono_porcentaje, bono_minimo FROM usuarios WHERE id = ?', (usuario_id,)
                     ).fetchone()
-                    if user_row and user_row['bono_activo'] and monto_esperado >= 1000:
-                        bonus = round(monto_esperado * 0.015, 2)
-                        monto_total = monto_esperado + bonus
-                        logger.info(f"Recarga {recarga_id}: bono_activo=True, monto={monto_esperado} >= 1000, bono={bonus}, total={monto_total}")
+                    if user_row and user_row['bono_activo']:
+                        bono_pct = float(user_row['bono_porcentaje'] if user_row['bono_porcentaje'] is not None else 1.5)
+                        bono_min = float(user_row['bono_minimo'] if user_row['bono_minimo'] is not None else 1000)
+                        if bono_pct > 0 and monto_esperado >= bono_min:
+                            bonus = round(monto_esperado * bono_pct / 100, 2)
+                            monto_total = monto_esperado + bonus
+                            logger.info(f"Recarga {recarga_id}: bono {bono_pct}% (min ${bono_min}), monto={monto_esperado}, bono={bonus}, total={monto_total}")
                 except Exception as e_bonus:
                     logger.warning(f"Recarga {recarga_id}: error consultando bono_activo: {e_bonus}")
 
@@ -4678,13 +4690,57 @@ def admin_toggle_bono_activo():
             conn.execute('UPDATE usuarios SET bono_activo = ? WHERE id = ?', (new_val, user_id))
             conn.commit()
             estado = 'ACTIVADO' if new_val else 'DESACTIVADO'
-            flash(f'Bono 1.5% para usuario ID {user_id}: {estado}', 'success')
+            flash(f'Bono para usuario ID {user_id}: {estado}', 'success')
         else:
             flash('Usuario no encontrado', 'error')
         conn.close()
     else:
         flash('ID de usuario inválido', 'error')
-    
+
+    return redirect('/admin')
+
+
+@app.route('/admin/set_bono', methods=['POST'])
+def admin_set_bono():
+    """Configura el bono de recarga de un usuario: porcentaje y recarga mínima (0 = todas)."""
+    if not session.get('is_admin'):
+        flash('Acceso denegado. Solo administradores.', 'error')
+        return redirect('/auth')
+
+    user_id = request.form.get('user_id')
+    if not user_id:
+        flash('ID de usuario inválido', 'error')
+        return redirect('/admin')
+
+    conn = get_db_connection()
+    try:
+        if not conn.execute('SELECT 1 FROM usuarios WHERE id = ?', (user_id,)).fetchone():
+            flash('Usuario no encontrado', 'error')
+            return redirect('/admin')
+
+        if request.form.get('accion') == 'desactivar':
+            conn.execute('UPDATE usuarios SET bono_activo = ? WHERE id = ?', (False, user_id))
+            conn.commit()
+            flash(f'Bono para usuario ID {user_id}: DESACTIVADO', 'success')
+            return redirect('/admin')
+
+        try:
+            porcentaje = round(float(request.form.get('bono_porcentaje', '')), 2)
+            minimo = round(float(request.form.get('bono_minimo', '0') or 0), 2)
+        except ValueError:
+            flash('Porcentaje o monto mínimo inválido', 'error')
+            return redirect('/admin')
+        if not (0 < porcentaje <= 100) or minimo < 0:
+            flash('El bono debe estar entre 0.01% y 100%, y el mínimo no puede ser negativo', 'error')
+            return redirect('/admin')
+
+        conn.execute('UPDATE usuarios SET bono_activo = ?, bono_porcentaje = ?, bono_minimo = ? WHERE id = ?',
+                     (True, porcentaje, minimo, user_id))
+        conn.commit()
+        cuando = 'en todas las recargas' if minimo == 0 else f'en recargas desde ${minimo:.2f}'
+        flash(f'Bono de {porcentaje:g}% activado para usuario ID {user_id} {cuando}', 'success')
+    finally:
+        conn.close()
     return redirect('/admin')
 
 @app.route('/admin/change_password', methods=['POST'])

@@ -140,12 +140,14 @@
                       <span class="um-chip-dot"></span>{{ 'Sin ganancia' if user.sin_ganancia else 'Con ganancia' }}
                     </button>
                   </form>
-                  <form method="POST" action="/admin/toggle_bono_activo">
-                    <input type="hidden" name="user_id" value="{{ user.id }}">
-                    <button type="submit" class="um-chip {{ 'is-on' if user.bono_activo else 'is-off' }}" aria-pressed="{{ 'true' if user.bono_activo else 'false' }}" title="Si está activo y la recarga Binance es >= $1000, se aplica un bono del 1.5% sobre el monto recargado">
-                      <span class="um-chip-dot"></span>Bono 1.5% {{ 'ON' if user.bono_activo else 'OFF' }}
-                    </button>
-                  </form>
+                  {% set bono_pct = user.bono_porcentaje if user.bono_porcentaje is not none else 1.5 %}
+                  {% set bono_min = user.bono_minimo if user.bono_minimo is not none else 1000 %}
+                  <button type="button" class="um-chip {{ 'is-on' if user.bono_activo else 'is-off' }}" data-um-open="bono"
+                          data-user-id="{{ user.id }}" data-user-name="{{ user.nombre }} {{ user.apellido }}" data-user-saldo="{{ "%.2f"|format(user.saldo) }}"
+                          data-bono-activo="{{ '1' if user.bono_activo else '0' }}" data-bono-pct="{{ '%g'|format(bono_pct) }}" data-bono-min="{{ '%g'|format(bono_min) }}"
+                          title="Configurar el bono que recibe este cliente en sus recargas con Binance Pay">
+                    <span class="um-chip-dot"></span>{% if user.bono_activo %}Bono {{ '%g'|format(bono_pct) }}% · {{ 'todas' if bono_min == 0 else 'desde $' ~ ('%g'|format(bono_min)) }}{% else %}Bono OFF{% endif %}
+                  </button>
                 </div>
 
                 <div class="um-actions">
@@ -216,6 +218,25 @@
               <div class="um-dlg-actions">
                 <button type="button" class="um-dlg-cancel" data-um-close>Cancelar</button>
                 <button type="submit" class="um-dlg-submit">Cambiar clave</button>
+              </div>
+            </form>
+            <form method="POST" action="/admin/set_bono" class="um-dlg-form" data-um-form="bono">
+              <input type="hidden" name="user_id" value="">
+              <div class="um-dlg-row">
+                <div>
+                  <label for="um-dlg-bono-pct">Bono (%)</label>
+                  <input type="number" id="um-dlg-bono-pct" name="bono_porcentaje" placeholder="1.5" step="0.01" min="0.01" max="100" inputmode="decimal" required>
+                </div>
+                <div>
+                  <label for="um-dlg-bono-min">Recarga mínima (USD)</label>
+                  <input type="number" id="um-dlg-bono-min" name="bono_minimo" placeholder="0" step="0.01" min="0" inputmode="decimal" required>
+                </div>
+              </div>
+              <p class="um-dlg-hint" id="um-dlg-bono-preview">Se suma automáticamente en cada recarga con Binance Pay. Mínimo 0 = en todas las recargas.</p>
+              <div class="um-dlg-actions">
+                <button type="submit" class="um-dlg-cancel um-dlg-off" name="accion" value="desactivar" formnovalidate id="um-dlg-bono-off">Desactivar bono</button>
+                <button type="button" class="um-dlg-cancel" data-um-close>Cancelar</button>
+                <button type="submit" class="um-dlg-submit">Guardar bono</button>
               </div>
             </form>
           </dialog>
@@ -1663,7 +1684,7 @@
 
       // Ventana emergente de acciones (crédito / saldo / clave)
       const dlg = document.getElementById('um-dialog');
-      const TITULOS = { credit: 'Agregar crédito', balance: 'Fijar saldo', password: 'Cambiar clave' };
+      const TITULOS = { credit: 'Agregar crédito', balance: 'Fijar saldo', password: 'Cambiar clave', bono: 'Bono de recarga' };
       if (dlg) {
         section.addEventListener('click', function(e) {
           const opener = e.target.closest('[data-um-open]');
@@ -1679,10 +1700,32 @@
             f.querySelector('input[name=user_id]').value = opener.dataset.userId;
             f.querySelectorAll('input:not([type=hidden])').forEach(function(i) { i.disabled = !activo; });
           });
+          if (action === 'bono') {
+            const activo = opener.dataset.bonoActivo === '1';
+            document.getElementById('um-dlg-bono-pct').value = opener.dataset.bonoPct;
+            document.getElementById('um-dlg-bono-min').value = activo ? opener.dataset.bonoMin : '0';
+            document.getElementById('um-dlg-bono-off').hidden = !activo;
+            actualizarVistaBono();
+          }
           dlg.showModal();
           const campo = dlg.querySelector('.um-dlg-form:not([hidden]) input:not([type=hidden])');
           if (campo) campo.focus();
         });
+        // Vista previa del bono: ejemplo con una recarga de $100 (o el mínimo si es mayor)
+        function actualizarVistaBono() {
+          const pct = parseFloat(document.getElementById('um-dlg-bono-pct').value) || 0;
+          const min = parseFloat(document.getElementById('um-dlg-bono-min').value) || 0;
+          const ej = Math.max(100, min);
+          const cuando = min > 0 ? 'Solo en recargas desde $' + min.toFixed(2) + '.' : 'En todas las recargas.';
+          document.getElementById('um-dlg-bono-preview').textContent = pct > 0
+            ? cuando + ' Ejemplo: recarga $' + ej.toFixed(2) + ' → recibe $' + (ej * (1 + pct / 100)).toFixed(2) + ' (+$' + (ej * pct / 100).toFixed(2) + ').'
+            : 'Indica un porcentaje mayor que 0.';
+        }
+        ['um-dlg-bono-pct', 'um-dlg-bono-min'].forEach(function(id) {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('input', actualizarVistaBono);
+        });
+
         dlg.addEventListener('click', function(e) {
           if (e.target.closest('[data-um-close]')) { dlg.close(); return; }
           if (e.target !== dlg) return;
@@ -1694,7 +1737,7 @@
       // Estado de carga: evita doble envío mientras el servidor responde
       section.addEventListener('submit', function(e) {
         if (e.defaultPrevented) return; // cancelado por confirm()/validación
-        const btn = e.target.querySelector('button[type=submit]');
+        const btn = e.submitter || e.target.querySelector('button[type=submit]');
         if (!btn) return;
         btn.classList.add('is-loading');
         btn.setAttribute('aria-busy', 'true');

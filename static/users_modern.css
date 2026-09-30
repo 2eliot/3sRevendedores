@@ -570,3 +570,17 @@
 .um-actions { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 .um-action-primary { grid-column: 1 / -1; }
 .um-action { font-size: 0.8rem; }
+
+/* ---------- Chips centrados + formulario de bono ---------- */
+.um-toggles { justify-content: center; }
+.um-dlg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.um-dlg-row > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.um-dlg-row input { width: 100%; }
+.um-dlg-off { margin-right: auto; color: var(--um-danger) !important; border-color: rgba(255, 99, 99, 0.35) !important; }
+.um-dlg-off:hover { background: var(--um-danger-soft) !important; }
+.um-dlg-off[hidden] { display: none; }
+@media (max-width: 420px) {
+  .um-dlg-row { grid-template-columns: 1fr; }
+  .um-dlg-actions { flex-wrap: wrap; }
+  .um-dlg-off { width: 100%; order: 3; }
+}
