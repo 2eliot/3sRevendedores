@@ -158,9 +158,10 @@
   }
 
   function row(dl, label, value, cls) {
-    dl.appendChild(el('dt', null, label));
-    var dd = el('dd', cls || null, value);
-    dl.appendChild(dd);
+    var r = el('div', 'idg-dlg-row');
+    r.appendChild(el('dt', null, label));
+    r.appendChild(el('dd', cls || null, value));
+    dl.appendChild(r);
   }
 
   function openConfirm(form) {

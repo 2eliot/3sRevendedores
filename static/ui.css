@@ -1299,3 +1299,27 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .idg-dlg-actions { justify-content: center !important; }
 /* El importe va envuelto en <span class="money">: que herede el estilo del total */
 .idg-dlg-total strong .money, .idg-pkg-price .money, .cost .money { color: inherit !important; font-size: inherit !important; font-family: inherit; }
+
+/* Confirmación: cada dato en su contenedor */
+.idg-dlg-rows {
+  display: flex !important;
+  flex-direction: column;
+  gap: 6px !important;
+  width: auto !important;
+  max-width: none !important;
+  margin: 10px 20px 0 !important;
+  padding: 0 !important;
+}
+.idg-dlg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  background: var(--rc-recess);
+  border: 1px solid var(--rc-border);
+  border-radius: 10px;
+}
+.idg-dlg-row dt { margin: 0 !important; font-size: 13px !important; color: var(--rc-ash); text-align: left !important; }
+.idg-dlg-row dd { margin: 0 !important; font-size: 14px !important; text-align: right !important; }
+.idg-dlg-total { max-width: none !important; margin: 8px 20px 0 !important; }
