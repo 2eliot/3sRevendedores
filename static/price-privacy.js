@@ -3,8 +3,7 @@
    - Preferencia guardada en este navegador (localStorage).
    - Se aplica antes de pintar (clase en <html>) para evitar parpadeos.
    - Envuelve cada importe "$123.45" en <span class="money"> y, en modo
-     oculto, lo muestra como "•••". Las filas de precio conocidas se
-     ocultan por CSS (ver .hide-prices en ui.css).
+     oculto, lo muestra como "$****" (también dentro de las opciones).
    - Solo visual: no cambia valores de formularios ni datos.
    ============================================================ */
 (function () {
@@ -12,6 +11,7 @@
   var KEY = 'ocultarPrecios';
   var MONEY = /\$\s?\d[\d.,]*/g;
   var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, OPTION: 1, SELECT: 1, TITLE: 1, NOSCRIPT: 1 };
+  var MASK = '$****';
   var root = document.documentElement;
 
   function isOn() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
@@ -39,7 +39,7 @@
       var span = document.createElement('span');
       span.className = 'money';
       span.setAttribute('data-v', m[0]);
-      span.textContent = isOn() ? '•••' : m[0];
+      span.textContent = isOn() ? MASK : m[0];
       frag.appendChild(span);
       last = m.index + m[0].length;
     }
@@ -56,8 +56,8 @@
     list.forEach(wrapText);
   }
 
-  function stripMoney(text) {
-    return text.replace(/\s*\/?\s*\$\s?\d[\d.,]*/g, '').replace(/\s{2,}/g, ' ').trim();
+  function maskMoney(text) {
+    return text.replace(/\$\s?\d[\d.,]*/g, MASK);
   }
 
   function applyOptions() {
@@ -68,7 +68,7 @@
         if (!MONEY.test(o.text)) return;
         o.dataset.fullText = o.text;
       }
-      var want = hide ? stripMoney(o.dataset.fullText) : o.dataset.fullText;
+      var want = hide ? maskMoney(o.dataset.fullText) : o.dataset.fullText;
       if (o.text !== want) o.text = want;
     });
   }
@@ -78,7 +78,7 @@
     var hide = isOn();
     root.classList.toggle('hide-prices', hide);
     document.querySelectorAll('.money').forEach(function (s) {
-      var want = hide ? '•••' : s.getAttribute('data-v');
+      var want = hide ? MASK : s.getAttribute('data-v');
       if (s.textContent !== want) s.textContent = want;
     });
     applyOptions();

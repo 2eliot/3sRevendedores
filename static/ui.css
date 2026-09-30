@@ -1167,14 +1167,8 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .price-toggle-input:focus-visible + .price-toggle-switch { outline: 2px solid var(--rc-mist); outline-offset: 2px; }
 
 /* Importes sustituidos por ••• */
-.hide-prices .money { letter-spacing: 0.1em; color: var(--rc-ash) !important; }
-/* Filas de precio que desaparecen del todo en recibos y compras */
-.hide-prices .ffid-voucher-amount,
-.hide-prices .package-cost .cost,
-.hide-prices .total-price,
-.hide-prices .idg-pkg-price,
-.hide-prices .idg-dlg-total,
-.hide-prices .idg-dlg-saldo { display: none !important; }
+.hide-prices .money { letter-spacing: 0.04em; }
+/* (Los importes se muestran como $****; no se ocultan filas) */
 
 /* ---------- Paquetes compactos: siempre 4 por fila, altura según contenido ---------- */
 .idg-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 8px !important; }

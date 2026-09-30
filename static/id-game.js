@@ -167,7 +167,7 @@
   function openConfirm(form) {
     var f = form._idg, d = getDialog();
     var opt = f.select.options[f.select.selectedIndex];
-    var p = parseOption(opt ? opt.textContent : '');
+    var p = parseOption(opt ? (opt.dataset.fullText || opt.textContent) : '');
     d.querySelector('.idg-dlg-game').textContent = form.dataset.gameName || '';
     var dl = d.querySelector('.idg-dlg-rows');
     dl.innerHTML = '';
