@@ -650,38 +650,15 @@
 
       <!-- Pestaña de Precios -->
       <div id="tab-precios" class="tab-content">
-        <section class="prices-section">
-          <div class="price-selector-container">
-            <div class="form-row">
-              <div class="form-group">
-                <label for="price_game_select">🎮 Juego:</label>
-                <select id="price_game_select">
-                  {% for dg in dyn_games %}
-                  <option value="dyn_{{ dg.slug }}">{{ dg.nombre }}</option>
-                  {% endfor %}
-                </select>
-                <button type="button" class="btn btn-secondary" style="margin-left:8px;padding:8px 12px;font-size:12px;" onclick="document.getElementById('crear-juego-form').style.display=document.getElementById('crear-juego-form').style.display==='none'?'block':'none'">+ Crear Juego</button>
-              </div>
-              <div class="form-group" style="display:flex;align-items:flex-end;gap:8px;">
-                <form method="POST" action="/admin/toggle_game" onsubmit="document.getElementById('tg_game').value = document.getElementById('price_game_select').value; document.getElementById('tg_active').value = '1';">
-                  <input type="hidden" name="game" id="tg_game" value="freefire_global">
-                  <input type="hidden" name="active" id="tg_active" value="1">
-                  <button type="submit" class="btn btn-success">Activar</button>
-                </form>
-                <form method="POST" action="/admin/toggle_game" onsubmit="document.getElementById('tg_game2').value = document.getElementById('price_game_select').value; document.getElementById('tg_active2').value = '0';">
-                  <input type="hidden" name="game" id="tg_game2" value="freefire_global">
-                  <input type="hidden" name="active" id="tg_active2" value="0">
-                  <button type="submit" class="btn btn-danger">Desactivar</button>
-                </form>
-                <button type="button" id="btn-edit-dyn-game" class="btn btn-secondary" style="display:none;padding:8px 12px;font-size:12px;" onclick="editarJuegoDinamico()">Editar Juego</button>
-                <button type="button" id="btn-delete-dyn-game" class="btn btn-danger" style="display:none;padding:8px 12px;font-size:12px;" onclick="eliminarJuegoDinamico()">Eliminar Juego</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Formulario crear juego dinámico (oculto por defecto) -->
-          <div id="crear-juego-form" style="display:none;background:rgba(255, 255, 255, 0.021);border:1px solid rgba(255, 255, 255, 0.07);border-radius:10px;padding:14px;margin-bottom:14px;">
-            <h4 id="cj-title" style="color:#ffffff;margin:0 0 10px;">+ Crear Juego Dinámico</h4>
+        <section class="prices-section pr-wrap">
+          <!-- Crear juego nuevo: desplegable, arriba de todo -->
+          <details id="crear-juego-form" class="pr-create">
+            <summary>
+              <span class="pr-create-ico" aria-hidden="true">+</span>
+              <span id="cj-title">Crear juego nuevo</span>
+              <span class="pr-create-hint">ID, PIN o tarjeta con stock local</span>
+            </summary>
+            <div class="pr-create-body">
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
               <div><label style="color:#9c9c9d;font-size:11px;display:block;">Nombre *</label>
                 <input id="cj-nombre" placeholder="Ej: Mobile Legends" style="width:100%;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e6e6e6;font-size:13px;"></div>
@@ -713,14 +690,38 @@
               <button type="button" id="cj-cancel-edit" class="btn btn-secondary" style="display:none;padding:8px 16px;font-size:13px;" onclick="cancelarEdicionJuegoDinamico()">Cancelar</button>
               <span id="cj-status" style="font-size:12px;color:#9c9c9d;"></span>
             </div>
+            </div>
+          </details>
+
+          <!-- Juego seleccionado y acciones -->
+          <div class="price-selector-container pr-toolbar">
+            <div class="pr-select">
+                <label for="price_game_select">🎮 Juego:</label>
+                <select id="price_game_select">
+                  {% for dg in dyn_games %}
+                  <option value="dyn_{{ dg.slug }}">{{ dg.nombre }}</option>
+                  {% endfor %}
+                </select>
+            </div>
+            <div class="pr-actions">
+                <form method="POST" action="/admin/toggle_game" onsubmit="document.getElementById('tg_game').value = document.getElementById('price_game_select').value; document.getElementById('tg_active').value = '1';">
+                  <input type="hidden" name="game" id="tg_game" value="freefire_global">
+                  <input type="hidden" name="active" id="tg_active" value="1">
+                  <button type="submit" class="btn btn-success">Activar</button>
+                </form>
+                <form method="POST" action="/admin/toggle_game" onsubmit="document.getElementById('tg_game2').value = document.getElementById('price_game_select').value; document.getElementById('tg_active2').value = '0';">
+                  <input type="hidden" name="game" id="tg_game2" value="freefire_global">
+                  <input type="hidden" name="active" id="tg_active2" value="0">
+                  <button type="submit" class="btn btn-danger">Desactivar</button>
+                </form>
+                <button type="button" id="btn-edit-dyn-game" class="btn btn-secondary" style="display:none;padding:8px 12px;font-size:12px;" onclick="editarJuegoDinamico()">Editar Juego</button>
+                <button type="button" id="btn-delete-dyn-game" class="btn btn-danger" style="display:none;padding:8px 12px;font-size:12px;" onclick="eliminarJuegoDinamico()">Eliminar Juego</button>
+            </div>
           </div>
 
           <form id="batch-price-form" method="POST" action="/admin/save_prices_batch">
             <input type="hidden" name="game" id="batch_game" value="freefire_global">
             <input type="hidden" name="payload" id="batch_payload" value="[]">
-
-            <div id="price-package-list" class="package-list"></div>
-
             <!-- Botón añadir paquete (solo para juegos dinámicos) -->
             <div id="add-pkg-area" style="display:none;margin-top:10px;padding:10px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.1);border-radius:8px;">
               <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:end;">
@@ -732,7 +733,7 @@
               </div>
               <span id="add-pkg-status" style="font-size:11px;color:#9c9c9d;margin-top:4px;display:block;"></span>
             </div>
-
+            <div id="price-package-list" class="package-list"></div>
             <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
               <button type="button" class="btn btn-update-price" onclick="saveAllPrices()">Guardar Cambios</button>
             </div>
@@ -1496,7 +1497,7 @@
       const title = document.getElementById('cj-title');
       const submitBtn = document.getElementById('cj-submit-btn');
       const cancelBtn = document.getElementById('cj-cancel-edit');
-      if (title) title.textContent = editing ? 'Editar Juego Dinámico' : '+ Crear Juego Dinámico';
+      if (title) title.textContent = editing ? 'Editar juego' : 'Crear juego nuevo';
       if (submitBtn) submitBtn.textContent = editing ? 'Guardar Cambios' : 'Crear';
       if (cancelBtn) cancelBtn.style.display = editing ? 'inline-block' : 'none';
     }
@@ -1521,7 +1522,7 @@
       const game = dynGamesData[key];
       if (!game) return;
       _editingDynGameId = game.id;
-      document.getElementById('crear-juego-form').style.display = 'block';
+      document.getElementById('crear-juego-form').open = true;
       document.getElementById('cj-nombre').value = game.nombre || '';
       document.getElementById('cj-productid').value = game.gamepoint_product_id || '';
       document.getElementById('cj-modo').value = game.modo || 'id';
@@ -1536,7 +1537,7 @@
 
     function cancelarEdicionJuegoDinamico() {
       resetCrearJuegoForm();
-      document.getElementById('crear-juego-form').style.display = 'none';
+      document.getElementById('crear-juego-form').open = false;
     }
 
     async function crearJuegoDinamico() {

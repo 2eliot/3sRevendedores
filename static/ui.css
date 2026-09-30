@@ -1688,3 +1688,49 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .pv-row { grid-template-columns: 20px minmax(0, 1.4fr) 28px minmax(0, 1fr) 86px 44px; }
 .pv-badge { justify-self: end; }
 @media (max-width: 600px) { .pv-row { grid-template-columns: 20px minmax(0, 1fr) 28px 86px; } }
+
+/* ============================================================
+   ADMIN · PRECIOS
+   ============================================================ */
+.pr-wrap { display: flex !important; flex-direction: column; gap: 14px; }
+/* Crear juego (desplegable) */
+.pr-create { background: var(--rc-card); border: 1px dashed var(--rc-border-strong); border-radius: 14px; }
+.pr-create[open] { border-style: solid; }
+.pr-create > summary { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.pr-create > summary::-webkit-details-marker { display: none; }
+.pr-create-ico { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--rc-mist); color: #07080a; font-weight: 700; font-size: 16px; transition: transform .2s; }
+.pr-create[open] .pr-create-ico { transform: rotate(45deg); }
+#cj-title { font-weight: 600; font-size: 14px; color: var(--rc-text); }
+.pr-create-hint { margin-left: auto; font-size: 12px; color: var(--rc-ash); }
+.pr-create-body { padding: 4px 14px 14px; border-top: 1px solid var(--rc-border); }
+.pr-create-body input, .pr-create-body select { min-height: 38px; }
+/* Barra del juego */
+.pr-toolbar { display: flex !important; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px !important; margin: 0 !important; background: var(--rc-card) !important; border: 1px solid var(--rc-border) !important; border-radius: 14px !important; }
+.pr-select { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 220px; }
+.pr-select label { font-size: 12px !important; color: var(--rc-ash) !important; margin: 0 !important; }
+.pr-select select { width: 100%; min-height: 40px; }
+.pr-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pr-actions form { margin: 0; }
+.pr-actions .btn { min-height: 36px !important; padding: 0 14px !important; font-size: 13px !important; font-weight: 600 !important; border-radius: 9px !important; margin: 0 !important; }
+/* Barra añadir paquete a todo el ancho, encima de los paquetes */
+#add-pkg-area { margin: 0 0 12px !important; padding: 12px !important; background: var(--rc-recess) !important; border: 1px dashed var(--rc-border-strong) !important; border-radius: 12px !important; }
+#add-pkg-area > div { grid-template-columns: 2fr 1fr auto !important; gap: 10px !important; }
+#add-pkg-area input { min-height: 38px; }
+#add-pkg-area .btn { min-height: 38px !important; padding: 0 16px !important; }
+/* Paquetes compactos */
+#price-package-list { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important; gap: 8px !important; }
+#price-package-list .package-card { padding: 10px !important; border-radius: 12px !important; gap: 6px; }
+#price-package-list .package-card-header { margin: 0 0 4px !important; padding: 0 !important; }
+#price-package-list .package-title { font-size: 12px !important; font-weight: 600 !important; color: var(--rc-ash) !important; font-family: var(--rc-mono); }
+#price-package-list .package-form { display: flex !important; flex-direction: column; gap: 3px; margin: 0 0 6px !important; padding: 0 !important; }
+#price-package-list .package-form label { font-size: 11px !important; color: var(--rc-ash) !important; margin: 0 !important; }
+#price-package-list input { min-height: 32px !important; padding: 0 8px !important; font-size: 13px !important; }
+#price-package-list .profit-info { font-size: 11px !important; margin-top: 3px !important; }
+#batch-price-form > div:last-child { margin-top: 12px !important; }
+@media (max-width: 600px) {
+  #add-pkg-area > div { grid-template-columns: 1fr !important; }
+  .pr-actions { width: 100%; }
+  .pr-create-hint { display: none; }
+}
+#price-package-list .package-card, #price-package-list .package-card * { box-sizing: border-box; min-width: 0; }
+#price-package-list input { width: 100% !important; max-width: 100% !important; }
