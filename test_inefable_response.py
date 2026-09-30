@@ -4,6 +4,7 @@ Script para probar la respuesta real de la API de Inefable
 y ver exactamente qué está devolviendo
 """
 
+import os
 import requests
 import json
 import re
@@ -14,7 +15,7 @@ def test_inefable_api():
     # Configuración de la API
     base_url = "https://inefableshop.net/conexion_api/api.php"
     usuario = "inefableshop"
-    clave = "321Naruto%"
+    clave = os.environ.get("INEFABLE_CLAVE", "")
     
     # Parámetros para la prueba
     params = {

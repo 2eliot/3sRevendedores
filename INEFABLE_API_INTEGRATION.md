@@ -13,7 +13,7 @@ Configura las siguientes variables de entorno para habilitar la API externa:
 ```bash
 # Credenciales de Inefable Shop
 INEFABLE_USUARIO=aquiUsuario
-INEFABLE_CLAVE=321Naruto%
+INEFABLE_CLAVE=tu_clave
 
 # Opcional: Configuración avanzada
 INEFABLE_TIMEOUT=30
@@ -26,7 +26,7 @@ Agrega estas líneas a tu archivo `.env`:
 ```env
 # API Externa Inefable Shop
 INEFABLE_USUARIO=aquiUsuario
-INEFABLE_CLAVE=321Naruto%
+INEFABLE_CLAVE=tu_clave
 INEFABLE_TIMEOUT=30
 ```
 
@@ -106,7 +106,7 @@ https://inefableshop.net/conexion_api/api.php
 
 ### Ejemplo de Solicitud
 ```
-GET https://inefableshop.net/conexion_api/api.php?action=recarga&usuario=aquiUsuario&clave=321Naruto%&tipo=recargaPinFreefirebs&monto=1&numero=0
+GET https://inefableshop.net/conexion_api/api.php?action=recarga&usuario=aquiUsuario&clave=TU_CLAVE&tipo=recargaPinFreefirebs&monto=1&numero=0
 ```
 
 ### Respuestas Esperadas

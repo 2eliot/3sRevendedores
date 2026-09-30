@@ -1099,6 +1099,12 @@
   </script>
 
   <script>
+    // Escapa texto (nombres, correos, IDs, mensajes de proveedores) antes de meterlo en innerHTML
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
     // Auto-ocultar mensajes flash después de 2 segundos
     setTimeout(function() {
       const flashMessages = document.querySelector('.flash-messages-main');
@@ -1137,7 +1143,7 @@
 
             // Header: nombre + estado
             html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
-              '<div><strong style="font-size:15px;">' + a.nombre + '</strong> <span style="color:' + estadoColor + ';font-size:12px;font-weight:600;margin-left:8px;">' + estadoText + '</span></div>' +
+              '<div><strong style="font-size:15px;">' + esc(a.nombre) + '</strong> <span style="color:' + estadoColor + ';font-size:12px;font-weight:600;margin-left:8px;">' + estadoText + '</span></div>' +
               '<span style="color:var(--rc-ash);font-size:11px;">ID: ' + a.id + '</span>' +
             '</div>';
 
@@ -1147,8 +1153,8 @@
             // Usuario vinculado
             html += '<div>' +
               '<span style="color:var(--rc-ash);font-size:11px;display:block;">Usuario vinculado</span>' +
-              '<strong>' + a.usuario_nombre + '</strong><br>' +
-              '<small style="color:var(--rc-ash);">' + a.usuario_correo + ' (ID: ' + a.usuario_id + ')</small>' +
+              '<strong>' + esc(a.usuario_nombre) + '</strong><br>' +
+              '<small style="color:var(--rc-ash);">' + esc(a.usuario_correo) + ' (ID: ' + esc(a.usuario_id) + ')</small>' +
             '</div>';
 
             // Saldo
@@ -1229,7 +1235,7 @@
       try {
         const res = await fetch('/admin/api_recharges_log');
         const data = await res.json();
-        if (!data.ok) { wrap.innerHTML = '<div style="color:var(--rc-coral);padding:16px;">Error: ' + (data.error||'?') + '</div>'; return; }
+        if (!data.ok) { wrap.innerHTML = '<div style="color:var(--rc-coral);padding:16px;">Error: ' + esc(data.error || '?') + '</div>'; return; }
         if (!data.logs.length) { wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--rc-ash);">Sin recargas registradas aún.</div>'; return; }
         // Stats
         let okCount = 0, failCount = 0;
@@ -1248,10 +1254,10 @@
             ? '<span style="background:rgba(89, 212, 153, 0.15);color:var(--rc-green);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">✅ Exitosa</span>'
             : '<span style="background:rgba(255, 99, 99, 0.15);color:var(--rc-coral);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">❌ Fallida</span>';
           const fecha = (r.fecha||'').replace('T',' ').substring(0,16);
-          const gameName = r.game_name || 'Bot Free Fire';
-          const pkgName = r.package_name || ('Pkg ' + r.package_id);
-          const playerName = r.player_name || '-';
-          const errTip = (!ok && r.error_msg) ? '<div style="margin-top:4px;font-size:11px;color:var(--rc-coral);word-break:break-word;">⚠ ' + (r.error_msg||'').substring(0,80) + '</div>' : '';
+          const gameName = esc(r.game_name || 'Bot Free Fire');
+          const pkgName = esc(r.package_name || ('Pkg ' + r.package_id));
+          const playerName = esc(r.player_name || '-');
+          const errTip = (!ok && r.error_msg) ? '<div style="margin-top:4px;font-size:11px;color:var(--rc-coral);word-break:break-word;">⚠ ' + esc((r.error_msg||'').substring(0,80)) + '</div>' : '';
           html += '<div style="background:' + bgColor + ';border:1px solid ' + borderColor + ';border-radius:10px;padding:10px 12px;">'
                 + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px;">'
                 + '<span style="font-size:11px;color:var(--rc-ash);">#' + r.id + ' · ' + fecha + '</span>'
@@ -1259,7 +1265,7 @@
                 + '</div>'
                 + '<div style="margin-bottom:6px;"><span style="background:rgba(var(--rc-ink), 0.052);color:var(--rc-text);padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;">' + gameName + '</span> <span style="color:var(--rc-mist);font-size:12px;">' + pkgName + '</span></div>'
                 + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px;">'
-                + '<div><span style="color:var(--rc-ash);font-size:11px;">Player ID</span><div style="color:var(--rc-mist);font-family:monospace;font-size:12px;word-break:break-all;">' + r.player_id + '</div></div>'
+                + '<div><span style="color:var(--rc-ash);font-size:11px;">Player ID</span><div style="color:var(--rc-mist);font-family:monospace;font-size:12px;word-break:break-all;">' + esc(r.player_id) + '</div></div>'
                 + '<div><span style="color:var(--rc-ash);font-size:11px;">Jugador</span><div style="color:var(--rc-blue);">' + playerName + '</div></div>'
                 + '</div>'
                 + '<div style="margin-top:4px;font-size:11px;color:var(--rc-ash);">⏱ ' + (r.duration_seconds||0) + 's</div>'
@@ -1292,7 +1298,7 @@
         const res = await fetch(url, { method:'POST', headers:{'Accept':'application/json'}, body: formData });
         const data = await res.json();
         if (data.success) {
-          if (st) st.innerHTML = '<span style="color:var(--rc-green);">✅ ' + (data.message || 'OK') + '</span>';
+          if (st) st.innerHTML = '<span style="color:var(--rc-green);">✅ ' + esc(data.message || 'OK') + '</span>';
           const pinInput = form.querySelector('input[name="pin_codigo"]');
           const batchInput = form.querySelector('textarea[name="pins_batch"]');
           if (pinInput) { pinInput.value = ''; pinInput.focus(); }
@@ -1306,7 +1312,7 @@
             stockEl.textContent = (cur + added) + ' pines';
           }
         } else {
-          if (st) st.innerHTML = '<span style="color:var(--rc-coral);">❌ ' + (data.error || 'Error') + '</span>';
+          if (st) st.innerHTML = '<span style="color:var(--rc-coral);">❌ ' + esc(data.error || 'Error') + '</span>';
         }
       } catch(e) { if (st) st.innerHTML = '<span style="color:var(--rc-coral);">❌ Error de red</span>'; }
       return false;
@@ -1329,7 +1335,7 @@
         card.innerHTML = `
           <div class="package-card-header pk-info">
             <span class="package-stock">${(stockMap[String(pkg.id)]||0)} pines</span>
-            <div class="package-title">${pkg.nombre}</div>
+            <div class="package-title">${esc(pkg.nombre)}</div>
             <div class="package-price">$${pkg.precio.toFixed(2)}</div>
           </div>
           <div class="package-actions pk-actions">
@@ -1477,7 +1483,7 @@
           <div class="package-forms">
             <div class="package-form">
               <label>Nombre</label>
-              <input type="text" class="pkg-name" data-id="${pkg.id}" value="${pkg.nombre}" maxlength="50">
+              <input type="text" class="pkg-name" data-id="${pkg.id}" value="${esc(pkg.nombre)}" maxlength="50">
             </div>
             <div class="package-form">
               <label>Precio</label>
@@ -1612,7 +1618,7 @@
           st.innerHTML = `<span style="color:var(--rc-green);">✅ ${_editingDynGameId ? 'Actualizado' : 'Creado'}. Recargando...</span>`;
           setTimeout(() => location.reload(), 800);
         } else {
-          st.innerHTML = '<span style="color:var(--rc-coral);">❌ ' + (data.error || 'Error') + '</span>';
+          st.innerHTML = '<span style="color:var(--rc-coral);">❌ ' + esc(data.error || 'Error') + '</span>';
         }
       } catch (e) {
         st.innerHTML = '<span style="color:var(--rc-coral);">❌ Error de red</span>';
@@ -1661,7 +1667,7 @@
           nameInput.focus();
           st.innerHTML = '<span style="color:var(--rc-green);">✅ ' + nombre + ' añadido</span>';
         } else {
-          st.innerHTML = '<span style="color:var(--rc-coral);">❌ ' + (data.error || 'Error') + '</span>';
+          st.innerHTML = '<span style="color:var(--rc-coral);">❌ ' + esc(data.error || 'Error') + '</span>';
         }
       } catch (e) {
         st.innerHTML = '<span style="color:var(--rc-coral);">❌ Error de red</span>';
@@ -1682,7 +1688,7 @@
         if (data.success) {
           alert('Juego eliminado');
           location.reload();
-        } else { alert(data.error || 'Error al eliminar'); }
+        } else { alertesc(data.error || 'Error al eliminar'); }
       } catch(e) { alert('Error de red'); }
     }
 
@@ -2299,7 +2305,7 @@
           const sel = lp.gamepoint_package_id ? String(lp.gamepoint_package_id) : '';
           html += `<tr>
             <td>${lp.id}</td>
-            <td>${lp.nombre}</td>
+            <td>${esc(lp.nombre)}</td>
             <td>$${Number(lp.precio).toFixed(2)}</td>
             <td><select id="bs-gp-sel-${lp.id}" style="background:var(--rc-graphite);color:var(--rc-mist);border:1px solid var(--rc-border);padding:4px 6px;border-radius:4px;font-size:12px;width:100%;max-width:300px;">
               <option value="">-- Sin asignar --</option>${gpOpts}
@@ -2330,9 +2336,9 @@
         });
         const data = await res.json();
         if (data.success) {
-          st.innerHTML = '<span style="color:var(--rc-green);">Mapeo guardado para ' + data.nombre + '</span>';
+          st.innerHTML = '<span style="color:var(--rc-green);">Mapeo guardado para ' + esc(data.nombre) + '</span>';
         } else {
-          st.innerHTML = '<span style="color:var(--rc-coral);">' + (data.error || 'Error') + '</span>';
+          st.innerHTML = '<span style="color:var(--rc-coral);">' + esc(data.error || 'Error') + '</span>';
         }
       } catch(e) { st.innerHTML = '<span style="color:var(--rc-coral);">Error de red</span>'; }
     }
@@ -2346,7 +2352,7 @@
       try {
         const res = await fetch('/admin/bloodstrike/sync_prices', {method:'POST',headers:{'Accept':'application/json'}});
         const data = await res.json();
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:var(--rc-coral);">' + (data.error||'Error') + '</span>'; return; }
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:var(--rc-coral);">' + esc(data.error || 'Error') + '</span>'; return; }
         const usdToMyr = Number(data.usd_to_myr_rate || (1 / Number(data.myr_to_usd_rate || 0.2538)));
         st.innerHTML = '<span style="color:var(--rc-green);">Sync OK: ' + data.packages_updated + '/' + data.total_gamepoint_packages + ' actualizados (1 USD = ' + usdToMyr.toFixed(4) + ' MYR)</span>';
         if (rpt && data.report) {
@@ -2409,7 +2415,7 @@
           const myrToUsd = Number(data.myr_to_usd_rate || (1 / usdToMyr));
           st.innerHTML = '<span style="color:var(--rc-green);">✅ Guardado: 1 USD = ' + usdToMyr.toFixed(4) + ' MYR (1 MYR = ' + myrToUsd.toFixed(6) + ' USD) | Sync dinámico: ' + synced + ' juegos, ' + updated + ' paquetes' + (errCount ? ' (' + errCount + ' con error)' : '') + '</span>';
         } else {
-          st.innerHTML = '<span style="color:var(--rc-coral);">❌ ' + (data.error || 'Error') + '</span>';
+          st.innerHTML = '<span style="color:var(--rc-coral);">❌ ' + esc(data.error || 'Error') + '</span>';
         }
       } catch(e) {
         st.innerHTML = '<span style="color:var(--rc-coral);">❌ Error de red</span>';
@@ -2438,7 +2444,7 @@
           return;
         }
         if (!res.ok || !data.success) {
-          st.innerHTML = '<span style="color:var(--rc-coral);">' + (data.error || 'Error al calcular estadísticas') + '</span>';
+          st.innerHTML = '<span style="color:var(--rc-coral);">' + esc(data.error || 'Error al calcular estadísticas') + '</span>';
           tableWrap.innerHTML = '';
           return;
         }
@@ -2520,7 +2526,7 @@
 
           html += '</tbody></table>';
           if (errors.length) {
-            html += '<div style="margin-top:10px;color:var(--rc-yellow);font-size:12px;">Advertencias API: ' + errors.map(e => (e.game || '?') + ': ' + (e.error || 'error')).join(' | ') + '</div>';
+            html += '<div style="margin-top:10px;color:var(--rc-yellow);font-size:12px;">Advertencias API: ' + errors.map(e => esc(e.game || '?') + ': ' + esc(e.error || 'error')).join(' | ') + '</div>';
           }
           tableWrap.innerHTML = html;
           try {
@@ -2549,7 +2555,7 @@
         let html = '<table class="table" style="width:100%;font-size:13px;"><thead><tr><th>Local ID</th><th>Nombre</th><th>Precio</th><th>GamePoint Package</th><th></th></tr></thead><tbody>';
         data.local_packages.forEach(lp => {
           html += `<tr>
-            <td>${lp.id}</td><td>${lp.nombre}</td><td>$${Number(lp.precio).toFixed(2)}</td>
+            <td>${lp.id}</td><td>${esc(lp.nombre)}</td><td>$${Number(lp.precio).toFixed(2)}</td>
             <td><select id="dyn-gp-sel-${gameId}-${lp.id}" style="background:var(--rc-graphite);color:var(--rc-mist);border:1px solid var(--rc-border);padding:4px 6px;border-radius:4px;font-size:12px;width:100%;max-width:300px;">
               <option value="">-- Sin asignar --</option>${gpOpts}
             </select></td>
@@ -2575,7 +2581,7 @@
         const res = await fetch(`/admin/dynamic-games/${gameId}/auto-import-packages`, {method:'POST',headers:{'Accept':'application/json'}});
         let data = null;
         try { data = await res.json(); } catch(_) { st.innerHTML = '<span style="color:var(--rc-coral);">Error del servidor (respuesta inválida). Revisa los logs.</span>'; return; }
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:var(--rc-coral);">'+(data.error||'Error '+res.status)+'</span>'; return; }
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:var(--rc-coral);">'+esc(data.error || 'Error '+res.status)+'</span>'; return; }
         st.innerHTML = `<span style="color:var(--rc-green);">✅ ${data.created} paquetes creados, ${data.skipped} ya existían (${data.total_gp} en GP)</span>`;
         loadDynMapping(gameId);
       } catch(e) { st.innerHTML = '<span style="color:var(--rc-coral);">Error de red: '+e.message+'</span>'; }
@@ -2591,8 +2597,8 @@
           body: JSON.stringify({local_id: localId, gamepoint_package_id: sel.value || null})
         });
         const data = await res.json();
-        if (data.success) { st.innerHTML = '<span style="color:var(--rc-green);">Mapeo guardado para '+data.nombre+'</span>'; }
-        else { st.innerHTML = '<span style="color:var(--rc-coral);">'+(data.error||'Error')+'</span>'; }
+        if (data.success) { st.innerHTML = '<span style="color:var(--rc-green);">Mapeo guardado para '+esc(data.nombre)+'</span>'; }
+        else { st.innerHTML = '<span style="color:var(--rc-coral);">'+esc(data.error || 'Error')+'</span>'; }
       } catch(e) { st.innerHTML = '<span style="color:var(--rc-coral);">Error de red</span>'; }
     }
 
@@ -2605,7 +2611,7 @@
       try {
         const res = await fetch(`/admin/dynamic-games/${gameId}/sync-prices`, {method:'POST',headers:{'Accept':'application/json'}});
         const data = await res.json();
-        if (!res.ok || data.error) { st.innerHTML = '<span style="color:var(--rc-coral);">'+(data.error||'Error')+'</span>'; return; }
+        if (!res.ok || data.error) { st.innerHTML = '<span style="color:var(--rc-coral);">'+esc(data.error || 'Error')+'</span>'; return; }
         st.innerHTML = '<span style="color:var(--rc-green);">✅ Sync OK: '+data.packages_updated+'/'+data.total_gp+' actualizados</span>';
         if (rpt && data.report) {
           let html = '<div style="background:var(--rc-recess);border-radius:8px;padding:12px;font-size:12px;"><strong>Reporte de Sync:</strong><table class="table" style="width:100%;font-size:12px;margin-top:8px;"><thead><tr><th>GP ID</th><th>Nombre GP</th><th>Precio MYR</th><th>Costo USD</th><th>Venta USD</th><th>Local</th><th>Cambio</th></tr></thead><tbody>';
@@ -2782,7 +2788,7 @@
               <div style="display:flex;justify-content:space-between;align-items:start;gap:16px;">
                 <div style="flex:1;">
                   <div style="font-weight:bold;color:var(--rc-green);margin-bottom:6px;">
-                    ${u.usuario_nombre} ${u.usuario_apellido}
+                    ${esc(u.usuario_nombre)} ${esc(u.usuario_apellido)}
                     <span style="font-size:12px;color:var(--rc-ash);margin-left:8px;">ID: ${u.usuario_id}</span>
                   </div>
                   <div style="color:var(--rc-text);font-size:13px;margin-bottom:4px;">${ultimaCompra} <span style="color:${montoColor};">${montoSign}$${ultimoMonto.toFixed(2)}</span></div>
@@ -2849,11 +2855,11 @@
             <div style="background:var(--rc-recess);border-radius:6px;padding:12px;margin-bottom:8px;">
               <div style="display:flex;justify-content:space-between;align-items:start;">
                 <div>
-                  <div style="color:var(--rc-text);font-weight:bold;margin-bottom:4px;">${tipoIcon} ${p.paquete_nombre}</div>
+                  <div style="color:var(--rc-text);font-weight:bold;margin-bottom:4px;">${tipoIcon} ${esc(p.paquete_nombre)}</div>
                   <div style="color:var(--rc-ash);font-size:12px;">${p.fecha_hora}</div>
                   ${p.duracion_segundos ? `<div style="color:var(--rc-blue);font-size:12px;">⏱️ ${p.duracion_segundos}s</div>` : ''}
-                  ${p.player_id ? `<div style="color:var(--rc-ash);font-size:12px;">Player ID: ${p.player_id}</div>` : ''}
-                  ${(p.pin_codigo && p.pin_codigo.length > 2) ? `<div style="color:var(--rc-ash);font-size:12px;">PIN: ${p.pin_codigo.substring(0,20)}...</div>` : ''}
+                  ${p.player_id ? `<div style="color:var(--rc-ash);font-size:12px;">Player ID: ${esc(p.player_id)}</div>` : ''}
+                  ${(p.pin_codigo && p.pin_codigo.length > 2) ? `<div style="color:var(--rc-ash);font-size:12px;">PIN: ${esc(p.pin_codigo.substring(0,20))}...</div>` : ''}
                 </div>
                 <div style="text-align:right;">
                   <div style="color:${montoColor};font-weight:bold;">${montoPrefix}$${p.monto.toFixed(2)}</div>

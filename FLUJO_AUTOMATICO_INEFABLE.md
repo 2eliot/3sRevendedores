@@ -9,12 +9,12 @@ Se ha implementado un sistema híbrido que permite obtener pines automáticament
 ### Credenciales Configuradas
 - **URL Base**: `https://inefableshop.net/conexion_api/api.php`
 - **Usuario**: `inefableshop`
-- **Contraseña**: `321Naruto%`
+- **Contraseña**: (variable de entorno `INEFABLE_CLAVE`)
 - **Tipo de Recarga**: `recargaPinFreefirebs`
 
 ### Parámetros de la API
 ```
-https://inefableshop.net/conexion_api/api.php?action=recarga&usuario=inefableshop&clave=321Naruto%&tipo=recargaPinFreefirebs&monto=1&numero=0
+https://inefableshop.net/conexion_api/api.php?action=recarga&usuario=inefableshop&clave=TU_CLAVE&tipo=recargaPinFreefirebs&monto=1&numero=0
 ```
 
 ## 🎯 Flujo de Usuario (Automático)

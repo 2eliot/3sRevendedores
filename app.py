@@ -318,8 +318,14 @@ app = Flask(__name__)
 # Si no está definido, se genera uno fijo basado en el path del app para que todos
 # los workers compartan la misma clave (secrets.token_hex genera uno distinto por proceso).
 _env_secret = os.environ.get('SECRET_KEY', '').strip()
+# DEV_LOGIN=1 solo en el .env local: activa el acceso de prueba admin/123456 y permite arrancar sin SECRET_KEY
+DEV_LOGIN = os.environ.get('DEV_LOGIN', '').strip() == '1'
 if _env_secret:
     app.secret_key = _env_secret
+elif not DEV_LOGIN:
+    # Sin SECRET_KEY la clave de sesión sería adivinable y cualquiera podría fabricarse una sesión de admin
+    raise RuntimeError('[SEGURIDAD] Falta la variable de entorno SECRET_KEY. Configúrala en el servidor '
+                       '(p. ej. python -c "import secrets; print(secrets.token_hex(32))").')
 else:
     import hashlib as _hlib
     app.secret_key = _hlib.sha256(f"3srecargas-fallback-{os.path.abspath(__file__)}".encode()).hexdigest()
@@ -1335,6 +1341,45 @@ def _devolver_pines_latam(monto_id, pines):
             pm.add_local_pin(monto_id, codigo, source='devolucion')
     except Exception as e:
         logger.error(f"[FreeFire Latam] No se pudieron devolver {len(pines)} pines al stock: {e}")
+
+
+# Límite de intentos fallidos de inicio de sesión (web y /api.php)
+LOGIN_MAX_FALLOS_CUENTA = 8    # por correo
+LOGIN_MAX_FALLOS_IP = 30       # por IP
+LOGIN_VENTANA_S = 15 * 60
+_login_fallos = {}
+_login_fallos_lock = threading.Lock()
+
+
+def _login_claves(correo):
+    ip = (request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or request.remote_addr or '?')
+    return [('u:' + (correo or '').strip().lower(), LOGIN_MAX_FALLOS_CUENTA), ('ip:' + ip, LOGIN_MAX_FALLOS_IP)]
+
+
+def login_bloqueado(correo):
+    """True si ese correo o esa IP superaron los intentos fallidos en la ventana."""
+    ahora = time_module.time()
+    with _login_fallos_lock:
+        for clave, maximo in _login_claves(correo):
+            recientes = [t for t in _login_fallos.get(clave, []) if ahora - t < LOGIN_VENTANA_S]
+            _login_fallos[clave] = recientes
+            if len(recientes) >= maximo:
+                return True
+    return False
+
+
+def registrar_login_fallido(correo):
+    ahora = time_module.time()
+    with _login_fallos_lock:
+        for clave, _ in _login_claves(correo):
+            _login_fallos.setdefault(clave, []).append(ahora)
+        if len(_login_fallos) > 20000:  # evita crecer sin límite
+            _login_fallos.clear()
+
+
+def limpiar_login_fallidos(correo):
+    with _login_fallos_lock:
+        _login_fallos.pop('u:' + (correo or '').strip().lower(), None)
 
 
 def hash_password(password):
@@ -2909,14 +2954,20 @@ def login():
     if not correo or not contraseña:
         flash('Por favor, complete todos los campos', 'error')
         return redirect('/auth')
-    
-    # Verificar credenciales de administrador (desde variables de entorno)
+
+    if login_bloqueado(correo):
+        flash('Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo.', 'error')
+        return redirect('/auth')
+
+    # Verificar credenciales de administrador (desde variables de entorno; sin contraseña por defecto)
     admin_email = os.environ.get('ADMIN_EMAIL', 'admin@inefable.com').strip()
-    admin_password = os.environ.get('ADMIN_PASSWORD', 'InefableAdmin2024!')
-    
-    _is_prod = bool(os.environ.get('DATABASE_URL'))
-    dev_login = not _is_prod and correo == 'admin' and contraseña == '123456'
-    if dev_login or (correo.lower() == admin_email.lower() and contraseña == admin_password):
+    admin_password = os.environ.get('ADMIN_PASSWORD', '')
+
+    dev_login = DEV_LOGIN and correo == 'admin' and contraseña == '123456'
+    admin_ok = bool(admin_password) and correo.lower() == admin_email.lower() and secrets.compare_digest(
+        contraseña.encode('utf-8'), admin_password.encode('utf-8'))
+    if dev_login or admin_ok:
+        limpiar_login_fallidos(correo)
         logger.info(f"[Login] Admin login OK para {admin_email}")
         # Buscar o crear usuario admin en la base de datos
         conn = get_db_connection()
@@ -2924,7 +2975,7 @@ def login():
         
         if not admin_user:
             # Crear usuario admin si no existe
-            hashed_password = hash_password(admin_password)
+            hashed_password = hash_password(admin_password or secrets.token_hex(16))
             conn.execute('''
                 INSERT INTO usuarios (nombre, apellido, telefono, correo, contraseña, saldo)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -2948,6 +2999,7 @@ def login():
     user = get_user_by_email(correo)
     
     if user and verify_password(contraseña, user['contraseña']):
+        limpiar_login_fallidos(correo)
         # Migrar contraseña antigua a nuevo formato si es necesario
         if not user['contraseña'].startswith('pbkdf2:'):
             # Actualizar contraseña al nuevo formato seguro
@@ -2970,6 +3022,7 @@ def login():
         session['is_admin'] = False
         return redirect('/')
     else:
+        registrar_login_fallido(correo)
         flash('Credenciales incorrectas', 'error')
         return redirect('/auth')
 
@@ -3036,6 +3089,11 @@ def api_dismiss_notification(notification_id):
 
     return jsonify({'status': 'ok'})
 
+_NOMBRE_RE = re.compile(r"^[^\W\d_](?:[^\W\d_]|[ .'\-]){0,49}$")
+_TELEFONO_RE = re.compile(r'^\+?[0-9][0-9 \-]{5,19}$')
+_CORREO_RE = re.compile(r'^[^@\s<>"\'`]+@[^@\s<>"\'`]+\.[^@\s<>"\'`]+$')
+
+
 @app.route('/register', methods=['POST'])
 def register():
     nombre = request.form.get('nombre')
@@ -3047,6 +3105,18 @@ def register():
     # Validar que todos los campos estén completos
     if not all([nombre, apellido, telefono, correo, contraseña]):
         flash('Por favor, complete todos los campos', 'error')
+        return redirect('/auth')
+
+    # Validar formato: sin símbolos de código en nombres y correo válido
+    nombre, apellido, telefono, correo = nombre.strip(), apellido.strip(), telefono.strip(), correo.strip()
+    if not (_NOMBRE_RE.match(nombre) and _NOMBRE_RE.match(apellido)):
+        flash('Nombre y apellido solo pueden tener letras, espacios, puntos, guiones y apóstrofos (máx. 50).', 'error')
+        return redirect('/auth')
+    if not _TELEFONO_RE.match(telefono):
+        flash('Teléfono no válido: usa solo números, espacios, + y guiones.', 'error')
+        return redirect('/auth')
+    if len(correo) > 120 or not _CORREO_RE.match(correo):
+        flash('Correo electrónico no válido.', 'error')
         return redirect('/auth')
     
     # Verificar si el usuario ya existe
@@ -9905,10 +9975,17 @@ def api_simple_endpoint():
                 'message': 'Numero debe ser un número válido'
             }), 400
         
-        # Autenticar usuario
+        # Autenticar usuario (con límite de intentos fallidos)
+        if login_bloqueado(usuario):
+            return jsonify({
+                'status': 'error',
+                'code': '429',
+                'message': 'Demasiados intentos fallidos. Espera 15 minutos.'
+            }), 429
         user = get_user_by_email(usuario)
-        
+
         if not user or not verify_password(clave, user['contraseña']):
+            registrar_login_fallido(usuario)
             return jsonify({
                 'status': 'error',
                 'code': '401',

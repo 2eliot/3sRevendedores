@@ -15,7 +15,7 @@ class InefableAPIClient:
         # Configuración de la API externa
         self.base_url = "https://inefableshop.net/conexion_api/api.php"
         self.usuario = os.environ.get('INEFABLE_USUARIO', 'inefableshop')
-        self.clave = os.environ.get('INEFABLE_CLAVE', '321Naruto%')
+        self.clave = os.environ.get('INEFABLE_CLAVE', '')
         
         # Mapeo de monto_id local a monto de la API externa
         self.monto_mapping = {

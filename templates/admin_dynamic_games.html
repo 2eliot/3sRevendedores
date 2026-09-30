@@ -262,6 +262,7 @@
   {% endif %}
 
   <script>
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch]; }); }
   async function createGame(e) {
     e.preventDefault();
     const frm = document.getElementById('frm-create');
@@ -279,7 +280,7 @@
       });
       const data = await res.json();
       if (data.success) { st.innerHTML = '<div class="status-msg status-ok">✅ Juego creado. Recargando...</div>'; setTimeout(() => location.reload(), 800); }
-      else { st.innerHTML = '<div class="status-msg status-err">❌ ' + (data.error||'Error') + '</div>'; }
+      else { st.innerHTML = '<div class="status-msg status-err">❌ ' + esc(data.error||'Error') + '</div>'; }
     } catch(ex) { st.innerHTML = '<div class="status-msg status-err">❌ Error de red</div>'; }
   }
 
@@ -300,7 +301,7 @@
     try {
       const res = await fetch(`/admin/dynamic-games/${id}/sync-prices`, {method:'POST',headers:{'Accept':'application/json'}});
       const data = await res.json();
-      if (data.error) { st.innerHTML = '<div class="status-msg status-err">❌ '+data.error+'</div>'; return; }
+      if (data.error) { st.innerHTML = '<div class="status-msg status-err">❌ '+esc(data.error)+'</div>'; return; }
       let html = `<div class="status-msg status-ok">✅ ${data.packages_updated}/${data.total_gp} paquetes actualizados</div>`;
       if (data.report && data.report.length) {
         html += '<table class="pkg-table"><thead><tr><th>GP ID</th><th>Nombre</th><th>Costo</th><th>Precio</th><th>Cambio</th></tr></thead><tbody>';
@@ -323,7 +324,7 @@
     try {
       const res = await fetch(`/admin/dynamic-games/${id}/gp-catalog`);
       const data = await res.json();
-      if (data.error) { el.innerHTML = '<div class="status-msg status-err">❌ '+data.error+'</div>'; return; }
+      if (data.error) { el.innerHTML = '<div class="status-msg status-err">❌ '+esc(data.error)+'</div>'; return; }
       let html = '<strong style="color:var(--rc-ash);">Catálogo GamePoint ('+data.packages.length+' paquetes):</strong>';
       data.packages.forEach(p => {
         html += `<div class="catalog-item"><span>${p.id} — ${p.name} (${p.price} MYR)</span><button class="btn btn-sm btn-outline" onclick="autoAddPkg(${id}, ${p.id}, '${(p.name||'').replace(/'/g,"\\'")}', ${p.price})">+ Agregar</button></div>`;
@@ -342,7 +343,7 @@
     });
     const data = await res.json();
     if (data.success) location.reload();
-    else alert(data.error || 'Error');
+    else alertesc(data.error || 'Error');
   }
 
   function showAddPkg(id) {
@@ -362,7 +363,7 @@
     });
     const data = await res.json();
     if (data.success) location.reload();
-    else alert(data.error || 'Error');
+    else alertesc(data.error || 'Error');
   }
 
   async function savePkg(id) {
@@ -376,7 +377,7 @@
     });
     const data = await res.json();
     if (data.success) { const row = document.getElementById('pkg-row-'+id); if(row) row.style.background='rgba(74,222,128,0.08)'; setTimeout(()=>{if(row)row.style.background='';},1500); }
-    else alert(data.error || 'Error');
+    else alertesc(data.error || 'Error');
   }
 
   async function togglePkg(id, newState) {
@@ -447,7 +448,7 @@
         const errCount = Array.isArray(dyn.errors) ? dyn.errors.length : 0;
         st.innerHTML = '<div class="status-msg status-ok">✅ Tasa guardada: 1 MYR = ' + rate.toFixed(4) + ' USD. Sync dinámico inmediato: ' + synced + ' juegos, ' + updated + ' paquetes actualizados' + (errCount ? ' (' + errCount + ' con error)' : '') + '.</div>';
       } else {
-        st.innerHTML = '<div class="status-msg status-err">❌ ' + (data.error || 'Error') + '</div>';
+        st.innerHTML = '<div class="status-msg status-err">❌ ' + esc(data.error || 'Error') + '</div>';
       }
     } catch(ex) {
       st.innerHTML = '<div class="status-msg status-err">❌ Error de red</div>';
