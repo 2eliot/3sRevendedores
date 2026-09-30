@@ -20,6 +20,12 @@ La API se llama desde el servidor (/api/verificar-id): las claves nunca llegan a
 Proveedor Inefable (preconfigurado): basta con guardar la API key una vez
 (clave 'verify_inefable'); cada juego usa cfg = {enabled, provider: 'inefable',
 inefable_game: 'freefire' | 'Inefable-bloodstriker' | 'Inefable-mobilelegends'}.
+
+En el servidor (VPS) se puede configurar por variables de entorno, sin tocar el admin:
+    INEFABLE_VERIFY_URL   URL del endpoint verify-name (por defecto la de Inefable)
+    INEFABLE_VERIFY_KEY   API key; si está definida tiene prioridad sobre la del admin
+                          y activa sola la verificación en los juegos compatibles
+                          que no tengan otra configuración guardada.
 """
 import json
 import logging
@@ -55,10 +61,16 @@ def get_verify_config(game_key):
         row = conn.execute('SELECT valor FROM configuracion_redeemer WHERE clave = ?',
                            (KEY_PREFIX + game_key,)).fetchone()
         conn.close()
-        return json.loads(row['valor']) if row and row['valor'] else {}
+        cfg = json.loads(row['valor']) if row and row['valor'] else {}
     except Exception as e:
         logger.warning(f'[VerifyID] No se pudo leer config de {game_key}: {e}')
-        return {}
+        cfg = {}
+    if not cfg and server_inefable_key():
+        # Clave puesta en el servidor: juegos compatibles sin config usan Inefable
+        code = guess_inefable_game('freefire' if game_key == 'freefire_id' else game_key)
+        if code:
+            return {'enabled': True, 'provider': 'inefable', 'inefable_game': code}
+    return cfg
 
 
 def set_verify_config(game_key, cfg):
@@ -84,7 +96,14 @@ INEFABLE_GAMES = [
 INEFABLE_GAME_CODES = {c for c, _ in INEFABLE_GAMES}
 
 
+def server_inefable_key():
+    """API key definida en el servidor (variable de entorno), o ''."""
+    return os.environ.get('INEFABLE_VERIFY_KEY', '').strip()
+
+
 def get_inefable_key():
+    if server_inefable_key():
+        return server_inefable_key()
     try:
         conn = get_db_connection()
         row = conn.execute('SELECT valor FROM configuracion_redeemer WHERE clave = ?', (INEFABLE_KEY,)).fetchone()
@@ -311,6 +330,9 @@ def admin_verificacion_ids():
 
     if request.method == 'POST':
         if request.form.get('accion') == 'inefable_key':
+            if server_inefable_key():
+                flash('La API key está configurada en el servidor; no se cambia desde aquí.', 'error')
+                return redirect('/admin/verificacion-ids')
             api_key = request.form.get('api_key', '').strip()
             if api_key == '********':
                 api_key = get_inefable_key()
@@ -375,6 +397,7 @@ def admin_verificacion_ids():
         g['cfg'] = get_verify_config(g['key'])
         g['inefable_guess'] = guess_inefable_game(g['nombre'])
     return render_template('admin_verify_ids.html', games=games, inefable_has_key=bool(get_inefable_key()),
+                           inefable_on_server=bool(server_inefable_key()),
                            inefable_games=INEFABLE_GAMES)
 
 

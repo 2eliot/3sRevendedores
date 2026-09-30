@@ -84,9 +84,12 @@
     <section class="vi-inef" id="inefable">
       <div class="vi-inef-head">
         <h2>Inefable · verificación de nombres</h2>
-        {% if inefable_has_key %}<span class="vi-badge vi-on">API key guardada</span>{% else %}<span class="vi-badge vi-off">Sin API key</span>{% endif %}
+        {% if inefable_on_server %}<span class="vi-badge vi-on">Configurada en el servidor</span>{% elif inefable_has_key %}<span class="vi-badge vi-on">API key guardada</span>{% else %}<span class="vi-badge vi-off">Sin API key</span>{% endif %}
       </div>
       <p>Pega tu API key de Inefable y listo: se activa sola en los juegos compatibles (<strong>Free Fire</strong>, <strong>Blood Strike</strong> y <strong>Mobile Legends</strong>, este último con Zone ID). Límite del proveedor: 30 consultas por minuto.</p>
+      {% if inefable_on_server %}
+      <p>La API de verificación y su clave están configuradas en el servidor (VPS), así que no hace falta pegar nada aquí. Ya está activa en los juegos compatibles; si quieres, puedes desactivarla o cambiarla juego por juego abajo.</p>
+      {% else %}
       <form method="POST" action="/admin/verificacion-ids">
         <input type="hidden" name="accion" value="inefable_key">
         <div class="vi-inef-row">
@@ -95,6 +98,7 @@
         </div>
         <label class="vi-toggle"><input type="checkbox" name="auto" checked> Activar automáticamente en los juegos compatibles</label>
       </form>
+      {% endif %}
     </section>
 
     <details class="vi-help">
