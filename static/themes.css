@@ -60,7 +60,7 @@
   --rc-key-shadow: rgba(0, 0, 0, 0.06) 0 0 0 1px;
   --rc-lift: rgba(0, 0, 0, 0.04) 0 1px 2px 0, rgba(0, 0, 0, 0.06) 0 4px 12px 0;
 }
-:root[data-theme="light"] { --rc-border: color-mix(in srgb, var(--rc-accent) 35%, var(--rc-border-base)); --rc-border-strong: color-mix(in srgb, var(--rc-accent) 45%, var(--rc-border-strong-base)); }
+:root[data-theme="light"] { --rc-border: color-mix(in srgb, var(--rc-accent) 70%, var(--rc-border-base)); --rc-border-strong: color-mix(in srgb, var(--rc-accent) 80%, var(--rc-border-strong-base)); }
 :root[data-theme="light"][data-accent="original"] { --rc-accent: #0e1013; --rc-border: var(--rc-border-base); --rc-border-strong: var(--rc-border-strong-base); }
 :root[data-theme="light"][data-accent="morado"] { --rc-accent: #7c3aed; }
 :root[data-theme="light"][data-accent="azul"]   { --rc-accent: #0a6fa8; }

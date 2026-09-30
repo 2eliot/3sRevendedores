@@ -14,8 +14,8 @@
   --rc-border-base: #2a2b2d;         /* borde neutro de cada paleta */
   --rc-border-strong-base: #363739;
   /* Bordes teñidos con el color del tema */
-  --rc-border: color-mix(in srgb, var(--rc-accent) 30%, var(--rc-border-base));
-  --rc-border-strong: color-mix(in srgb, var(--rc-accent) 40%, var(--rc-border-strong-base));
+  --rc-border: color-mix(in srgb, var(--rc-accent) 75%, var(--rc-border-base));
+  --rc-border-strong: color-mix(in srgb, var(--rc-accent) 85%, var(--rc-border-strong-base));
   --rc-text: #ffffff;
   --rc-mist: #e6e6e6;
   --rc-ash: #9c9c9d;       /* texto secundario (7.3:1) */

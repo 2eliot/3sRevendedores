@@ -274,7 +274,8 @@
                 {% endif %}
               </div>
               <div class="ffid-voucher-details">
-                <div class="ffid-voucher-line"><strong>Paquete:</strong> {{ transaction.paquete }}</div>
+                {% set pq = transaction.paquete or '' %}
+                <div class="ffid-voucher-line"><strong>Paquete:</strong> {{ pq.split(' - ', 1)[1] if ' - ' in pq else pq }}</div>
                 {% if transaction.get('player_name') %}
                 <div class="ffid-voucher-line"><strong>Jugador:</strong> <span class="ffid-player-name">{{ transaction.player_name }}</span></div>
                 {% endif %}
