@@ -14,9 +14,55 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
   <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
   <style>
-    .ad-wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+    .ad-wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
     .ad-wrap h1 { margin: 16px 0 4px; font-size: 26px; font-weight: 600; }
-    .ad-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 18px; margin-top: 16px; min-height: 160px; }
+    .ad-lead { margin: 0 0 18px; color: var(--rc-ash); font-size: 14px; line-height: 1.5; }
+    .ad-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .ad-card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .ad-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .ad-kpi { background: var(--rc-recess); border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px 14px; }
+    .ad-kpi span { display: block; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; }
+    .ad-kpi strong { display: block; margin-top: 4px; font-size: 20px; font-family: var(--rc-mono); font-weight: 500; }
+    .ad-kpi small { display: block; margin-top: 2px; color: var(--rc-ash); font-size: 12px; }
+    .ad-hl { color: var(--rc-hl); }
+    .ad-ok { color: var(--rc-green); } .ad-warn { color: var(--rc-yellow); } .ad-bad { color: var(--rc-coral); }
+    .ad-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    .ad-filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--rc-ash); }
+    .ad-filters input, .ad-filters select { min-height: 40px; padding: 0 10px; border-radius: 10px; font-size: 14px; }
+    .ad-filters .ad-q { flex: 1 1 200px; }
+    .ad-filters .ad-q input { width: 100%; }
+    .ad-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; }
+    .ad-btn:hover { background: var(--rc-slate); }
+    .ad-btn-main { background: var(--rc-mist); color: var(--rc-card); border: 0; }
+    .ad-table-wrap { overflow-x: auto; }
+    table.ad-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ad-table th { text-align: left; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; padding: 8px 10px; border-bottom: 1px solid var(--rc-border); white-space: nowrap; }
+    .ad-table td { padding: 9px 10px; border-bottom: 1px solid var(--rc-border); vertical-align: top; }
+    .ad-mono { font-family: var(--rc-mono); }
+    .ad-table td.ad-mono { white-space: nowrap; }
+    .ad-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+    .ad-badge.disponible { background: var(--rc-green-bg); color: var(--rc-green); }
+    .ad-badge.usado { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
+    .ad-badge.revision { background: var(--rc-yellow-bg); color: var(--rc-yellow); }
+    .ad-uso { font-size: 12px; color: var(--rc-ash); line-height: 1.5; }
+    .ad-uso b { color: var(--rc-text); font-weight: 600; }
+    .ad-empty { padding: 18px; text-align: center; color: var(--rc-ash); font-size: 13px; }
+    .ad-rev { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--rc-recess); }
+    .ad-rev-head { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; margin-bottom: 8px; }
+    .ad-cands { display: flex; flex-direction: column; gap: 6px; }
+    .ad-cand { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--rc-border); border-radius: 10px; background: var(--rc-card); font-size: 13px; }
+    .ad-toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+    .ad-toggle input { width: 18px; height: 18px; }
+    .ad-api { font-size: 13px; color: var(--rc-ash); line-height: 1.6; margin: 0; }
+    .ad-api code { font-family: var(--rc-mono); color: var(--rc-text); background: var(--rc-recess); padding: 1px 6px; border-radius: 6px; }
+    dialog.ad-dlg { border: 1px solid var(--rc-border-strong); border-radius: 16px; background: var(--rc-card); color: var(--rc-text); padding: 18px; width: min(420px, calc(100vw - 32px)); }
+    dialog.ad-dlg::backdrop { background: rgba(0,0,0,.55); }
+    .ad-dlg h3 { margin: 0 0 6px; font-size: 16px; }
+    .ad-dlg p { margin: 0 0 12px; font-size: 13px; color: var(--rc-ash); }
+    .ad-dlg label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--rc-ash); margin-bottom: 10px; }
+    .ad-dlg input { min-height: 40px; padding: 0 10px; border-radius: 10px; }
+    .ad-dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+    .ad-msg { min-height: 18px; font-size: 13px; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -33,7 +79,213 @@
   <div class="ad-wrap">
     <a href="/admin" class="back-button">← Volver al Panel Admin</a>
     <h1>Antiduplic (Referencias)</h1>
-    <section class="ad-card"></section>
+    <p class="ad-lead">Pagos recibidos en Bancamiga y quién usó cada referencia. Cada pago solo puede usarse una vez.</p>
+
+    <section class="ad-card">
+      <h2>Hoy <span class="ad-mono" id="ad-hoy" style="color:var(--rc-ash);font-weight:400;">{{ hoy }}</span></h2>
+      <div class="ad-kpis">
+        <div class="ad-kpi"><span>Total recibido hoy</span><strong class="ad-hl" id="k-total">—</strong><small id="k-n"></small></div>
+        <div class="ad-kpi"><span>Disponibles</span><strong id="k-disp">—</strong></div>
+        <div class="ad-kpi"><span>Usados</span><strong id="k-usados">—</strong></div>
+        <div class="ad-kpi"><span>En revisión</span><strong id="k-rev">—</strong></div>
+        <div class="ad-kpi"><span>Bot del banco</span><strong id="k-bot" style="font-size:15px;">—</strong><small id="k-bot-sub"></small></div>
+      </div>
+    </section>
+
+    <section class="ad-card" id="ad-rev-card" hidden>
+      <h2>Revisión manual <span class="ad-badge revision" id="ad-rev-count"></span></h2>
+      <p class="ad-lead" style="margin-bottom:10px;">Reportes con varios pagos iguales. Elige el pago correcto para asignarlo a quien lo reportó.</p>
+      <div id="ad-rev-list"></div>
+    </section>
+
+    <section class="ad-card">
+      <h2>Pagos del banco</h2>
+      <form class="ad-filters" id="ad-filtros">
+        <label>Fecha <input type="date" name="fecha" value="{{ hoy }}"></label>
+        <label>Estado
+          <select name="estado">
+            <option value="">Todos</option>
+            <option value="disponible">Disponibles</option>
+            <option value="usado">Usados</option>
+            <option value="revision">En revisión</option>
+          </select>
+        </label>
+        <label class="ad-q">Buscar <input type="search" name="q" placeholder="Referencia o monto" autocomplete="off"></label>
+        <button type="submit" class="ad-btn ad-btn-main">Filtrar</button>
+        <button type="button" class="ad-btn" id="ad-todas">Todas las fechas</button>
+      </form>
+      <div class="ad-table-wrap" style="margin-top:12px;">
+        <table class="ad-table">
+          <thead><tr><th>Referencia</th><th>Fecha</th><th>Hora</th><th>Monto</th><th>Tipo</th><th>Estado</th><th>Uso</th><th></th></tr></thead>
+          <tbody id="ad-tbody"><tr><td colspan="8" class="ad-empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="ad-card">
+      <h2>Configuración</h2>
+      <label class="ad-toggle"><input type="checkbox" id="ad-reportar" {% if reportar %}checked{% endif %}> Mostrar "Reportar pago" a los revendedores (en su Billetera)</label>
+      <p class="ad-msg" id="ad-cfg-msg"></p>
+      <p class="ad-api">
+        API del bot del banco: <code>POST {{ api_url }}/api/pagos-banco</code><br>
+        API de verificación (CRM): <code>POST {{ api_url }}/api/verificar-pago</code><br>
+        Token (<code>PAGOS_BANCO_TOKEN</code>):
+        {% if token_configurado %}<span class="ad-ok">configurado en el servidor</span>{% else %}<span class="ad-bad">no configurado: la API rechaza todo hasta que se ponga en el servidor</span>{% endif %}
+      </p>
+    </section>
   </div>
+
+  <dialog class="ad-dlg" id="ad-dlg">
+    <form method="dialog" id="ad-dlg-form">
+      <h3>Asignar pago manualmente</h3>
+      <p id="ad-dlg-pago"></p>
+      <label>ID del revendedor <input type="number" min="1" name="revendedor_id" placeholder="Ej: 12"></label>
+      <label>o ID de la orden (CRM) <input type="text" name="orden_id" maxlength="80" placeholder="Ej: ORD-1234"></label>
+      <p class="ad-msg" id="ad-dlg-msg"></p>
+      <div class="ad-dlg-actions">
+        <button type="button" class="ad-btn" id="ad-dlg-cancel">Cancelar</button>
+        <button type="submit" class="ad-btn ad-btn-main" value="ok">Asignar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
+    function bs(n) { return 'Bs ' + Number(n || 0).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+    function minutosDesde(txt, ahora) {
+      if (!txt || !ahora) return null;
+      var a = new Date(txt.replace(' ', 'T')), b = new Date(ahora.replace(' ', 'T'));
+      return Math.round((b - a) / 60000);
+    }
+    var ESTADOS = {disponible: 'Disponible', usado: 'Usado', revision: 'En revisión'};
+    var ORIGEN = {revendedor: 'Revendedor', crm: 'CRM', manual: 'Manual'};
+    var form = document.getElementById('ad-filtros');
+
+    async function postJSON(url, body) {
+      var r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+      var d = {}; try { d = await r.json(); } catch (e) {}
+      return d;
+    }
+
+    async function cargar() {
+      var p = new URLSearchParams(new FormData(form));
+      var tbody = document.getElementById('ad-tbody');
+      try {
+        var r = await fetch('/admin/antiduplic/datos?' + p.toString());
+        var d = await r.json();
+        pintarResumen(d.resumen, d.ahora);
+        pintarRevisiones(d.revisiones || []);
+        pintarPagos(d.pagos || []);
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="8" class="ad-empty">No se pudieron cargar los pagos.</td></tr>';
+      }
+    }
+
+    function pintarResumen(s, ahora) {
+      document.getElementById('k-total').textContent = bs(s.total_hoy);
+      document.getElementById('k-n').textContent = s.pagos_hoy + (s.pagos_hoy === 1 ? ' pago' : ' pagos');
+      document.getElementById('k-disp').textContent = s.disponibles_hoy;
+      document.getElementById('k-usados').textContent = s.usados_hoy;
+      document.getElementById('k-rev').textContent = s.revision_hoy;
+      var bot = document.getElementById('k-bot'), sub = document.getElementById('k-bot-sub');
+      var min = minutosDesde(s.ultimo_envio_bot, ahora);
+      if (min === null) { bot.textContent = 'Sin envíos'; bot.className = 'ad-bad'; sub.textContent = 'El bot aún no ha enviado pagos'; }
+      else {
+        bot.textContent = min <= 2 ? 'Funcionando' : (min < 60 ? 'Sin envíos hace ' + min + ' min' : 'Detenido');
+        bot.className = min <= 2 ? 'ad-ok' : (min < 10 ? 'ad-warn' : 'ad-bad');
+        sub.textContent = 'Último envío ' + s.ultimo_envio_bot.slice(11, 16) + (s.ultimo_movimiento ? ' · último movimiento ' + s.ultimo_movimiento.slice(0, 16) : '');
+      }
+    }
+
+    function pintarPagos(pagos) {
+      var tbody = document.getElementById('ad-tbody');
+      if (!pagos.length) { tbody.innerHTML = '<tr><td colspan="8" class="ad-empty">No hay pagos con estos filtros.</td></tr>'; return; }
+      tbody.innerHTML = pagos.map(function (p) {
+        var uso = '';
+        if (p.uso) {
+          var quien = p.uso.revendedor ? esc(p.uso.revendedor) + ' (ID ' + esc(p.uso.revendedor_id) + ')' : (p.uso.orden_id ? 'Orden ' + esc(p.uso.orden_id) : '—');
+          uso = '<div class="ad-uso"><b>' + quien + '</b> · ' + esc(ORIGEN[p.uso.origen] || p.uso.origen) +
+                '<br>' + esc(p.uso.usado_en) +
+                (p.uso.referencia_reportada ? '<br>Escribió: <span class="ad-mono">' + esc(p.uso.referencia_reportada) + '</span>' +
+                  (p.uso.monto_reportado != null ? ' · ' + bs(p.uso.monto_reportado) : '') : '') + '</div>';
+        }
+        var accion = p.estado === 'disponible'
+          ? '<button type="button" class="ad-btn" data-asignar="' + p.id + '" data-desc="' + esc(p.referencia + ' · ' + bs(p.monto)) + '">Asignar</button>' : '';
+        return '<tr><td class="ad-mono">' + esc(p.referencia) + '</td><td class="ad-mono">' + esc(p.fecha) + '</td><td class="ad-mono">' + esc(p.hora) +
+               '</td><td class="ad-mono ad-hl">' + bs(p.monto) + '</td><td>' + esc(p.tipo) + '</td><td><span class="ad-badge ' + esc(p.estado) + '">' +
+               esc(ESTADOS[p.estado] || p.estado) + '</span></td><td>' + uso + '</td><td>' + accion + '</td></tr>';
+      }).join('');
+    }
+
+    function pintarRevisiones(revs) {
+      var card = document.getElementById('ad-rev-card');
+      card.hidden = !revs.length;
+      document.getElementById('ad-rev-count').textContent = revs.length;
+      document.getElementById('ad-rev-list').innerHTML = revs.map(function (v) {
+        var quien = v.revendedor ? esc(v.revendedor) + ' (ID ' + esc(v.revendedor_id) + ')' : (v.orden_id ? 'Orden ' + esc(v.orden_id) : esc(ORIGEN[v.origen] || v.origen));
+        return '<div class="ad-rev"><div class="ad-rev-head"><span><b>' + quien + '</b></span>' +
+               '<span>Escribió <span class="ad-mono">' + esc(v.referencia_reportada) + '</span> · ' + bs(v.monto_reportado) + '</span>' +
+               (v.fecha_reportada ? '<span>Fecha ' + esc(v.fecha_reportada) + '</span>' : '') +
+               (v.hora_reportada ? '<span>Hora ' + esc(v.hora_reportada) + '</span>' : '') +
+               '<span style="color:var(--rc-ash);">' + esc(v.creado_en) + '</span></div><div class="ad-cands">' +
+               v.candidatos.map(function (c) {
+                 return '<div class="ad-cand"><span class="ad-mono">' + esc(c.referencia) + ' · ' + esc(c.fecha) + ' ' + esc(c.hora) + ' · ' + bs(c.monto) + '</span>' +
+                        (c.estado === 'revision' ? '<button type="button" class="ad-btn ad-btn-main" data-resolver="' + v.id + '" data-pago="' + c.id + '">Asignar este</button>'
+                                                 : '<span class="ad-badge ' + esc(c.estado) + '">' + esc(ESTADOS[c.estado] || c.estado) + '</span>') + '</div>';
+               }).join('') +
+               '</div><div style="margin-top:8px;"><button type="button" class="ad-btn" data-descartar="' + v.id + '">Descartar (ninguno es)</button></div></div>';
+      }).join('');
+    }
+
+    form.addEventListener('submit', function (e) { e.preventDefault(); cargar(); });
+    document.getElementById('ad-todas').addEventListener('click', function () { form.fecha.value = ''; cargar(); });
+
+    document.addEventListener('click', async function (e) {
+      var b = e.target.closest('[data-resolver]');
+      if (b) {
+        if (!confirm('¿Asignar este pago a quien lo reportó? Los demás candidatos vuelven a estar disponibles.')) return;
+        var d = await postJSON('/admin/antiduplic/asignar', {pago_id: +b.dataset.pago, revision_id: +b.dataset.resolver});
+        alert(d.mensaje || 'Error'); cargar(); return;
+      }
+      b = e.target.closest('[data-descartar]');
+      if (b) {
+        if (!confirm('¿Descartar este reporte? Los pagos candidatos vuelven a estar disponibles.')) return;
+        var d2 = await postJSON('/admin/antiduplic/descartar', {revision_id: +b.dataset.descartar});
+        alert(d2.mensaje || 'Error'); cargar(); return;
+      }
+      b = e.target.closest('[data-asignar]');
+      if (b) {
+        var dlg = document.getElementById('ad-dlg');
+        dlg.dataset.pago = b.dataset.asignar;
+        document.getElementById('ad-dlg-pago').textContent = 'Pago ' + b.dataset.desc;
+        document.getElementById('ad-dlg-form').reset();
+        document.getElementById('ad-dlg-msg').textContent = '';
+        dlg.showModal();
+      }
+    });
+
+    document.getElementById('ad-dlg-cancel').addEventListener('click', function () { document.getElementById('ad-dlg').close(); });
+    document.getElementById('ad-dlg-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var dlg = document.getElementById('ad-dlg'), f = e.target, msg = document.getElementById('ad-dlg-msg');
+      var d = await postJSON('/admin/antiduplic/asignar', {pago_id: +dlg.dataset.pago, revendedor_id: f.revendedor_id.value || null, orden_id: f.orden_id.value || null});
+      msg.textContent = d.mensaje || 'Error'; msg.className = 'ad-msg ' + (d.ok ? 'ad-ok' : 'ad-bad');
+      if (d.ok) { setTimeout(function () { dlg.close(); }, 600); cargar(); }
+    });
+
+    document.getElementById('ad-reportar').addEventListener('change', async function () {
+      var d = await postJSON('/admin/antiduplic/config', {reportar: this.checked});
+      var m = document.getElementById('ad-cfg-msg');
+      m.textContent = d.ok ? (d.reportar ? 'Activado: los revendedores ya ven "Reportar pago" en su Billetera.' : 'Desactivado.') : 'No se pudo guardar.';
+      m.className = 'ad-msg ' + (d.ok ? 'ad-ok' : 'ad-bad');
+    });
+
+    cargar();
+    setInterval(cargar, 30000);
+  </script>
 </body>
 </html>

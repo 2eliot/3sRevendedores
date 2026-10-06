@@ -414,6 +414,14 @@
     </section>
 
     <div class="recarga-section">
+      {% if antiduplic_reportar_activo() %}
+      <!-- Reporte de pago Bancamiga (se activa desde Admin → Antiduplic) -->
+      <div class="recarga-card">
+        <div class="recarga-card-header">Pagaste por Bancamiga?</div>
+        <p style="margin:0 0 12px;color:var(--rc-ash);font-size:14px;">Reporta tu pago móvil o transferencia con la referencia y el monto.</p>
+        <a href="/reportar-pago" class="recarga-btn" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;">Reportar pago</a>
+      </div>
+      {% endif %}
       <!-- Sección de recarga con Binance Pay -->
       <div class="recarga-card">
         <div class="recarga-card-header">Recargar saldo con Binance Pay</div>
