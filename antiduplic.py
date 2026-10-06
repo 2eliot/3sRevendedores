@@ -459,6 +459,15 @@ def admin_antiduplic():
                            api_url=request.host_url.rstrip('/'))
 
 
+@bp.route('/admin/antiduplic/docs')
+def admin_antiduplic_docs():
+    if not session.get('is_admin'):
+        flash('Acceso denegado. Solo administradores.', 'error')
+        return redirect('/auth')
+    return render_template('admin_antiduplic_docs.html', api_url=request.host_url.rstrip('/'),
+                           token_banco=bool(os.environ.get('PAGOS_BANCO_TOKEN', '').strip()))
+
+
 @bp.route('/admin/antiduplic/datos')
 def admin_antiduplic_datos():
     err = _solo_admin_json()
