@@ -5,9 +5,11 @@ Flujo:
   1. Un bot en la PC del dueño descarga los movimientos de Bancamiga y los envía a
      POST /api/pagos-banco (token). Cada envío trae todos los movimientos del día:
      los ya existentes se ignoran gracias al índice único.
-  2. Revendedores (sesión web) o el CRM (token) verifican una referencia + monto en
-     POST /api/verificar-pago. Cada pago del banco solo puede usarse una vez.
-  3. El admin ve los pagos, quién usó cada uno y resuelve empates en /admin/antiduplic.
+  2. El CRM (token) verifica la referencia + monto de cada orden en POST /api/verificar-pago.
+     Cada pago del banco solo puede usarse una vez: una referencia repetida se rechaza.
+  3. El admin ve los pagos, qué orden usó cada uno y resuelve empates en /admin/antiduplic.
+
+No toca el saldo de nadie: solo verifica pagos.
 
 Variables de entorno:
   PAGOS_BANCO_TOKEN   token Bearer para el bot del banco y el CRM (obligatorio para la API)
@@ -19,7 +21,6 @@ import os
 import re
 import secrets
 import threading
-import time
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session
@@ -30,8 +31,6 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('antiduplic', __name__)
 
 MAX_PAGOS_POR_ENVIO = 2000
-REPORTES_MAX, REPORTES_VENTANA = 10, 60  # intentos por revendedor por minuto
-CONFIG_REPORTAR = 'antiduplic_reportar_activo'
 CONFIG_ULTIMO_ENVIO = 'antiduplic_ultimo_envio'
 ORIGENES = ('revendedor', 'crm', 'manual')
 TOL = 0.005  # tolerancia al comparar montos con 2 decimales
@@ -415,70 +414,20 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
         conn.close()
 
 
-_rate = {}
-_rate_lock = threading.Lock()
-
-
-def _rate_ok(clave):
-    ahora = time.time()
-    with _rate_lock:
-        hits = [t for t in _rate.get(clave, []) if ahora - t < REPORTES_VENTANA]
-        ok = len(hits) < REPORTES_MAX
-        if ok:
-            hits.append(ahora)
-        _rate[clave] = hits
-        return ok
-
-
 @bp.route('/api/verificar-pago', methods=['POST'])
 def api_verificar_pago():
-    data = request.get_json(silent=True) or {}
-    if _token_ok():
-        origen = data.get('origen') or 'crm'
-        if origen not in ('crm', 'manual'):
-            return jsonify(_r(False, 'revision', "Con token el origen debe ser 'crm' o 'manual'")), 400
-        if origen == 'crm' and not str(data.get('orden_id') or '').strip():
-            return jsonify(_r(False, 'revision', 'Falta orden_id')), 400
-        res = verificar_y_usar_pago(data.get('referencia'), data.get('monto'), data.get('fecha'), data.get('hora'),
-                                    origen, data.get('revendedor_id'), data.get('orden_id'))
-        return jsonify(res)
-    if 'usuario' not in session or not session.get('user_db_id'):
+    """Solo para el CRM (token). Cada orden_id consume como mucho un pago."""
+    if not _token_ok():
         return jsonify(error='No autorizado'), 401
-    if not request.is_json:
-        return jsonify(error='Se espera JSON'), 415
-    if not session.get('is_admin') and not reportar_activo():
-        return jsonify(_r(False, 'revision', 'El reporte de pagos no está disponible')), 403
-    if not _rate_ok(f"rev:{session['user_db_id']}"):
-        return jsonify(_r(False, 'revision', 'Demasiados intentos. Espera un minuto.')), 429
+    data = request.get_json(silent=True) or {}
+    origen = data.get('origen') or 'crm'
+    if origen not in ('crm', 'manual'):
+        return jsonify(_r(False, 'revision', "El origen debe ser 'crm' o 'manual'")), 400
+    if origen == 'crm' and not str(data.get('orden_id') or '').strip():
+        return jsonify(_r(False, 'revision', 'Falta orden_id')), 400
     res = verificar_y_usar_pago(data.get('referencia'), data.get('monto'), data.get('fecha'), data.get('hora'),
-                                'revendedor', session['user_db_id'], None)
+                                origen, None, data.get('orden_id'))
     return jsonify(res)
-
-
-# ---------------------------------------------------------------------------
-# Pantalla del revendedor (PASO 4)
-# ---------------------------------------------------------------------------
-
-def reportar_activo():
-    try:
-        init_tablas()
-        conn = get_db_connection()
-        try:
-            return _config_get(conn, CONFIG_REPORTAR, '0') == '1'
-        finally:
-            conn.close()
-    except Exception:
-        return False
-
-
-@bp.route('/reportar-pago')
-def reportar_pago():
-    if 'usuario' not in session:
-        return redirect('/auth')
-    if not session.get('is_admin') and not reportar_activo():
-        flash('El reporte de pagos no está disponible por ahora.', 'error')
-        return redirect('/billetera')
-    return render_template('reportar_pago.html', hoy=hoy_local())
 
 
 # ---------------------------------------------------------------------------
@@ -499,7 +448,7 @@ def admin_antiduplic():
     init_tablas()
     return render_template('admin_antiduplic.html', hoy=hoy_local(),
                            token_configurado=bool(os.environ.get('PAGOS_BANCO_TOKEN', '').strip()),
-                           reportar=reportar_activo(), api_url=request.host_url.rstrip('/'))
+                           api_url=request.host_url.rstrip('/'))
 
 
 @bp.route('/admin/antiduplic/datos')
@@ -591,7 +540,7 @@ def admin_antiduplic_datos():
 
 @bp.route('/admin/antiduplic/asignar', methods=['POST'])
 def admin_antiduplic_asignar():
-    """Asigna a mano un pago (disponible o en revisión) a un revendedor u orden."""
+    """Asigna a mano un pago (disponible o en revisión) a una orden del CRM."""
     err = _solo_admin_json()
     if err:
         return err
@@ -629,7 +578,7 @@ def admin_antiduplic_asignar():
         else:
             rev_id = None
         if not rev_id and not orden_id:
-            return jsonify(ok=False, mensaje='Indica el ID del revendedor o el ID de la orden'), 400
+            return jsonify(ok=False, mensaje='Indica el ID de la orden'), 400
         if orden_id and _uso_de_orden(conn, orden_id):
             return jsonify(ok=False, mensaje='Esa orden ya tiene un pago asignado'), 409
 
@@ -679,21 +628,3 @@ def admin_antiduplic_descartar():
         return jsonify(ok=True, mensaje='Revisión descartada')
     finally:
         conn.close()
-
-
-@bp.route('/admin/antiduplic/config', methods=['POST'])
-def admin_antiduplic_config():
-    err = _solo_admin_json()
-    if err:
-        return err
-    if not request.is_json:
-        return jsonify(ok=False), 415
-    init_tablas()
-    activo = bool((request.get_json(silent=True) or {}).get('reportar'))
-    conn = get_db_connection()
-    try:
-        _config_set(conn, CONFIG_REPORTAR, '1' if activo else '0')
-        conn.commit()
-    finally:
-        conn.close()
-    return jsonify(ok=True, reportar=activo)

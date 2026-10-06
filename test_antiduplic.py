@@ -173,19 +173,18 @@ class AntiduplicTest(unittest.TestCase):
                         json={'referencia': '3333444455', 'monto': 10, 'origen': 'crm', 'orden_id': 'X1'}).get_json()
         self.assertEqual(r['codigo'], 'aprobado')
 
-    def test_limite_de_intentos_del_revendedor(self):
-        ad._rate.clear()
-        conn = get_db_connection()
-        ad._config_set(conn, ad.CONFIG_REPORTAR, '1')
-        conn.commit()
-        conn.close()
+    def test_verificar_solo_con_token_aunque_haya_sesion(self):
+        self.enviar([pago('3333444455', 10)])
         with self.c.session_transaction() as s:
-            s['usuario'] = 'r@x.com'
-            s['user_db_id'] = 99
-        codigos = [self.c.post('/api/verificar-pago', json={'referencia': '123456', 'monto': 1}).status_code
-                   for _ in range(ad.REPORTES_MAX + 1)]
-        self.assertEqual(codigos[-1], 429)
-        self.assertTrue(all(c == 200 for c in codigos[:-1]))
+            s['usuario'] = 'cliente@x.com'
+            s['user_db_id'] = 5
+        r = self.c.post('/api/verificar-pago', json={'referencia': '3333444455', 'monto': 10})
+        self.assertEqual(r.status_code, 401)
+        r = self.c.post('/api/verificar-pago', headers=AUTH, json={'referencia': '3333444455', 'monto': 10})
+        self.assertEqual(r.status_code, 400)  # el CRM debe mandar orden_id
+
+    def test_no_existe_pantalla_de_revendedor(self):
+        self.assertEqual(self.c.get('/reportar-pago').status_code, 404)
 
     # --- PASO 5: asignación manual -------------------------------------------
     def test_admin_resuelve_revision(self):
@@ -201,6 +200,9 @@ class AntiduplicTest(unittest.TestCase):
         rev = datos['revisiones'][0]
         elegido = rev['candidatos'][1]['id']
         r = self.c.post('/admin/antiduplic/asignar', json={'pago_id': elegido, 'revision_id': rev['id']}).get_json()
+        otro = rev['candidatos'][0]['id']
+        r2 = self.c.post('/admin/antiduplic/asignar', json={'pago_id': otro, 'orden_id': 'ORD-9'}).get_json()
+        self.assertTrue(r2['ok'], r2)
         self.assertTrue(r['ok'], r)
         conn = get_db_connection()
         est = {x['id']: x['estado'] for x in conn.execute('SELECT id, estado FROM pagos_banco').fetchall()}
@@ -209,7 +211,7 @@ class AntiduplicTest(unittest.TestCase):
         conn.commit()
         conn.close()
         self.assertEqual(est[elegido], 'usado')
-        self.assertEqual(sorted(est.values()), ['disponible', 'usado'])
+        self.assertEqual(sorted(est.values()), ['usado', 'usado'])
         self.assertEqual((uso['origen'], uso['revendedor_id']), ('manual', 7))
 
     def test_admin_requiere_sesion_admin(self):

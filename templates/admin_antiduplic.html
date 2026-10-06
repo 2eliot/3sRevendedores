@@ -79,7 +79,7 @@
   <div class="ad-wrap">
     <a href="/admin" class="back-button">← Volver al Panel Admin</a>
     <h1>Antiduplic (Referencias)</h1>
-    <p class="ad-lead">Pagos recibidos en Bancamiga y quién usó cada referencia. Cada pago solo puede usarse una vez.</p>
+    <p class="ad-lead">Pagos recibidos en Bancamiga y qué orden del CRM usó cada referencia. Cada pago solo puede usarse una vez: una referencia repetida se rechaza.</p>
 
     <section class="ad-card">
       <h2>Hoy <span class="ad-mono" id="ad-hoy" style="color:var(--rc-ash);font-weight:400;">{{ hoy }}</span></h2>
@@ -94,7 +94,7 @@
 
     <section class="ad-card" id="ad-rev-card" hidden>
       <h2>Revisión manual <span class="ad-badge revision" id="ad-rev-count"></span></h2>
-      <p class="ad-lead" style="margin-bottom:10px;">Reportes con varios pagos iguales. Elige el pago correcto para asignarlo a quien lo reportó.</p>
+      <p class="ad-lead" style="margin-bottom:10px;">Órdenes con varios pagos iguales. Elige el pago correcto para asignarlo a esa orden.</p>
       <div id="ad-rev-list"></div>
     </section>
 
@@ -123,9 +123,7 @@
     </section>
 
     <section class="ad-card">
-      <h2>Configuración</h2>
-      <label class="ad-toggle"><input type="checkbox" id="ad-reportar" {% if reportar %}checked{% endif %}> Mostrar "Reportar pago" a los revendedores (en su Billetera)</label>
-      <p class="ad-msg" id="ad-cfg-msg"></p>
+      <h2>Conexión</h2>
       <p class="ad-api">
         API del bot del banco: <code>POST {{ api_url }}/api/pagos-banco</code><br>
         API de verificación (CRM): <code>POST {{ api_url }}/api/verificar-pago</code><br>
@@ -139,8 +137,7 @@
     <form method="dialog" id="ad-dlg-form">
       <h3>Asignar pago manualmente</h3>
       <p id="ad-dlg-pago"></p>
-      <label>ID del revendedor <input type="number" min="1" name="revendedor_id" placeholder="Ej: 12"></label>
-      <label>o ID de la orden (CRM) <input type="text" name="orden_id" maxlength="80" placeholder="Ej: ORD-1234"></label>
+      <label>ID de la orden (CRM) <input type="text" name="orden_id" maxlength="80" required placeholder="Ej: ORD-1234"></label>
       <p class="ad-msg" id="ad-dlg-msg"></p>
       <div class="ad-dlg-actions">
         <button type="button" class="ad-btn" id="ad-dlg-cancel">Cancelar</button>
@@ -247,13 +244,13 @@
     document.addEventListener('click', async function (e) {
       var b = e.target.closest('[data-resolver]');
       if (b) {
-        if (!confirm('¿Asignar este pago a quien lo reportó? Los demás candidatos vuelven a estar disponibles.')) return;
+        if (!confirm('¿Asignar este pago a esa orden? Los demás candidatos vuelven a estar disponibles.')) return;
         var d = await postJSON('/admin/antiduplic/asignar', {pago_id: +b.dataset.pago, revision_id: +b.dataset.resolver});
         alert(d.mensaje || 'Error'); cargar(); return;
       }
       b = e.target.closest('[data-descartar]');
       if (b) {
-        if (!confirm('¿Descartar este reporte? Los pagos candidatos vuelven a estar disponibles.')) return;
+        if (!confirm('¿Descartar esta revisión? Los pagos candidatos vuelven a estar disponibles.')) return;
         var d2 = await postJSON('/admin/antiduplic/descartar', {revision_id: +b.dataset.descartar});
         alert(d2.mensaje || 'Error'); cargar(); return;
       }
@@ -272,17 +269,11 @@
     document.getElementById('ad-dlg-form').addEventListener('submit', async function (e) {
       e.preventDefault();
       var dlg = document.getElementById('ad-dlg'), f = e.target, msg = document.getElementById('ad-dlg-msg');
-      var d = await postJSON('/admin/antiduplic/asignar', {pago_id: +dlg.dataset.pago, revendedor_id: f.revendedor_id.value || null, orden_id: f.orden_id.value || null});
+      var d = await postJSON('/admin/antiduplic/asignar', {pago_id: +dlg.dataset.pago, orden_id: f.orden_id.value || null});
       msg.textContent = d.mensaje || 'Error'; msg.className = 'ad-msg ' + (d.ok ? 'ad-ok' : 'ad-bad');
       if (d.ok) { setTimeout(function () { dlg.close(); }, 600); cargar(); }
     });
 
-    document.getElementById('ad-reportar').addEventListener('change', async function () {
-      var d = await postJSON('/admin/antiduplic/config', {reportar: this.checked});
-      var m = document.getElementById('ad-cfg-msg');
-      m.textContent = d.ok ? (d.reportar ? 'Activado: los revendedores ya ven "Reportar pago" en su Billetera.' : 'Desactivado.') : 'No se pudo guardar.';
-      m.className = 'ad-msg ' + (d.ok ? 'ad-ok' : 'ad-bad');
-    });
 
     cargar();
     setInterval(cargar, 30000);
