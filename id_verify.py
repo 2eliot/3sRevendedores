@@ -97,8 +97,25 @@ INEFABLE_GAME_CODES = {c for c, _ in INEFABLE_GAMES}
 
 
 def server_inefable_key():
-    """API key definida en el servidor (variable de entorno), o ''."""
-    return os.environ.get('INEFABLE_VERIFY_KEY', '').strip()
+    """API key definida en el servidor (variable de entorno), o ''.
+
+    Prioridad: INEFABLE_VERIFY_KEY. Si no está y el endpoint de
+    verificación vive en el mismo host que REVENDEDORES_BASE_URL (es la
+    misma API whitelabel de Revendedores), sirve la REVENDEDORES_API_KEY
+    que ya autentica las recargas — así no hay que pegar ninguna key en
+    el admin."""
+    key = os.environ.get('INEFABLE_VERIFY_KEY', '').strip()
+    if key:
+        return key
+    base = os.environ.get('REVENDEDORES_BASE_URL', '').strip()
+    rev_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
+    if base and rev_key:
+        try:
+            if urllib.parse.urlsplit(base).hostname == urllib.parse.urlsplit(INEFABLE_URL).hostname:
+                return rev_key
+        except ValueError:
+            pass
+    return ''
 
 
 def get_inefable_key():
