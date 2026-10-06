@@ -891,6 +891,11 @@ def dynamic_game_page(slug):
     if f'compra_dyn_{slug}_exitosa' in session:
         compra_exitosa = True
         compra_data = session.pop(f'compra_dyn_{slug}_exitosa')
+        # Si el proveedor no devolvió el nombre, usar el que se verificó antes de comprar
+        if not compra_data.get('player_name') and compra_data.get('player_id'):
+            from id_verify import nombre_verificado
+            compra_data['player_name'] = nombre_verificado(
+                f'dyn_{slug}', compra_data.get('player_id'), compra_data.get('player_id2') or '')
 
     # Generate one-time nonce for form submission
     nonce = secrets.token_urlsafe(16)
@@ -2201,6 +2206,9 @@ def _purchase_via_reseller(game, pkg, mapping, slug, user_id, is_admin, precio,
         ref_no = resp_data.get('reference_no', resp_data.get('order_id', ''))
         pin_key = resp_data.get('pin', resp_data.get('serial_key', ''))
         ingame = resp_data.get('player_name', resp_data.get('ingame_name', ''))
+        if not ingame:
+            from id_verify import nombre_verificado
+            ingame = nombre_verificado(f'dyn_{slug}', player_id, player_id2 or '')
         estado_db = 'aprobado'
 
         conn = _get_conn()

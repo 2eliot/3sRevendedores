@@ -317,7 +317,27 @@ def api_verificar_id():
 
     ok, result = call_verify_api(cfg, player_id, player_id2, servidor)
     logger.info(f'[VerifyID] {game_key} player={player_id} -> {"OK" if ok else "FAIL"}')
+    if ok:
+        recordar_nombre(game_key, player_id, player_id2, result)
     return jsonify(ok=True, name=result) if ok else (jsonify(ok=False, error=result), 200)
+
+
+def _clave_nombre(game_key, player_id, player_id2=''):
+    return f"{game_key}|{(player_id or '').strip()}|{(player_id2 or '').strip()}"
+
+
+def recordar_nombre(game_key, player_id, player_id2, nombre):
+    """Guarda en la sesión el nombre verificado, para mostrarlo tras la compra
+    aunque el proveedor de la recarga no lo devuelva."""
+    nombres = dict(session.get('nombres_verificados') or {})
+    nombres.pop(_clave_nombre(game_key, player_id, player_id2), None)
+    nombres[_clave_nombre(game_key, player_id, player_id2)] = str(nombre)[:60]
+    session['nombres_verificados'] = dict(list(nombres.items())[-20:])
+
+
+def nombre_verificado(game_key, player_id, player_id2=''):
+    """Nombre que el usuario verificó en esta sesión para ese ID ('' si no hay)."""
+    return (session.get('nombres_verificados') or {}).get(_clave_nombre(game_key, player_id, player_id2), '')
 
 
 @bp.route('/admin/verificacion-ids', methods=['GET', 'POST'])
