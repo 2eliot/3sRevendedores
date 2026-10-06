@@ -12,6 +12,7 @@ _tmp = tempfile.TemporaryDirectory()
 os.environ['DATABASE_PATH'] = os.path.join(_tmp.name, 'antiduplic_test.db')
 os.environ.pop('DATABASE_URL', None)
 os.environ['PAGOS_BANCO_TOKEN'] = 'token-de-prueba'
+os.environ['CRM_API_TOKEN'] = 'token-crm-prueba'
 
 from flask import Flask  # noqa: E402
 
@@ -19,6 +20,7 @@ import antiduplic as ad  # noqa: E402
 from pg_compat import get_db_connection  # noqa: E402
 
 AUTH = {'Authorization': 'Bearer token-de-prueba'}
+AUTH_CRM = {'Authorization': 'Bearer token-crm-prueba'}
 
 
 def crear_app():
@@ -169,7 +171,7 @@ class AntiduplicTest(unittest.TestCase):
     def test_api_verificar_con_token_y_sin_sesion(self):
         self.enviar([pago('3333444455', 10)])
         self.assertEqual(self.c.post('/api/verificar-pago', json={'referencia': '3333444455', 'monto': 10}).status_code, 401)
-        r = self.c.post('/api/verificar-pago', headers=AUTH,
+        r = self.c.post('/api/verificar-pago', headers=AUTH_CRM,
                         json={'referencia': '3333444455', 'monto': 10, 'origen': 'crm', 'orden_id': 'X1'}).get_json()
         self.assertEqual(r['codigo'], 'aprobado')
 
@@ -180,8 +182,14 @@ class AntiduplicTest(unittest.TestCase):
             s['user_db_id'] = 5
         r = self.c.post('/api/verificar-pago', json={'referencia': '3333444455', 'monto': 10})
         self.assertEqual(r.status_code, 401)
-        r = self.c.post('/api/verificar-pago', headers=AUTH, json={'referencia': '3333444455', 'monto': 10})
+        r = self.c.post('/api/verificar-pago', headers=AUTH_CRM, json={'referencia': '3333444455', 'monto': 10})
         self.assertEqual(r.status_code, 400)  # el CRM debe mandar orden_id
+
+    def test_cada_clave_solo_sirve_para_su_api(self):
+        # La clave del bot no puede verificar pagos y la del CRM no puede enviar pagos del banco
+        r = self.c.post('/api/verificar-pago', headers=AUTH, json={'referencia': '3333444455', 'monto': 10, 'orden_id': 'O1'})
+        self.assertEqual(r.status_code, 401)
+        self.assertEqual(self.enviar([pago('123456789', 10)], headers=AUTH_CRM).status_code, 401)
 
     def test_no_existe_pantalla_de_revendedor(self):
         self.assertEqual(self.c.get('/reportar-pago').status_code, 404)

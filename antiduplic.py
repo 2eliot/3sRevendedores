@@ -12,7 +12,8 @@ Flujo:
 No toca el saldo de nadie: solo verifica pagos.
 
 Variables de entorno:
-  PAGOS_BANCO_TOKEN   token Bearer para el bot del banco y el CRM (obligatorio para la API)
+  PAGOS_BANCO_TOKEN   token Bearer del bot del banco: solo puede enviar movimientos (/api/pagos-banco)
+  CRM_API_TOKEN       token Bearer del CRM: verifica pagos (/api/verificar-pago) y, más adelante, recargas
   DEFAULT_TZ          zona horaria para "hoy" (por defecto America/Caracas)
 """
 import json
@@ -111,8 +112,9 @@ def _pago_dict(row):
     }
 
 
-def _token_ok():
-    esperado = os.environ.get('PAGOS_BANCO_TOKEN', '').strip()
+def _token_ok(variable):
+    """True si la petición trae el token Bearer guardado en la variable de entorno indicada."""
+    esperado = os.environ.get(variable, '').strip()
     auth = request.headers.get('Authorization', '')
     if not esperado or not auth.startswith('Bearer '):
         return False
@@ -241,7 +243,7 @@ def guardar_pagos(pagos):
 
 @bp.route('/api/pagos-banco', methods=['POST'])
 def api_pagos_banco():
-    if not _token_ok():
+    if not _token_ok('PAGOS_BANCO_TOKEN'):
         return jsonify(error='No autorizado'), 401
     if (request.content_length or 0) > 2 * 1024 * 1024:
         return jsonify(error='Cuerpo demasiado grande'), 413
@@ -417,7 +419,7 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
 @bp.route('/api/verificar-pago', methods=['POST'])
 def api_verificar_pago():
     """Solo para el CRM (token). Cada orden_id consume como mucho un pago."""
-    if not _token_ok():
+    if not _token_ok('CRM_API_TOKEN'):
         return jsonify(error='No autorizado'), 401
     data = request.get_json(silent=True) or {}
     origen = data.get('origen') or 'crm'
@@ -447,7 +449,8 @@ def admin_antiduplic():
         return redirect('/auth')
     init_tablas()
     return render_template('admin_antiduplic.html', hoy=hoy_local(),
-                           token_configurado=bool(os.environ.get('PAGOS_BANCO_TOKEN', '').strip()),
+                           token_banco=bool(os.environ.get('PAGOS_BANCO_TOKEN', '').strip()),
+                           token_crm=bool(os.environ.get('CRM_API_TOKEN', '').strip()),
                            api_url=request.host_url.rstrip('/'))
 
 

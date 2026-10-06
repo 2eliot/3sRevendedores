@@ -125,10 +125,10 @@
     <section class="ad-card">
       <h2>Conexión</h2>
       <p class="ad-api">
-        API del bot del banco: <code>POST {{ api_url }}/api/pagos-banco</code><br>
-        API de verificación (CRM): <code>POST {{ api_url }}/api/verificar-pago</code><br>
-        Token (<code>PAGOS_BANCO_TOKEN</code>):
-        {% if token_configurado %}<span class="ad-ok">configurado en el servidor</span>{% else %}<span class="ad-bad">no configurado: la API rechaza todo hasta que se ponga en el servidor</span>{% endif %}
+        Bot del banco: <code>POST {{ api_url }}/api/pagos-banco</code> · clave <code>PAGOS_BANCO_TOKEN</code>:
+        {% if token_banco %}<span class="ad-ok">configurada en el servidor</span>{% else %}<span class="ad-bad">no configurada (se rechaza todo)</span>{% endif %}<br>
+        CRM: <code>POST {{ api_url }}/api/verificar-pago</code> · clave <code>CRM_API_TOKEN</code>:
+        {% if token_crm %}<span class="ad-ok">configurada en el servidor</span>{% else %}<span class="ad-bad">no configurada (se rechaza todo)</span>{% endif %}
       </p>
     </section>
   </div>
