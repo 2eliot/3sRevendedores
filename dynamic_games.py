@@ -2002,6 +2002,13 @@ def _purchase_via_reseller_multi(game, pkg, units, slug, user_id, is_admin, prec
             u.update(st='fail', err=str(resp.get('error') or 'Error del revendedor')[:200])
             break
         logger.info(f"[DynGame:{slug}][Reseller Multi] {u['ext']} → {u['st']}")
+    # Si el proveedor no devolvió el nombre, usar el que se verificó antes de comprar
+    from id_verify import nombre_verificado
+    _nv = nombre_verificado(f'dyn_{slug}', player_id, player_id2 or '')
+    if _nv:
+        for u in state['units']:
+            if not u.get('name'):
+                u['name'] = _nv
     _duration = round(time_module.time() - _start, 1)
 
     tx = {'id': tx_id, 'usuario_id': user_id, 'monto': precio, 'numero_control': numero_control,
