@@ -12,7 +12,6 @@ _tmp = tempfile.TemporaryDirectory()
 os.environ['DATABASE_PATH'] = os.path.join(_tmp.name, 'antiduplic_test.db')
 os.environ.pop('DATABASE_URL', None)
 os.environ['PAGOS_BANCO_TOKEN'] = 'token-de-prueba'
-os.environ['CRM_API_TOKEN'] = 'token-crm-prueba'
 
 from flask import Flask  # noqa: E402
 
@@ -20,7 +19,8 @@ import antiduplic as ad  # noqa: E402
 from pg_compat import get_db_connection  # noqa: E402
 
 AUTH = {'Authorization': 'Bearer token-de-prueba'}
-AUTH_CRM = {'Authorization': 'Bearer token-crm-prueba'}
+AUTH_CRM = {'X-API-Key': 'wsk_crm_con_permiso'}
+AUTH_SIN_PERMISO = {'X-API-Key': 'wsk_crm_sin_permiso'}
 
 
 def crear_app():
@@ -36,6 +36,19 @@ def base_inicial():
                  'fecha_actualizacion TEXT)')
     conn.execute('CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, apellido TEXT, '
                  'telefono TEXT, correo TEXT, contraseña TEXT, saldo REAL DEFAULT 0)')
+    conn.execute('CREATE TABLE IF NOT EXISTS webservice_accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, '
+                 'api_key TEXT UNIQUE, usuario_id INTEGER, webhook_url TEXT DEFAULT \'\', activo BOOLEAN DEFAULT TRUE, '
+                 'fecha_creacion TEXT, fecha_actualizacion TEXT)')
+    conn.commit()
+    conn.close()
+    import api_panel
+    api_panel.init_permisos()
+    conn = get_db_connection()
+    conn.execute('DELETE FROM webservice_accounts')
+    conn.execute("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, perm_verificar_pago) "
+                 "VALUES ('CRM', 'wsk_crm_con_permiso', 1, TRUE, TRUE)")
+    conn.execute("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, perm_verificar_pago) "
+                 "VALUES ('Otra', 'wsk_crm_sin_permiso', 1, TRUE, FALSE)")
     conn.commit()
     conn.close()
 
@@ -189,7 +202,11 @@ class AntiduplicTest(unittest.TestCase):
         # La clave del bot no puede verificar pagos y la del CRM no puede enviar pagos del banco
         r = self.c.post('/api/verificar-pago', headers=AUTH, json={'referencia': '3333444455', 'monto': 10, 'orden_id': 'O1'})
         self.assertEqual(r.status_code, 401)
+        r = self.c.post('/api/verificar-pago', headers=AUTH_SIN_PERMISO,
+                        json={'referencia': '3333444455', 'monto': 10, 'orden_id': 'O1'})
+        self.assertEqual(r.status_code, 403)
         self.assertEqual(self.enviar([pago('123456789', 10)], headers=AUTH_CRM).status_code, 401)
+        self.assertEqual(self.enviar([pago('123456789', 10)], headers={'Authorization': 'Bearer wsk_crm_con_permiso'}).status_code, 401)
 
     def test_no_existe_pantalla_de_revendedor(self):
         self.assertEqual(self.c.get('/reportar-pago').status_code, 404)

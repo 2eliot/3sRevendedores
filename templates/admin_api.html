@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API — Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <style>
+    .ap-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+    .ap-wrap h1 { margin: 16px 0 4px; font-size: 26px; font-weight: 600; }
+    .ap-lead { margin: 0 0 18px; color: var(--rc-ash); font-size: 14px; line-height: 1.5; }
+    .ap-top { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+    .ap-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .ap-card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+    .ap-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .ap-btn:hover { background: var(--rc-slate); }
+    .ap-btn-main { background: var(--rc-mist); color: var(--rc-card); border: 0; }
+    .ap-btn-danger { color: var(--rc-coral); }
+    .ap-form { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+    .ap-form label, .ap-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--rc-ash); }
+    .ap-form input, .ap-field input { min-height: 40px; padding: 0 10px; border-radius: 10px; font-size: 14px; }
+    .ap-perms { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0; }
+    .ap-perm { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; color: var(--rc-text); }
+    .ap-perm input { width: 18px; height: 18px; }
+    .ap-acc { border: 1px solid var(--rc-border); border-radius: 12px; padding: 14px; background: var(--rc-recess); margin-bottom: 10px; }
+    .ap-acc-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .ap-acc-name { font-size: 16px; font-weight: 600; }
+    .ap-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .ap-on { background: var(--rc-green-bg); color: var(--rc-green); } .ap-off { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
+    .ap-meta { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 13px; color: var(--rc-ash); margin-bottom: 10px; }
+    .ap-meta b { color: var(--rc-text); font-weight: 500; }
+    .ap-key { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .ap-key code { flex: 1 1 260px; font-family: var(--rc-mono); font-size: 13px; padding: 9px 12px; border-radius: 10px; background: var(--rc-card); border: 1px solid var(--rc-border); overflow-wrap: anywhere; }
+    .ap-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .ap-msg { min-height: 18px; font-size: 13px; margin-top: 8px; }
+    .ap-ok { color: var(--rc-green); } .ap-bad { color: var(--rc-coral); }
+    .ap-empty { padding: 18px; text-align: center; color: var(--rc-ash); font-size: 13px; }
+    @media (max-width: 560px) { .ap-form { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="ap-wrap">
+    <a href="/admin" class="back-button">← Volver al Panel Admin</a>
+    <div class="ap-top">
+      <h1>API</h1>
+      <a class="ap-btn ap-btn-main" href="/admin/api/docs">📄 Documentación</a>
+    </div>
+    <p class="ap-lead">Cuentas para conectar sistemas externos, como tu CRM. Cada cuenta tiene su propia clave y solo puede hacer lo que le permitas. Las recargas se cobran del saldo del usuario vinculado a la cuenta.</p>
+
+    <section class="ap-card">
+      <h2>Nueva cuenta</h2>
+      <form id="ap-new" class="ap-form" autocomplete="off">
+        <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: CRM 3S-Ticket" required></label>
+        <label>ID del usuario que paga <input name="usuario_id" type="number" min="1" placeholder="Ej: 12" required></label>
+      </form>
+      <div class="ap-perms">
+        {% for k, label in permisos %}
+        <label class="ap-perm"><input type="checkbox" form="ap-new" name="perm_{{ k }}"> {{ label }}</label>
+        {% endfor %}
+      </div>
+      <button type="submit" form="ap-new" class="ap-btn ap-btn-main">Crear cuenta</button>
+      <p class="ap-msg" id="ap-new-msg"></p>
+    </section>
+
+    <section class="ap-card">
+      <h2>Cuentas</h2>
+      <div id="ap-list"><div class="ap-empty">Cargando…</div></div>
+    </section>
+  </div>
+
+  <script>
+    var PERMISOS = {{ permisos|tojson }};
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
+    async function post(url, body) {
+      var r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
+      var d = {}; try { d = await r.json(); } catch (e) {}
+      return d;
+    }
+    function msg(el, ok, text) { el.className = 'ap-msg ' + (ok ? 'ap-ok' : 'ap-bad'); el.textContent = text; }
+
+    function pintar(cuentas) {
+      var box = document.getElementById('ap-list');
+      if (!cuentas.length) { box.innerHTML = '<div class="ap-empty">Todavía no hay cuentas. Crea una para tu CRM.</div>'; return; }
+      box.innerHTML = cuentas.map(function (a) {
+        var perms = PERMISOS.map(function (p) {
+          return '<label class="ap-perm"><input type="checkbox" data-perm="' + p[0] + '" data-id="' + a.id + '"' + (a.permisos[p[0]] ? ' checked' : '') + '> ' + esc(p[1]) + '</label>';
+        }).join('');
+        return '<div class="ap-acc" id="acc-' + a.id + '">' +
+          '<div class="ap-acc-head"><span class="ap-acc-name">' + esc(a.nombre) + '</span>' +
+          '<span class="ap-badge ' + (a.activo ? 'ap-on">Activa' : 'ap-off">Desactivada') + '</span></div>' +
+          '<div class="ap-meta"><span>Paga: <b>' + esc(a.usuario || '—') + '</b> (ID ' + esc(a.usuario_id) + ')</span>' +
+          '<span>Saldo: <b>$' + Number(a.usuario_saldo).toFixed(2) + '</b></span>' +
+          (a.webhook_url ? '<span>Webhook: <b>' + esc(a.webhook_url) + '</b></span>' : '') + '</div>' +
+          '<div class="ap-key"><code data-key="' + a.id + '">' + '•'.repeat(24) + '</code>' +
+          '<button type="button" class="ap-btn" data-show="' + a.id + '" data-k="' + esc(a.api_key) + '">Mostrar</button>' +
+          '<button type="button" class="ap-btn" data-copy="' + esc(a.api_key) + '">Copiar</button></div>' +
+          '<div class="ap-perms">' + perms + '</div>' +
+          '<div class="ap-actions">' +
+          '<button type="button" class="ap-btn" data-toggle="' + a.id + '" data-activo="' + (a.activo ? 1 : 0) + '">' + (a.activo ? 'Desactivar' : 'Activar') + '</button>' +
+          '<button type="button" class="ap-btn" data-regen="' + a.id + '">Nueva clave</button>' +
+          '<button type="button" class="ap-btn ap-btn-danger" data-del="' + a.id + '">Eliminar</button></div>' +
+          '<p class="ap-msg" id="msg-' + a.id + '"></p></div>';
+      }).join('');
+    }
+
+    async function cargar() {
+      var r = await fetch('/admin/api/cuentas'); var d = await r.json();
+      pintar(d.cuentas || []);
+    }
+
+    document.getElementById('ap-new').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target, permisos = {};
+      PERMISOS.forEach(function (p) { permisos[p[0]] = document.querySelector('[name="perm_' + p[0] + '"]').checked; });
+      var d = await post('/admin/api/cuentas', {nombre: f.nombre.value, usuario_id: f.usuario_id.value, permisos: permisos});
+      var m = document.getElementById('ap-new-msg');
+      if (d.ok) { msg(m, true, 'Cuenta creada. Copia su clave abajo.'); f.reset(); document.querySelectorAll('[name^="perm_"]').forEach(function (x) { x.checked = false; }); cargar(); }
+      else msg(m, false, d.error || 'No se pudo crear');
+    });
+
+    document.addEventListener('change', async function (e) {
+      var c = e.target.closest('[data-perm]');
+      if (!c) return;
+      var body = {permisos: {}}; body.permisos[c.dataset.perm] = c.checked;
+      var d = await post('/admin/api/cuentas/' + c.dataset.id, body);
+      msg(document.getElementById('msg-' + c.dataset.id), d.ok, d.ok ? 'Permiso guardado' : (d.error || 'Error'));
+      if (!d.ok) c.checked = !c.checked;
+    });
+
+    document.addEventListener('click', async function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.show) {
+        var code = document.querySelector('[data-key="' + b.dataset.show + '"]');
+        var visible = code.textContent === b.dataset.k;
+        code.textContent = visible ? '•'.repeat(24) : b.dataset.k;
+        b.textContent = visible ? 'Mostrar' : 'Ocultar';
+      } else if (b.dataset.copy) {
+        try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copiada ✓'; } catch (x) { b.textContent = 'No se pudo copiar'; }
+        setTimeout(function () { b.textContent = 'Copiar'; }, 1500);
+      } else if (b.dataset.toggle) {
+        await post('/admin/api/cuentas/' + b.dataset.toggle, {activo: b.dataset.activo !== '1'}); cargar();
+      } else if (b.dataset.regen) {
+        if (!confirm('¿Crear una clave nueva? La actual deja de funcionar al instante y tendrás que cambiarla en tu CRM.')) return;
+        var d = await post('/admin/api/cuentas/' + b.dataset.regen + '/regenerar'); await cargar();
+        if (d.ok) msg(document.getElementById('msg-' + b.dataset.regen), true, 'Clave nueva creada: cópiala y cámbiala en tu CRM.');
+      } else if (b.dataset.del) {
+        if (!confirm('¿Eliminar esta cuenta? Su clave dejará de funcionar.')) return;
+        var d2 = await post('/admin/api/cuentas/' + b.dataset.del + '/eliminar');
+        if (d2.mensaje) alert(d2.mensaje);
+        cargar();
+      }
+    });
+
+    cargar();
+  </script>
+</body>
+</html>

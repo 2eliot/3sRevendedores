@@ -308,6 +308,11 @@ def api_v1_recharge():
     account = request._ws_account
     usuario_id = account['usuario_id']
 
+    from api_panel import cuenta_puede, init_permisos
+    init_permisos()
+    if not cuenta_puede(account, 'recargas'):
+        return jsonify({'ok': False, 'error': 'Esta cuenta no tiene permiso para hacer recargas'}), 403
+
     data = request.get_json(silent=True) or {}
     product_id = data.get('product_id')
     package_id = data.get('package_id')
@@ -317,6 +322,21 @@ def api_v1_recharge():
 
     if not package_id or not player_id:
         return jsonify({'ok': False, 'error': 'package_id y player_id son requeridos'}), 400
+
+    # Idempotencia: la misma external_order_id nunca recarga ni cobra dos veces
+    if external_order_id:
+        external_order_id = external_order_id[:80]
+        conn_prev = _get_conn()
+        prev = conn_prev.execute(
+            "SELECT * FROM api_orders WHERE account_id = ? AND external_order_id = ? AND estado IN ('procesando', 'completada') "
+            'ORDER BY id DESC LIMIT 1', (account['id'], external_order_id)).fetchone()
+        conn_prev.close()
+        if prev:
+            return jsonify({
+                'ok': prev['estado'] == 'completada', 'duplicada': True, 'order_id': prev['id'], 'status': prev['estado'],
+                'player_name': prev['player_name'] or '', 'reference_no': prev['reference_no'] or '',
+                'mensaje': 'Esta external_order_id ya tiene una recarga; no se hizo otra.',
+            }), 200 if prev['estado'] == 'completada' else 409
 
     try:
         package_id = int(package_id)

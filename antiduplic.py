@@ -13,7 +13,9 @@ No toca el saldo de nadie: solo verifica pagos.
 
 Variables de entorno:
   PAGOS_BANCO_TOKEN   token Bearer del bot del banco: solo puede enviar movimientos (/api/pagos-banco)
-  CRM_API_TOKEN       token Bearer del CRM: verifica pagos (/api/verificar-pago) y, más adelante, recargas
+
+/api/verificar-pago usa la clave (X-API-Key) de una cuenta del apartado "API" del admin
+con el permiso "Verificar pagos de Bancamiga".
   DEFAULT_TZ          zona horaria para "hoy" (por defecto America/Caracas)
 """
 import json
@@ -418,9 +420,13 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
 
 @bp.route('/api/verificar-pago', methods=['POST'])
 def api_verificar_pago():
-    """Solo para el CRM (token). Cada orden_id consume como mucho un pago."""
-    if not _token_ok('CRM_API_TOKEN'):
+    """Para el CRM: clave de una cuenta API con permiso. Cada orden_id consume como mucho un pago."""
+    from api_panel import cuenta_por_clave, cuenta_puede
+    cuenta = cuenta_por_clave(request.headers.get('X-API-Key'))
+    if not cuenta:
         return jsonify(error='No autorizado'), 401
+    if not cuenta_puede(cuenta, 'verificar_pago'):
+        return jsonify(error='Esta cuenta no tiene permiso para verificar pagos'), 403
     data = request.get_json(silent=True) or {}
     origen = data.get('origen') or 'crm'
     if origen not in ('crm', 'manual'):
@@ -450,7 +456,6 @@ def admin_antiduplic():
     init_tablas()
     return render_template('admin_antiduplic.html', hoy=hoy_local(),
                            token_banco=bool(os.environ.get('PAGOS_BANCO_TOKEN', '').strip()),
-                           token_crm=bool(os.environ.get('CRM_API_TOKEN', '').strip()),
                            api_url=request.host_url.rstrip('/'))
 
 

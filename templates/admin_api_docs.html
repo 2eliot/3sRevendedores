@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentación API — Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <style>
+    .dc-wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+    .dc-wrap h1 { margin: 16px 0 4px; font-size: 28px; font-weight: 600; }
+    .dc-wrap h2 { margin: 36px 0 10px; font-size: 20px; font-weight: 600; padding-top: 8px; border-top: 1px solid var(--rc-border); }
+    .dc-wrap h3 { margin: 22px 0 8px; font-size: 16px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .dc-wrap p, .dc-wrap li { font-size: 14px; line-height: 1.6; color: var(--rc-mist); }
+    .dc-lead { color: var(--rc-ash) !important; margin: 0 0 16px; }
+    .dc-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+    .dc-toc a { font-size: 13px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--rc-border); color: var(--rc-text); text-decoration: none; }
+    code, pre { font-family: var(--rc-mono); }
+    .dc-wrap p code, .dc-wrap li code, td code { font-size: 12.5px; padding: 1px 6px; border-radius: 6px; background: var(--rc-recess); border: 1px solid var(--rc-border); color: var(--rc-text); }
+    pre { margin: 8px 0 14px; padding: 12px 14px; border-radius: 12px; background: var(--rc-recess); border: 1px solid var(--rc-border); font-size: 12.5px; line-height: 1.55; overflow-x: auto; color: var(--rc-text); white-space: pre; }
+    .dc-m { font-family: var(--rc-mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+    .dc-get { background: var(--rc-blue-bg); color: var(--rc-blue); } .dc-post { background: var(--rc-green-bg); color: var(--rc-green); }
+    .dc-perm { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--rc-yellow-bg); color: var(--rc-yellow); }
+    table.dc-t { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 14px; }
+    .dc-t th { text-align: left; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; padding: 7px 10px; border-bottom: 1px solid var(--rc-border); }
+    .dc-t td { padding: 8px 10px; border-bottom: 1px solid var(--rc-border); vertical-align: top; }
+    .dc-tw { overflow-x: auto; }
+    .dc-game { border: 1px solid var(--rc-border); border-radius: 14px; padding: 14px 16px; margin: 12px 0; background: var(--rc-card); }
+    .dc-game h3 { margin-top: 0; }
+    .dc-chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--rc-border); color: var(--rc-ash); font-weight: 500; }
+    .dc-yes { color: var(--rc-green); font-weight: 600; } .dc-no { color: var(--rc-ash); }
+    .dc-note { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--rc-border); background: var(--rc-recess); font-size: 13.5px; line-height: 1.55; margin: 10px 0; }
+    .dc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .dc-btn { min-height: 38px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
+    @media print { .back-button, .dc-actions, .dc-toc { display: none !important; } body { background: #fff !important; } }
+  </style>
+</head>
+<body>
+<div class="dc-wrap">
+  <a href="/admin/api" class="back-button">← Volver a API</a>
+  <h1>Documentación de la API</h1>
+  <p class="dc-lead">Para conectar tu CRM: recargas, verificación de IDs de jugador y verificación de pagos de Bancamiga. El catálogo de juegos y paquetes de abajo se genera en vivo con los datos actuales de la web.</p>
+  <div class="dc-actions"><button class="dc-btn" onclick="window.print()">Imprimir / guardar PDF</button></div>
+  <nav class="dc-toc">
+    <a href="#inicio">Inicio rápido</a><a href="#flujo">Flujo del CRM</a><a href="#productos">Catálogo</a><a href="#verify-id">Verificar ID</a>
+    <a href="#verificar-pago">Verificar pago</a><a href="#recarga">Recargar</a><a href="#estado">Estado de órdenes</a><a href="#saldo">Saldo</a>
+    <a href="#errores">Errores</a><a href="#juegos">Juegos y paquetes</a>
+  </nav>
+
+  <h2 id="inicio">Inicio rápido</h2>
+  <ul>
+    <li><strong>Dirección base:</strong> <code>{{ api_url }}</code></li>
+    <li><strong>Clave:</strong> en cada petición manda la cabecera <code>X-API-Key: wsk_...</code> con la clave de tu cuenta (Admin → API).</li>
+    <li><strong>Formato:</strong> los datos se envían y se reciben en JSON (<code>Content-Type: application/json</code>).</li>
+    <li><strong>Permisos:</strong> cada cuenta solo puede usar lo que tenga marcado en Admin → API: <em>Hacer recargas</em>, <em>Verificar IDs de jugador</em> y <em>Verificar pagos de Bancamiga</em>.</li>
+    <li><strong>Saldo:</strong> cada recarga se cobra del saldo del usuario vinculado a la cuenta. Si falla, el saldo se devuelve solo.</li>
+  </ul>
+
+  <h2 id="flujo">Flujo recomendado para recargas automáticas</h2>
+  <ol>
+    <li>El cliente paga por Bancamiga y manda la referencia y el monto por WhatsApp.</li>
+    <li><strong>Verificar pago</strong> (<code>POST /api/verificar-pago</code>) con la referencia, el monto y el ID de la orden del CRM. Solo sigue si responde <code>"codigo": "aprobado"</code> o <code>"ya_aprobado"</code>.</li>
+    <li><strong>Verificar ID</strong> del jugador (<code>POST /api/v1/verify-id</code>), opcional, para confirmar el nombre antes de recargar.</li>
+    <li><strong>Recargar</strong> (<code>POST /api/v1/recharge</code>) usando el <strong>mismo ID de orden</strong> en <code>external_order_id</code>. Si por un fallo de red el CRM repite la petición, no se recarga dos veces.</li>
+    <li>Si la respuesta tarda o se pierde, consulta el <strong>estado</strong> con <code>GET /api/v1/order-status?external_order_id=...</code>.</li>
+  </ol>
+  <div class="dc-note">Usa siempre el mismo ID de orden del CRM en los dos pasos. Así una referencia de pago nunca sirve para dos órdenes y una orden nunca se recarga dos veces.</div>
+
+  <h2 id="productos">Catálogo</h2>
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/products</code> <span class="dc-chip">cualquier cuenta activa</span></h3>
+  <p>Lista los juegos activos con sus paquetes y precios. El <code>game_id</code> de cada juego es el <code>product_id</code> que usan las demás llamadas.</p>
+<pre>curl {{ api_url }}/api/v1/products -H "X-API-Key: wsk_TU_CLAVE"</pre>
+<pre>{
+  "ok": true,
+  "games": [
+    {"game_id": -1, "name": "Free Fire ID", "game_type": "freefire_id", "mode": "id",
+     "packages": [{"package_id": 1, "name": "100 Diamantes", "price": 0.86}]}
+  ],
+  "user": {"user_id": 12, "name": "CRM", "balance": 150.0}
+}</pre>
+
+  <h2 id="verify-id">Verificar ID de jugador</h2>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/v1/verify-id</code> <span class="dc-perm">permiso: Verificar IDs de jugador</span></h3>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Campo</th><th>Tipo</th><th>Obligatorio</th><th>Descripción</th></tr>
+    <tr><td><code>product_id</code></td><td>número</td><td>sí</td><td>Juego (ver <a href="#juegos" style="color:var(--rc-hl);">Juegos y paquetes</a>).</td></tr>
+    <tr><td><code>player_id</code></td><td>texto</td><td>sí</td><td>ID del jugador.</td></tr>
+    <tr><td><code>player_id2</code></td><td>texto</td><td>según juego</td><td>Segundo ID, por ejemplo el Zone ID de Mobile Legends.</td></tr>
+  </table></div>
+<pre>curl -X POST {{ api_url }}/api/v1/verify-id -H "X-API-Key: wsk_TU_CLAVE" -H "Content-Type: application/json" \
+  -d '{"product_id": -1, "player_id": "123456789"}'</pre>
+<pre>{"ok": true, "player_id": "123456789", "player_name": "ProPlayer99"}
+{"ok": false, "error": "ID de jugador no encontrado"}</pre>
+  <p>Máximo 30 verificaciones por minuto por cuenta.</p>
+
+  <h2 id="verificar-pago">Verificar pago de Bancamiga</h2>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/verificar-pago</code> <span class="dc-perm">permiso: Verificar pagos de Bancamiga</span></h3>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Campo</th><th>Tipo</th><th>Obligatorio</th><th>Descripción</th></tr>
+    <tr><td><code>referencia</code></td><td>texto</td><td>sí</td><td>Solo números. Con 6 dígitos o más basta con los últimos dígitos.</td></tr>
+    <tr><td><code>monto</code></td><td>número o texto</td><td>sí</td><td>En bolívares. Acepta <code>7350</code>, <code>7350.00</code> o <code>"7.350,00"</code>.</td></tr>
+    <tr><td><code>orden_id</code></td><td>texto</td><td>sí</td><td>ID de la orden en el CRM. Una orden nunca consume dos pagos.</td></tr>
+    <tr><td><code>fecha</code></td><td>texto</td><td>si la referencia tiene 4 o 5 dígitos</td><td><code>AAAA-MM-DD</code>.</td></tr>
+    <tr><td><code>hora</code></td><td>texto</td><td>solo si hay empate</td><td><code>HH:MM</code> o <code>HH:MM:SS</code>.</td></tr>
+  </table></div>
+<pre>curl -X POST {{ api_url }}/api/verificar-pago -H "X-API-Key: wsk_TU_CLAVE" -H "Content-Type: application/json" \
+  -d '{"referencia": "7568126123", "monto": 7350.00, "orden_id": "ORD-1001"}'</pre>
+<pre>{"ok": true, "codigo": "aprobado", "mensaje": "Pago verificado",
+ "pago": {"id": 31, "referencia": "7568126123", "fecha": "2026-10-05", "hora": "08:14:52",
+          "monto": 7350.0, "tipo": "NC Fondos Recib. Terceros Otros Bancos", "estado": "usado"}}</pre>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th><code>codigo</code></th><th>Qué significa</th><th>Qué debe hacer el CRM</th></tr>
+    <tr><td><code>aprobado</code></td><td>Pago válido; queda marcado como usado por esta orden.</td><td>Recargar.</td></tr>
+    <tr><td><code>ya_aprobado</code></td><td>Esta orden ya tenía un pago aprobado (devuelve ese pago).</td><td>Seguir con la recarga sin cobrar otro pago.</td></tr>
+    <tr><td><code>usado</code></td><td>Referencia duplicada: ya la usó otra orden.</td><td>Rechazar y avisar al cliente.</td></tr>
+    <tr><td><code>no_encontrado</code></td><td>Todavía no está en los movimientos del banco.</td><td>Reintentar en 1 minuto (el banco se lee cada ~30 s).</td></tr>
+    <tr><td><code>monto_no_coincide</code></td><td>La referencia existe pero con otro monto.</td><td>Pedir al cliente que revise el monto.</td></tr>
+    <tr><td><code>falta_fecha</code></td><td>Referencia de 4 o 5 dígitos sin fecha.</td><td>Pedir la fecha del pago.</td></tr>
+    <tr><td><code>revision</code></td><td>Varios pagos iguales. Si trae <code>"pedir_hora": true</code>, falta la hora; si no, quedó para revisión manual.</td><td>Pedir la hora o pasar la orden a una persona.</td></tr>
+    <tr><td><code>ref_corta</code></td><td>Menos de 4 dígitos o con letras.</td><td>Pedir la referencia completa.</td></tr>
+  </table></div>
+
+  <h2 id="recarga">Recargar</h2>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/v1/recharge</code> <span class="dc-perm">permiso: Hacer recargas</span></h3>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Campo</th><th>Tipo</th><th>Obligatorio</th><th>Descripción</th></tr>
+    <tr><td><code>product_id</code></td><td>número</td><td>sí</td><td>Juego.</td></tr>
+    <tr><td><code>package_id</code></td><td>número</td><td>sí</td><td>Paquete (solo los marcados como <em>recargable</em>).</td></tr>
+    <tr><td><code>player_id</code></td><td>texto</td><td>sí</td><td>ID del jugador.</td></tr>
+    <tr><td><code>player_id2</code></td><td>texto</td><td>según juego</td><td>Segundo ID (Zone ID).</td></tr>
+    <tr><td><code>external_order_id</code></td><td>texto</td><td>muy recomendado</td><td>ID de la orden del CRM. Si se repite, devuelve la recarga existente y no cobra de nuevo.</td></tr>
+  </table></div>
+<pre>curl -X POST {{ api_url }}/api/v1/recharge -H "X-API-Key: wsk_TU_CLAVE" -H "Content-Type: application/json" \
+  -d '{"product_id": -1, "package_id": 1, "player_id": "123456789", "external_order_id": "ORD-1001"}'</pre>
+<pre>{"ok": true, "order_id": 85, "status": "completada", "player_name": "ProPlayer99",
+ "reference_no": "GP123456", "duration": 6.2, "remaining_balance": 149.14}
+
+{"ok": false, "order_id": 86, "status": "fallida", "error": "ID de jugador no encontrado"}   ← el saldo se devuelve
+{"ok": false, "error": "Saldo insuficiente", "saldo_actual": 0.5, "precio": 0.86}          ← HTTP 402
+{"ok": true, "duplicada": true, "order_id": 85, "status": "completada", ...}               ← external_order_id repetida</pre>
+  <p>La respuesta llega cuando termina la recarga (puede tardar varios segundos). Estados posibles: <code>procesando</code>, <code>completada</code> y <code>fallida</code> (con el saldo ya devuelto).</p>
+
+  <h2 id="estado">Estado de órdenes</h2>
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/order-status?external_order_id=ORD-1001</code></h3>
+<pre>{"ok": true, "found": true, "status": "completada",
+ "order": {"id": 85, "player_name": "ProPlayer99", "reference_no": "GP123456", "error": ""}}</pre>
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/orders/&lt;order_id&gt;</code></h3>
+  <p>El mismo detalle, buscando por el <code>order_id</code> que devolvió la recarga.</p>
+  <p><strong>Webhook (opcional):</strong> si la cuenta tiene una URL de webhook, al terminar cada recarga se envía un <code>POST</code> con <code>{"event": "order.updated", "order": {...}}</code>.</p>
+
+  <h2 id="saldo">Saldo</h2>
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/balance</code></h3>
+<pre>{"ok": true, "account_name": "CRM 3S-Ticket", "user": {"user_id": 12, "name": "CRM", "balance": 150.0}}</pre>
+
+  <h2 id="errores">Errores HTTP</h2>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>HTTP</th><th>Cuándo</th></tr>
+    <tr><td><code>400</code></td><td>Faltan datos o tienen un formato inválido.</td></tr>
+    <tr><td><code>401</code></td><td>Falta la clave, es incorrecta o la cuenta está desactivada.</td></tr>
+    <tr><td><code>402</code></td><td>Saldo insuficiente para la recarga.</td></tr>
+    <tr><td><code>403</code></td><td>La cuenta no tiene permiso para esa acción.</td></tr>
+    <tr><td><code>404</code></td><td>Juego, paquete u orden no encontrados, o verificación de ID no disponible para ese juego.</td></tr>
+    <tr><td><code>409</code></td><td>Esa <code>external_order_id</code> tiene una recarga todavía en proceso.</td></tr>
+    <tr><td><code>422</code></td><td>La recarga falló (el saldo ya se devolvió).</td></tr>
+    <tr><td><code>429</code></td><td>Demasiadas peticiones; espera un minuto.</td></tr>
+  </table></div>
+
+  <h2 id="juegos">Juegos y paquetes</h2>
+  <p class="dc-lead">Datos actuales de la web. <em>Recargable</em> indica si ese paquete se puede recargar por la API.</p>
+  {% for j in juegos %}
+  <div class="dc-game">
+    <h3>{{ j.nombre }} <span class="dc-chip">product_id <code>{{ j.product_id }}</code></span>
+      {% if j.modo != 'id' %}<span class="dc-chip">por código</span>{% endif %}
+      <span class="dc-chip">Verificar ID: {% if j.verifica_id %}<span class="dc-yes">sí</span>{% else %}<span class="dc-no">no</span>{% endif %}</span></h3>
+    <p style="margin:0 0 6px;font-size:13px;color:var(--rc-ash);">
+      Campos: <code>player_id</code>{% if j.player_id2 %} + <code>player_id2</code> ({{ j.player_id2 }}){% endif %}{% if j.servidor %} · requiere servidor ({{ j.servidor|join(', ') }}){% endif %}
+    </p>
+    <div class="dc-tw"><table class="dc-t">
+      <tr><th>package_id</th><th>Paquete</th><th>Precio</th><th>Recargable por API</th></tr>
+      {% for p in j.paquetes %}
+      <tr><td><code>{{ p.package_id }}</code></td><td>{{ p.nombre }}</td><td>${{ "%.2f"|format(p.precio) }}</td>
+        <td>{% if p.recargable %}<span class="dc-yes">sí</span>{% else %}<span class="dc-no">no</span>{% endif %}</td></tr>
+      {% else %}
+      <tr><td colspan="4" style="color:var(--rc-ash);">Sin paquetes activos.</td></tr>
+      {% endfor %}
+    </table></div>
+  </div>
+  {% else %}
+  <p>No hay juegos activos.</p>
+  {% endfor %}
+</div>
+</body>
+</html>

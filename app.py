@@ -386,6 +386,8 @@ app.register_blueprint(branding_bp)
 app.jinja_env.globals['brand_css_url'] = brand_css_url
 from antiduplic import bp as antiduplic_bp
 app.register_blueprint(antiduplic_bp)
+from api_panel import bp as api_panel_bp
+app.register_blueprint(api_panel_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 

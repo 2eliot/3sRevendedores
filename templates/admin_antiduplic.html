@@ -127,8 +127,8 @@
       <p class="ad-api">
         Bot del banco: <code>POST {{ api_url }}/api/pagos-banco</code> · clave <code>PAGOS_BANCO_TOKEN</code>:
         {% if token_banco %}<span class="ad-ok">configurada en el servidor</span>{% else %}<span class="ad-bad">no configurada (se rechaza todo)</span>{% endif %}<br>
-        CRM: <code>POST {{ api_url }}/api/verificar-pago</code> · clave <code>CRM_API_TOKEN</code>:
-        {% if token_crm %}<span class="ad-ok">configurada en el servidor</span>{% else %}<span class="ad-bad">no configurada (se rechaza todo)</span>{% endif %}
+        CRM: <code>POST {{ api_url }}/api/verificar-pago</code> · con la clave de una cuenta del apartado
+        <a href="/admin/api" style="color:var(--rc-hl);">API</a> que tenga el permiso "Verificar pagos de Bancamiga".
       </p>
     </section>
   </div>
