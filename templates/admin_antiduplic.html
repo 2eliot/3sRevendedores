@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antiduplic (Referencias) — Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <style>
+    .ad-wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+    .ad-wrap h1 { margin: 16px 0 4px; font-size: 26px; font-weight: 600; }
+    .ad-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 18px; margin-top: 16px; min-height: 160px; }
+  </style>
+</head>
+<body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages-main">
+        {% for category, message in messages %}
+          <div class="flash-message-main flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="ad-wrap">
+    <a href="/admin" class="back-button">← Volver al Panel Admin</a>
+    <h1>Antiduplic (Referencias)</h1>
+    <section class="ad-card"></section>
+  </div>
+</body>
+</html>
