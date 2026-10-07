@@ -74,13 +74,14 @@
 
   <h2 id="productos">Catálogo</h2>
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/products</code> <span class="dc-chip">cualquier cuenta activa</span></h3>
-  <p>Lista los juegos activos con sus paquetes y precios. El <code>game_id</code> de cada juego es el <code>product_id</code> que usan las demás llamadas.</p>
+  <p>Lista <strong>solo los juegos que creaste</strong> y, de ellos, <strong>solo los paquetes con Mapeo activo</strong>, con el precio que les pusiste. El <code>game_id</code> de cada juego es el <code>product_id</code> que usan las demás llamadas.</p>
 <pre>curl {{ api_url }}/api/v1/products -H "X-API-Key: wsk_TU_CLAVE"</pre>
 <pre>{
   "ok": true,
   "games": [
-    {"game_id": -1, "name": "Free Fire ID", "game_type": "freefire_id", "mode": "id",
-     "packages": [{"package_id": 1, "name": "100 Diamantes", "price": 0.86}]}
+    {"game_id": 12, "name": "Free fire ID", "game_type": "dynamic", "mode": "id",
+     "player_id2_label": null, "verify_id": true,
+     "packages": [{"package_id": 40, "name": "110 💎", "price": 0.95}]}
   ],
   "user": {"user_id": 12, "name": "CRM", "balance": 150.0}
 }</pre>
@@ -94,7 +95,7 @@
     <tr><td><code>player_id2</code></td><td>texto</td><td>según juego</td><td>Segundo ID, por ejemplo el Zone ID de Mobile Legends.</td></tr>
   </table></div>
 <pre>curl -X POST {{ api_url }}/api/v1/verify-id -H "X-API-Key: wsk_TU_CLAVE" -H "Content-Type: application/json" \
-  -d '{"product_id": -1, "player_id": "123456789"}'</pre>
+  -d '{"product_id": 12, "player_id": "123456789"}'</pre>
 <pre>{"ok": true, "player_id": "123456789", "player_name": "ProPlayer99"}
 {"ok": false, "error": "ID de jugador no encontrado"}</pre>
   <p>Máximo 30 verificaciones por minuto por cuenta.</p>
@@ -132,20 +133,22 @@
   <div class="dc-tw"><table class="dc-t">
     <tr><th>Campo</th><th>Tipo</th><th>Obligatorio</th><th>Descripción</th></tr>
     <tr><td><code>product_id</code></td><td>número</td><td>sí</td><td>Juego.</td></tr>
-    <tr><td><code>package_id</code></td><td>número</td><td>sí</td><td>Paquete (solo los marcados como <em>recargable</em>).</td></tr>
+    <tr><td><code>package_id</code></td><td>número</td><td>sí</td><td>Paquete del catálogo (con Mapeo activo).</td></tr>
     <tr><td><code>player_id</code></td><td>texto</td><td>sí</td><td>ID del jugador.</td></tr>
     <tr><td><code>player_id2</code></td><td>texto</td><td>según juego</td><td>Segundo ID (Zone ID).</td></tr>
     <tr><td><code>external_order_id</code></td><td>texto</td><td>muy recomendado</td><td>ID de la orden del CRM. Si se repite, devuelve la recarga existente y no cobra de nuevo.</td></tr>
   </table></div>
 <pre>curl -X POST {{ api_url }}/api/v1/recharge -H "X-API-Key: wsk_TU_CLAVE" -H "Content-Type: application/json" \
-  -d '{"product_id": -1, "package_id": 1, "player_id": "123456789", "external_order_id": "ORD-1001"}'</pre>
+  -d '{"product_id": 12, "package_id": 40, "player_id": "123456789", "external_order_id": "ORD-1001"}'</pre>
 <pre>{"ok": true, "order_id": 85, "status": "completada", "player_name": "ProPlayer99",
  "reference_no": "GP123456", "duration": 6.2, "remaining_balance": 149.14}
 
 {"ok": false, "order_id": 86, "status": "fallida", "error": "ID de jugador no encontrado"}   ← el saldo se devuelve
 {"ok": false, "error": "Saldo insuficiente", "saldo_actual": 0.5, "precio": 0.86}          ← HTTP 402
-{"ok": true, "duplicada": true, "order_id": 85, "status": "completada", ...}               ← external_order_id repetida</pre>
-  <p>La respuesta llega cuando termina la recarga (puede tardar varios segundos). Estados posibles: <code>procesando</code>, <code>completada</code> y <code>fallida</code> (con el saldo ya devuelto).</p>
+{"ok": true, "duplicada": true, "order_id": 85, "status": "completada", ...}               ← external_order_id repetida
+{"ok": true, "order_id": 87, "status": "procesando", ...}                                  ← HTTP 202: el proveedor la sigue procesando
+{"ok": true, "order_id": 88, "status": "completada", "parcial": true, "cobrado": 0.95, "devuelto": 0.95}   ← paquete de varios ítems entregado a medias</pre>
+  <p>Se recarga igual que en la web: si el <em>Bot de Free Fire</em> está encendido y tiene PINs de ese paquete, se usa primero; si no, el proveedor del Mapeo. La respuesta llega cuando termina la recarga (puede tardar varios segundos). Estados posibles: <code>completada</code>, <code>fallida</code> (con el saldo ya devuelto) y <code>procesando</code> (el proveedor la aceptó y se cierra sola; consulta su estado con <code>order-status</code>).</p>
 
   <h2 id="estado">Estado de órdenes</h2>
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/order-status?external_order_id=ORD-1001</code></h3>
@@ -168,32 +171,32 @@
     <tr><td><code>403</code></td><td>La cuenta no tiene permiso para esa acción.</td></tr>
     <tr><td><code>404</code></td><td>Juego, paquete u orden no encontrados, o verificación de ID no disponible para ese juego.</td></tr>
     <tr><td><code>409</code></td><td>Esa <code>external_order_id</code> tiene una recarga todavía en proceso.</td></tr>
+    <tr><td><code>202</code></td><td>Recarga aceptada y todavía en proceso (consulta su estado más tarde).</td></tr>
     <tr><td><code>422</code></td><td>La recarga falló (el saldo ya se devolvió).</td></tr>
+    <tr><td><code>503</code></td><td>El proveedor no está configurado en la web.</td></tr>
     <tr><td><code>429</code></td><td>Demasiadas peticiones; espera un minuto.</td></tr>
   </table></div>
 
   <h2 id="juegos">Juegos y paquetes</h2>
-  <p class="dc-lead">Datos actuales de la web. <em>Recargable</em> indica si ese paquete se puede recargar por la API.</p>
+  <p class="dc-lead">Datos actuales de la web: tus juegos y sus paquetes con Mapeo activo, con tu precio. Si un paquete no aparece, actívale el Mapeo en Admin → Mapeo.</p>
   {% for j in juegos %}
   <div class="dc-game">
     <h3>{{ j.nombre }} <span class="dc-chip">product_id <code>{{ j.product_id }}</code></span>
-      {% if j.modo != 'id' %}<span class="dc-chip">por código</span>{% endif %}
       <span class="dc-chip">Verificar ID: {% if j.verifica_id %}<span class="dc-yes">sí</span>{% else %}<span class="dc-no">no</span>{% endif %}</span></h3>
     <p style="margin:0 0 6px;font-size:13px;color:var(--rc-ash);">
-      Campos: <code>player_id</code>{% if j.player_id2 %} + <code>player_id2</code> ({{ j.player_id2 }}){% endif %}{% if j.servidor %} · requiere servidor ({{ j.servidor|join(', ') }}){% endif %}
+      Campos: <code>player_id</code>{% if j.player_id2 %} + <code>player_id2</code> ({{ j.player_id2 }}){% endif %}
     </p>
     <div class="dc-tw"><table class="dc-t">
-      <tr><th>package_id</th><th>Paquete</th><th>Precio</th><th>Recargable por API</th></tr>
+      <tr><th>package_id</th><th>Paquete</th><th>Precio</th></tr>
       {% for p in j.paquetes %}
-      <tr><td><code>{{ p.package_id }}</code></td><td>{{ p.nombre }}</td><td>${{ "%.2f"|format(p.precio) }}</td>
-        <td>{% if p.recargable %}<span class="dc-yes">sí</span>{% else %}<span class="dc-no">no</span>{% endif %}</td></tr>
+      <tr><td><code>{{ p.package_id }}</code></td><td>{{ p.nombre }}</td><td>${{ "%.2f"|format(p.precio) }}</td></tr>
       {% else %}
-      <tr><td colspan="4" style="color:var(--rc-ash);">Sin paquetes activos.</td></tr>
+      <tr><td colspan="3" style="color:var(--rc-ash);">Sin paquetes mapeados.</td></tr>
       {% endfor %}
     </table></div>
   </div>
   {% else %}
-  <p>No hay juegos activos.</p>
+  <p>Todavía no hay juegos con paquetes mapeados.</p>
   {% endfor %}
 </div>
 </body>

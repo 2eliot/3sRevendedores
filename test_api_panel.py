@@ -103,18 +103,20 @@ class ApiPanelTest(unittest.TestCase):
     def test_verify_id_permisos_y_respuesta(self):
         crear_cuenta('wsk_sin', verificar_id=False)
         crear_cuenta('wsk_con', verificar_id=True)
-        body = {'product_id': -1, 'player_id': '123456789'}
+        body = {'product_id': 5, 'player_id': '123456789'}
         self.assertEqual(self.c.post('/api/v1/verify-id', json=body).status_code, 401)
         self.assertEqual(self.c.post('/api/v1/verify-id', headers={'X-API-Key': 'wsk_sin'}, json=body).status_code, 403)
 
+        import dynamic_games
         import id_verify
-        orig = (api_panel._verify_cfg_para, id_verify.call_verify_api)
-        api_panel._verify_cfg_para = lambda pid, g=None: {'enabled': True, 'url': 'x', 'name_path': 'n'}
+        orig = (api_panel._verify_cfg_para, id_verify.call_verify_api, dynamic_games.get_dynamic_game_by_id)
+        api_panel._verify_cfg_para = lambda g: {'enabled': True, 'url': 'x', 'name_path': 'n'}
         id_verify.call_verify_api = lambda cfg, a, b='', c='': (True, 'ProPlayer99')
+        dynamic_games.get_dynamic_game_by_id = lambda i: {'id': 5, 'activo': True, 'modo': 'id', 'slug': 'ff'}
         try:
             d = self.c.post('/api/v1/verify-id', headers={'X-API-Key': 'wsk_con'}, json=body).get_json()
         finally:
-            api_panel._verify_cfg_para, id_verify.call_verify_api = orig
+            api_panel._verify_cfg_para, id_verify.call_verify_api, dynamic_games.get_dynamic_game_by_id = orig
         self.assertEqual(d, {'ok': True, 'player_id': '123456789', 'player_name': 'ProPlayer99'})
 
     def test_verify_id_juego_sin_verificacion(self):
@@ -180,7 +182,7 @@ class ApiPanelTest(unittest.TestCase):
     def test_docs_se_muestra(self):
         self.admin()
         orig = api_panel.catalogo
-        api_panel.catalogo = lambda: [{'product_id': -1, 'nombre': 'Free Fire ID', 'slug': 'freefire-id', 'modo': 'id',
+        api_panel.catalogo = lambda: [{'product_id': 12, 'nombre': 'Free fire ID', 'slug': 'free-fire-id', 'modo': 'id', 'icono': '',
                                        'player_id2': None, 'servidor': None, 'verifica_id': True,
                                        'paquetes': [{'package_id': 1, 'nombre': '100 Diamantes', 'precio': 0.86,
                                                      'recargable': True}]}]

@@ -5,7 +5,7 @@ Blueprint Flask que permite a webs externas (Inefablestore, etc.) conectarse,
 consultar productos y ejecutar recargas usando el saldo de un usuario asignado.
 
 Endpoints:
-  GET  /api/v1/products          → Catálogo de juegos + paquetes activos
+  GET  /api/v1/products          → Catálogo: juegos creados por el admin con paquetes mapeados
   POST /api/v1/recharge          → Crear orden de recarga
   GET  /api/v1/orders/<order_id> → Consultar estado de una orden
   GET  /api/v1/balance           → Consultar saldo de la cuenta
@@ -186,96 +186,20 @@ def api_v1_account():
 @bp.route('/api/v1/products', methods=['GET'])
 @require_api_key
 def api_v1_products():
-    """Retorna catálogo completo de juegos activos con paquetes y precios base."""
-    from dynamic_games import get_all_dynamic_games, get_dynamic_packages
-
+    """Catálogo: solo juegos creados por el admin con paquetes mapeados y su precio."""
+    from api_panel import catalogo
     games = []
-
-    # 1. Juegos Dinámicos (GamePoint)
     try:
-        dyn_games = get_all_dynamic_games(only_active=True)
-        for game in dyn_games:
-            pkgs = get_dynamic_packages(game['id'], only_active=True)
-            packages = []
-            for pkg in pkgs:
-                packages.append({
-                    'package_id': pkg['id'],
-                    'name': pkg['nombre'],
-                    'price': float(pkg['precio']),
-                    'description': pkg.get('descripcion', ''),
-                    'gamepoint_package_id': pkg.get('gamepoint_package_id'),
-                })
+        for j in catalogo():
             games.append({
-                'game_type': 'dynamic',
-                'game_id': game['id'],
-                'name': game['nombre'],
-                'slug': game['slug'],
-                'mode': game.get('modo', 'id'),
-                'icon': game.get('icono', '🎮'),
-                'description': game.get('descripcion', ''),
-                'packages': packages,
+                'game_type': 'dynamic', 'game_id': j['product_id'], 'name': j['nombre'], 'slug': j['slug'],
+                'mode': 'id', 'icon': j['icono'], 'description': '',
+                'player_id2_label': j['player_id2'], 'servers': j['servidor'], 'verify_id': j['verifica_id'],
+                'packages': [{'package_id': p['package_id'], 'name': p['nombre'], 'price': p['precio'], 'description': ''}
+                             for p in j['paquetes']],
             })
     except Exception as e:
-        logger.warning(f'[WL API] Error leyendo juegos dinámicos: {e}')
-
-    # 2. Blood Strike
-    try:
-        conn = _get_conn()
-        bs_rows = conn.execute(
-            'SELECT id, nombre, precio, descripcion, gamepoint_package_id FROM precios_bloodstriker WHERE activo = TRUE ORDER BY id'
-        ).fetchall()
-        conn.close()
-        bs_packages = []
-        for r in bs_rows:
-            bs_packages.append({
-                'package_id': r['id'],
-                'name': r['nombre'],
-                'price': float(r['precio']),
-                'description': r['descripcion'],
-                'gamepoint_package_id': r.get('gamepoint_package_id'),
-            })
-        if bs_packages:
-            games.append({
-                'game_type': 'bloodstriker',
-                'game_id': -155,
-                'name': 'Blood Strike',
-                'slug': 'bloodstriker',
-                'mode': 'id',
-                'icon': '🔫',
-                'description': 'Blood Strike - Recargas de Gold',
-                'packages': bs_packages,
-            })
-    except Exception as e:
-        logger.warning(f'[WL API] Error leyendo Blood Strike: {e}')
-
-    # 3. Free Fire ID
-    try:
-        conn = _get_conn()
-        ff_rows = conn.execute(
-            'SELECT id, nombre, precio, descripcion FROM precios_freefire_id WHERE activo = TRUE ORDER BY id'
-        ).fetchall()
-        conn.close()
-        ff_packages = []
-        for r in ff_rows:
-            ff_packages.append({
-                'package_id': r['id'],
-                'name': r['nombre'],
-                'price': float(r['precio']),
-                'description': r.get('descripcion', ''),
-            })
-        if ff_packages:
-            games.append({
-                'game_type': 'freefire_id',
-                'game_id': -1,
-                'name': 'Free Fire ID',
-                'slug': 'freefire-id',
-                'mode': 'id',
-                'icon': '🔥',
-                'description': 'Free Fire - Recargas por ID',
-                'packages': ff_packages,
-            })
-    except Exception as e:
-        logger.warning(f'[WL API] Error leyendo Free Fire ID: {e}')
+        logger.warning(f'[WL API] Error armando el catálogo: {e}')
 
     account = request._ws_account
     user_info = _get_linked_user_info(account['usuario_id'])
@@ -296,10 +220,13 @@ def api_v1_products():
 @bp.route('/api/v1/recharge', methods=['POST'])
 @require_api_key
 def api_v1_recharge():
-    """Crea una orden de recarga. Descuenta saldo del usuario vinculado.
+    """Crea una orden de recarga de un paquete mapeado. Descuenta saldo del usuario vinculado.
+
+    Solo acepta juegos creados por el admin con Mapeo activo (los del catálogo de /api/v1/products);
+    se recargan igual que en la web: Bot de Free Fire primero si está activo y, si no, el proveedor.
 
     Body JSON:
-        product_id   (int)  - ID del juego (game_id del catálogo, -155 para BS, -1 para FF)
+        product_id   (int)  - ID del juego (game_id del catálogo)
         package_id   (int)  - ID del paquete
         player_id    (str)  - ID del jugador
         player_id2   (str)  - Opcional, segundo ID (ej: Zone ID de Mobile Legends)
@@ -345,356 +272,120 @@ def api_v1_recharge():
     except (ValueError, TypeError):
         return jsonify({'ok': False, 'error': 'package_id y product_id deben ser numéricos'}), 400
 
-    # --- Resolver juego y paquete ---
-    game_type, game_name, pkg_name, precio, gp_package_id, gp_product_id = _resolve_package(product_id, package_id)
-    if not game_type:
-        return jsonify({'ok': False, 'error': f'Paquete {package_id} no encontrado o inactivo'}), 404
+    # --- Resolver juego y paquete: solo juegos creados por el admin con Mapeo activo ---
+    from api_panel import paquete_mapeado
+    game, pkg = paquete_mapeado(product_id, package_id)
+    if not game:
+        return jsonify({'ok': False, 'error': f'Paquete {package_id} no encontrado, inactivo o sin mapeo'}), 404
+    return _recharge_mapped(account, game, pkg, player_id, player_id2, external_order_id)
 
-    # --- Verificar y descontar saldo atómicamente ---
+
+def _recharge_mapped(account, game, pkg, player_id, player_id2, external_order_id):
+    """Recarga por Mapeo (con el Bot de Free Fire primero si está activo), igual que la compra web.
+    Cobra el precio del paquete al usuario vinculado y lo devuelve si falla."""
+    from dynamic_games import ejecutar_recarga_mapeo, units_de_mapeo
+    usuario_id = account['usuario_id']
+    precio = float(pkg['precio'])
+    _start = time_module.time()
+
     conn = _get_conn()
     try:
-        cursor = conn.execute(
-            'UPDATE usuarios SET saldo = saldo - ? WHERE id = ? AND saldo >= ?',
-            (precio, usuario_id, precio)
-        )
-        if cursor.rowcount == 0:
-            conn.close()
-            # Obtener saldo actual para info
-            conn2 = _get_conn()
-            row = conn2.execute('SELECT saldo FROM usuarios WHERE id = ?', (usuario_id,)).fetchone()
-            conn2.close()
-            saldo_actual = row['saldo'] if row else 0
-            return jsonify({
-                'ok': False,
-                'error': 'Saldo insuficiente',
-                'saldo_actual': float(saldo_actual),
-                'precio': float(precio),
-            }), 402
-
-        # Crear orden en estado pendiente
         cur = conn.execute('''
-            INSERT INTO api_orders
-            (account_id, usuario_id, game_type, game_name, package_id, package_name,
-             player_id, player_id2, precio, estado, external_order_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'procesando', ?)
+            INSERT INTO api_orders (account_id, usuario_id, game_type, game_name, package_id, package_name,
+                                    player_id, player_id2, precio, estado, external_order_id)
+            VALUES (?, ?, 'mapped', ?, ?, ?, ?, ?, ?, 'procesando', ?)
             RETURNING id
-        ''', (account['id'], usuario_id, game_type, game_name, package_id, pkg_name,
-              player_id, player_id2, precio, external_order_id))
+        ''', (account['id'], usuario_id, game['nombre'], pkg['id'], pkg['nombre'], player_id, player_id2,
+              precio, external_order_id))
         order_id = cur.fetchone()[0]
         conn.commit()
     except Exception as e:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        conn.close()
+        conn.rollback()
         logger.error(f'[WL API] Error creando orden: {e}')
         return jsonify({'ok': False, 'error': 'Error interno al crear orden'}), 500
     finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
-
-    # --- Ejecutar recarga en background para no bloquear al cliente ---
-    # (se ejecuta síncrono porque el cliente espera el resultado)
-    result = _execute_recharge(order_id, game_type, package_id, player_id, player_id2,
-                               precio, gp_package_id, gp_product_id, usuario_id, account,
-                               game_name=game_name, pkg_name=pkg_name)
-
-    return result
-
-
-def _resolve_package(product_id, package_id):
-    """Resuelve el tipo de juego, nombre, precio y IDs de GamePoint para un package_id.
-    Returns: (game_type, game_name, pkg_name, precio, gp_package_id, gp_product_id) or (None,...) si no existe.
-    """
-    from dynamic_games import get_dynamic_package_by_id, get_dynamic_game_by_id
-
-    # 1. Si product_id indica juego dinámico (> 0) o no especificado, buscar en dinámicos
-    if product_id is None or (product_id is not None and product_id > 0):
-        dyn_pkg = get_dynamic_package_by_id(package_id)
-        if dyn_pkg and dyn_pkg.get('activo') and dyn_pkg.get('gamepoint_package_id'):
-            if product_id and dyn_pkg.get('juego_id') != product_id:
-                pass  # No coincide, seguir buscando
-            else:
-                game = get_dynamic_game_by_id(dyn_pkg['juego_id'])
-                if game and game.get('activo'):
-                    return (
-                        'dynamic',
-                        game['nombre'],
-                        dyn_pkg['nombre'],
-                        float(dyn_pkg['precio']),
-                        dyn_pkg['gamepoint_package_id'],
-                        game['gamepoint_product_id'],
-                    )
-
-    # 2. Blood Strike (product_id == -155 o fallback)
-    if product_id is None or product_id == -155:
-        try:
-            conn = _get_conn()
-            bs = conn.execute(
-                'SELECT id, nombre, precio, gamepoint_package_id FROM precios_bloodstriker WHERE id = ? AND activo = TRUE',
-                (package_id,)
-            ).fetchone()
-            conn.close()
-            if bs and bs['gamepoint_package_id']:
-                bs_product_id = int(os.environ.get('BLOODSTRIKE_PRODUCT_ID', '155'))
-                return (
-                    'bloodstriker',
-                    'Blood Strike',
-                    bs['nombre'],
-                    float(bs['precio']),
-                    bs['gamepoint_package_id'],
-                    bs_product_id,
-                )
-        except Exception:
-            pass
-
-    # 3. Free Fire ID (product_id == -1 o fallback)
-    if product_id is None or product_id == -1:
-        try:
-            conn = _get_conn()
-            ff = conn.execute(
-                'SELECT id, nombre, precio FROM precios_freefire_id WHERE id = ? AND activo = TRUE',
-                (package_id,)
-            ).fetchone()
-            conn.close()
-            if ff:
-                return (
-                    'freefire_id',
-                    'Free Fire ID',
-                    ff['nombre'],
-                    float(ff['precio']),
-                    None,  # No usa GamePoint
-                    None,
-                )
-        except Exception:
-            pass
-
-    return (None, None, None, None, None, None)
-
-
-def _execute_recharge(order_id, game_type, package_id, player_id, player_id2,
-                      precio, gp_package_id, gp_product_id, usuario_id, account,
-                      game_name='', pkg_name=''):
-    """Ejecuta la recarga según el tipo de juego y actualiza la orden."""
-    _start = time_module.time()
-
-    try:
-        if game_type in ('dynamic', 'bloodstriker'):
-            result = _execute_gamepoint_recharge(
-                order_id, game_type, package_id, player_id, player_id2,
-                gp_package_id, gp_product_id
-            )
-        elif game_type == 'freefire_id':
-            result = _execute_freefire_id_recharge(order_id, package_id, player_id)
-        else:
-            result = {'ok': False, 'error': f'Tipo de juego no soportado: {game_type}'}
-
-    except Exception as e:
-        logger.error(f'[WL API] Error ejecutando recarga order={order_id}: {e}')
-        result = {'ok': False, 'error': f'Error interno: {str(e)}'}
-
-    _duration = round(time_module.time() - _start, 1)
-
-    # Actualizar orden
-    conn = _get_conn()
-    try:
-        if result.get('ok'):
-            conn.execute('''
-                UPDATE api_orders
-                SET estado = 'completada', reference_no = ?, player_name = ?,
-                    duration_seconds = ?, fecha_completada = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ''', (result.get('reference_no', ''), result.get('player_name', ''),
-                  _duration, order_id))
-
-            # ── Registrar en historial general (transacciones + historial_compras) ──
-            try:
-                _nc = f"WL-{secrets.token_hex(4).upper()}"
-                _tid = f"WL-API-{order_id}"
-                _player_name = result.get('player_name', '')
-                if _player_name:
-                    _pin_info = f"ID: {player_id} - Jugador: {_player_name}"
-                else:
-                    _pin_info = f"ID: {player_id}"
-                if player_id2:
-                    _pin_info = f"ID: {player_id}/{player_id2} - " + _pin_info.split(' - ', 1)[-1]
-                _pin_info += f" [API: {account['nombre']}]"
-
-                _paquete_display = f"{game_name} - {pkg_name}" if game_name else (pkg_name or f"Paquete {package_id}")
-
-                conn.execute('''
-                    INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto, duracion_segundos)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (usuario_id, _nc, _pin_info, _tid, _paquete_display, -precio, _duration))
-
-                _saldo_row = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (usuario_id,)).fetchone()
-                _saldo = float(_saldo_row['saldo']) if _saldo_row else 0.0
-                conn.execute('''
-                    INSERT INTO historial_compras (usuario_id, monto, paquete_nombre, pin, tipo_evento, duracion_segundos, saldo_antes, saldo_despues)
-                    VALUES (?, ?, ?, ?, 'compra', ?, ?, ?)
-                ''', (usuario_id, precio, _paquete_display, _pin_info, _duration, _saldo + precio, _saldo))
-
-                try:
-                    from app import update_monthly_spending
-                    update_monthly_spending(conn, usuario_id, precio)
-                except Exception:
-                    pass
-            except Exception as e:
-                logger.warning(f'[WL API] Error registrando transacción general order={order_id}: {e}')
-
-        else:
-            # Reembolsar saldo
-            conn.execute('UPDATE usuarios SET saldo = saldo + ? WHERE id = ?', (precio, usuario_id))
-            conn.execute('''
-                UPDATE api_orders
-                SET estado = 'fallida', error_msg = ?, duration_seconds = ?,
-                    fecha_completada = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ''', (result.get('error', 'Error desconocido'), _duration, order_id))
-        conn.commit()
-    except Exception as e:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
-        logger.error(f'[WL API] Error actualizando orden {order_id}: {e}')
-    finally:
         conn.close()
 
-    # Disparar webhook si la cuenta tiene URL configurada
-    if account.get('webhook_url'):
+    res = ejecutar_recarga_mapeo(game, pkg, units_de_mapeo(game['id'], pkg['id']), usuario_id, True,
+                                 player_id, player_id2, '', sufijo_historial=f" [API: {account['nombre']}]",
+                                 _start=_start)
+    estado = res['estado']
+    duration = round(time_module.time() - _start, 1)
+    status_code = 200
+    if estado == 'aprobado':
+        _actualizar_orden(order_id, 'completada', player_name=res['player_name'],
+                          reference_no=', '.join(res.get('refs') or []), precio=res.get('cobrado', precio),
+                          duracion=duration)
+    elif estado == 'procesando':
+        _actualizar_orden(order_id, 'procesando', reference_no=res['merchant_code'], duracion=duration)
+        status_code = 202
+    else:
+        _actualizar_orden(order_id, 'fallida', error=res.get('error') or 'La recarga falló', duracion=duration)
+        status_code = 402 if estado == 'sin_saldo' else (503 if estado == 'no_config' else 422)
+
+    if account.get('webhook_url') and estado != 'procesando':
         _send_webhook_async(order_id, account['webhook_url'])
 
-    # Obtener saldo restante del usuario
-    remaining_balance = 0.0
+    remaining = 0.0
     try:
         conn_bal = _get_conn()
-        bal_row = conn_bal.execute('SELECT saldo FROM usuarios WHERE id = ?', (usuario_id,)).fetchone()
+        row = conn_bal.execute('SELECT saldo FROM usuarios WHERE id = ?', (usuario_id,)).fetchone()
         conn_bal.close()
-        remaining_balance = float(bal_row['saldo']) if bal_row else 0.0
+        remaining = float(row['saldo']) if row else 0.0
     except Exception:
         pass
 
-    # Construir respuesta
-    status_code = 200 if result.get('ok') else 422
-    response = {
-        'ok': result.get('ok', False),
-        'order_id': order_id,
-        'status': 'completada' if result.get('ok') else 'fallida',
-        'player_name': result.get('player_name', ''),
-        'reference_no': result.get('reference_no', ''),
-        'duration': _duration,
-        'user_id': usuario_id,
-        'remaining_balance': remaining_balance,
-    }
-    if not result.get('ok'):
-        response['error'] = result.get('error', '')
-
-    return jsonify(response), status_code
+    status = {'aprobado': 'completada', 'procesando': 'procesando'}.get(estado, 'fallida')
+    body = {'ok': estado in ('aprobado', 'procesando'), 'order_id': order_id, 'status': status,
+            'player_name': res.get('player_name') or '', 'reference_no': ', '.join(res.get('refs') or []),
+            'duration': duration, 'user_id': usuario_id, 'remaining_balance': remaining}
+    if estado == 'aprobado' and res.get('refund'):
+        body.update(parcial=True, cobrado=res.get('cobrado'), devuelto=res['refund'])
+    if status == 'fallida':
+        body['error'] = 'Saldo insuficiente' if estado == 'sin_saldo' else (res.get('error') or 'La recarga falló')
+        if estado == 'sin_saldo':
+            body.update(saldo_actual=remaining, precio=precio)
+    return jsonify(body), status_code
 
 
-def _execute_gamepoint_recharge(order_id, game_type, package_id, player_id, player_id2,
-                                gp_package_id, gp_product_id):
-    """Ejecuta recarga vía GamePoint API (juegos dinámicos y Blood Strike)."""
-    from app import _gameclub_get_token, _gameclub_order_validate, _gameclub_order_create, _gameclub_order_inquiry
-
-    # 1. Token
-    gc_token, gc_err = _gameclub_get_token()
-    if not gc_token:
-        err = (gc_err or {}).get('message', 'No se pudo obtener token de GamePoint')
-        return {'ok': False, 'error': f'Error proveedor: {err}'}
-
-    # 2. Validate
-    input_fields = {'input1': str(player_id)}
-    if player_id2:
-        input_fields['input2'] = str(player_id2)
-
-    validate_data = _gameclub_order_validate(gc_token, gp_product_id, input_fields)
-    validate_code = (validate_data or {}).get('code')
-    if validate_code != 200 or not (validate_data or {}).get('validation_token'):
-        err_msg = (validate_data or {}).get('message', 'Error validando orden')
-        return {'ok': False, 'error': f'Validación falló: {err_msg}'}
-
-    validation_token = validate_data['validation_token']
-
-    # 3. Create order
-    prefix = 'WL-DG' if game_type == 'dynamic' else 'WL-BS'
-    merchant_code = f"{prefix}-{order_id}-" + secrets.token_hex(4).upper()
-    create_data = _gameclub_order_create(gc_token, validation_token, gp_package_id, merchant_code)
-    create_code = (create_data or {}).get('code')
-    reference_no = (create_data or {}).get('referenceno', '')
-
-    if create_code not in (100, 101):
-        err_msg = (create_data or {}).get('message', 'Error creando orden en GamePoint')
-        return {'ok': False, 'error': err_msg}
-
-    # 4. Inquiry para obtener ingamename
-    ingame_name = ''
+def _actualizar_orden(order_id, estado, player_name='', reference_no='', error='', precio=None, duracion=0):
+    conn = _get_conn()
     try:
-        if reference_no:
-            for _attempt in range(3):
-                if _attempt > 0:
-                    time_module.sleep(1.5)
-                inq_data = _gameclub_order_inquiry(gc_token, reference_no)
-                ingame_name = (inq_data or {}).get('ingamename') or ''
-                if ingame_name:
-                    break
-    except Exception as e:
-        logger.warning(f'[WL API] Inquiry error order={order_id}: {e}')
-
-    return {
-        'ok': True,
-        'player_name': ingame_name,
-        'reference_no': reference_no,
-    }
+        sets = ['estado = ?', 'player_name = ?', 'reference_no = ?', 'error_msg = ?', 'duration_seconds = ?']
+        params = [estado, player_name or '', reference_no or '', error or '', duracion]
+        if precio is not None:
+            sets.append('precio = ?')
+            params.append(precio)
+        if estado in ('completada', 'fallida'):
+            sets.append('fecha_completada = CURRENT_TIMESTAMP')
+        conn.execute(f"UPDATE api_orders SET {', '.join(sets)} WHERE id = ?", (*params, order_id))
+        conn.commit()
+    finally:
+        conn.close()
 
 
-def _execute_freefire_id_recharge(order_id, package_id, player_id):
-    """Ejecuta recarga de Free Fire ID vía redención de pin."""
-    from app import get_available_pin_freefire_global, redeem_pin_vps, get_redeemer_config_from_db
-
-    pin_disponible = get_available_pin_freefire_global(package_id)
-    if not pin_disponible:
-        return {'ok': False, 'error': f'Sin stock para paquete {package_id}'}
-
-    pin_codigo = pin_disponible['pin_codigo']
-
-    redeemer_config = get_redeemer_config_from_db(_get_conn)
+def _sincronizar_orden(row):
+    """Si una orden mapeada seguía 'procesando', copia el resultado del reconciliador."""
+    if not row or row['estado'] != 'procesando' or row['game_type'] != 'mapped' or not str(row['reference_no'] or '').startswith('DG'):
+        return row
+    conn = _get_conn()
     try:
-        redeem_result = redeem_pin_vps(pin_codigo, player_id, redeemer_config)
-    except Exception as e:
-        # Devolver pin al stock
-        try:
-            conn = _get_conn()
-            conn.execute('INSERT OR IGNORE INTO pines_freefire_global (monto_id, pin_codigo) VALUES (?,?)',
-                         (package_id, pin_codigo))
-            conn.commit()
-            conn.close()
-        except Exception:
-            pass
-        return {'ok': False, 'error': f'Error redención: {str(e)}'}
-
-    if redeem_result and redeem_result.success:
-        return {
-            'ok': True,
-            'player_name': redeem_result.player_name or '',
-            'reference_no': '',
-        }
+        tx = conn.execute('SELECT estado, ingame_name, gamepoint_referenceno, monto, notas FROM transacciones_dinamicas '
+                          'WHERE transaccion_id = ?', (row['reference_no'],)).fetchone()
+    finally:
+        conn.close()
+    if not tx or tx['estado'] not in ('aprobado', 'rechazado'):
+        return row
+    if tx['estado'] == 'aprobado':
+        _actualizar_orden(row['id'], 'completada', player_name=tx['ingame_name'] or '',
+                          reference_no=tx['gamepoint_referenceno'] or '', precio=float(tx['monto'] or row['precio']))
     else:
-        # Devolver pin al stock
-        try:
-            conn = _get_conn()
-            conn.execute('INSERT OR IGNORE INTO pines_freefire_global (monto_id, pin_codigo) VALUES (?,?)',
-                         (package_id, pin_codigo))
-            conn.commit()
-            conn.close()
-        except Exception:
-            pass
-        err_msg = (redeem_result.message if redeem_result else None) or 'Redención fallida'
-        return {'ok': False, 'error': err_msg}
+        _actualizar_orden(row['id'], 'fallida', reference_no=row['reference_no'], error='La recarga falló en el proveedor')
+    conn = _get_conn()
+    try:
+        return conn.execute('SELECT * FROM api_orders WHERE id = ?', (row['id'],)).fetchone()
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -715,6 +406,7 @@ def api_v1_order_status(order_id):
 
     if not row:
         return jsonify({'ok': False, 'error': 'Orden no encontrada'}), 404
+    row = _sincronizar_orden(row)
 
     return jsonify({
         'ok': True,
@@ -760,7 +452,7 @@ def api_v1_order_status_by_external():
 
     if not row:
         return jsonify({'ok': True, 'found': False, 'status': 'not_found'})
-
+    row = _sincronizar_orden(row)
     return jsonify({
         'ok': True,
         'found': True,

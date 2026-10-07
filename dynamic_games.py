@@ -1032,6 +1032,18 @@ def validar_dinamico(slug):
     except Exception:
         pass
 
+    # ──── Bot de Free Fire como primer intento (si está activo para este paquete y tiene PINs) ────
+    try:
+        import bot_freefire
+        _bot_plan = bot_freefire.plan_para(game['id'], package_id)
+        if _bot_plan and bot_freefire.hay_stock(_bot_plan):
+            return _purchase_via_reseller_multi(
+                game, pkg, units_de_mapeo(game['id'], package_id), slug, user_id, is_admin, precio, package_id,
+                player_id, player_id2, servidor, redirect_url, _start
+            )
+    except Exception as e:
+        logger.error(f"[DynGame:{slug}] Bot de Free Fire no disponible, se sigue con el proveedor: {e}")
+
     if _rev_mapping:
         _steps = _load_mapping_units(game['id'], package_id)
         if len(_steps) > 1:
@@ -1898,7 +1910,7 @@ def _multi_finalize(tx, state, refund_allowed):
         pin_info = f"ID: {tx['player_id']} - Ref: {ref_txt} (reseller)"
     if tx.get('player_id2') and not pins:
         pin_info = f"ID: {tx['player_id']} / {tx['player_id2']} - " + pin_info.split(' - ', 1)[1]
-    pin_info += parcial
+    pin_info += parcial + (tx.get('sufijo') or '')
     paquete_display = f"{tx['juego_nombre']} - {tx['paquete_nombre']}"
     conn.execute('''
         INSERT INTO transacciones (usuario_id, numero_control, pin, transaccion_id, paquete_nombre, monto, duracion_segundos)
@@ -1935,28 +1947,66 @@ def _multi_finalize(tx, state, refund_allowed):
             'refs': refs, 'ok': len(ok_units), 'total': len(units), 'error': first_err}
 
 
-def _purchase_via_reseller_multi(game, pkg, units, slug, user_id, is_admin, precio,
-                                 package_id, player_id, player_id2, servidor, redirect_url, _start):
-    """Ejecuta varias recargas remotas en orden para un solo paquete local."""
-    base_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip()
-    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
-    if not base_url or not api_key:
-        flash('El revendedor no está configurado. Contacta al administrador.', 'error')
-        return redirect(redirect_url)
+def units_de_mapeo(juego_id, paquete_id):
+    """Recargas remotas del mapeo activo de un paquete (vacío si no está mapeado)."""
+    conn = _get_conn()
+    try:
+        head = conn.execute(
+            'SELECT remote_product_id, remote_package_id, remote_label FROM rev_item_mappings '
+            'WHERE juego_id = ? AND paquete_id = ? AND auto_enabled = TRUE AND active = TRUE',
+            (juego_id, paquete_id)).fetchone()
+    except Exception:
+        head = None
+    finally:
+        conn.close()
+    if not head:
+        return []
+    units = _load_mapping_units(juego_id, paquete_id)
+    if units:
+        return units
+    return [{'prod': str(head['remote_product_id']), 'pkg': str(head['remote_package_id']),
+             'label': head['remote_label'] or '', 'w': 1.0}]
 
+
+def ejecutar_recarga_mapeo(game, pkg, units, user_id, cobrar, player_id, player_id2='', servidor='',
+                           nombre_fallback='', sufijo_historial='', _start=None):
+    """Compra de un paquete por Mapeo (una o varias recargas remotas en orden), con el
+    Bot de Free Fire como primer intento si está activo para ese paquete. Sin sesión ni flash:
+    la usan la web y la API.
+
+    Devuelve dict con 'estado':
+      'no_config' | 'sin_saldo' | 'error_inicio'  → no se cobró nada
+      'procesando'  → quedó en proceso; la cierra el reconciliador (poll_pending_reseller_multi)
+      'aprobado' | 'rechazado'  → resultado de _multi_finalize (reembolso ya aplicado)
+    y siempre 'numero_control', 'merchant_code', 'player_name', 'error'.
+    """
+    import bot_freefire
+    _start = _start or time_module.time()
+    slug = game['slug']
+    precio = float(pkg['precio'])
+    package_id = pkg['id']
     merchant_code = f"DG{game['id']}-" + secrets.token_hex(6).upper()
     numero_control = f"DGR-{secrets.token_hex(4).upper()}"
+    base = {'numero_control': numero_control, 'merchant_code': merchant_code, 'player_name': '', 'error': ''}
+
+    plan = bot_freefire.plan_para(game['id'], package_id)
+    if plan and not bot_freefire.hay_stock(plan):
+        plan = None
+    reseller_ok = bool(os.environ.get('REVENDEDORES_BASE_URL', '').strip() and os.environ.get('REVENDEDORES_API_KEY', '').strip())
+    if not plan and (not units or not reseller_ok):
+        return dict(base, estado='no_config',
+                    error='El revendedor no está configurado.' if units else 'Este paquete no está mapeado para recarga automática.')
+
     state = {'phase': 'running', 'units': [dict(u, ext=f"{merchant_code}-{i + 1}", st='todo', ref='', pin='', name='', err='')
-                                           for i, u in enumerate(units)]}
+                                           for i, u in enumerate(units if reseller_ok else [])]}
 
     # 1. Descontar saldo una sola vez
-    if not is_admin:
+    if cobrar:
         conn = _get_conn()
         cursor = conn.execute('UPDATE usuarios SET saldo = saldo - ? WHERE id = ? AND saldo >= ?', (precio, user_id, precio))
         if cursor.rowcount == 0:
             conn.close()
-            flash('Saldo insuficiente al momento de procesar.', 'error')
-            return redirect(redirect_url)
+            return dict(base, estado='sin_saldo', error='Saldo insuficiente al momento de procesar.')
         conn.commit()
         conn.close()
 
@@ -1976,45 +2026,65 @@ def _purchase_via_reseller_multi(game, pkg, units, slug, user_id, is_admin, prec
         conn.close()
     except Exception as e:
         logger.error(f"[DynGame:{slug}][Reseller Multi] Error insertando procesando: {e}")
-        _refund(user_id, precio, is_admin)
-        flash('Error al procesar. Tu saldo ha sido devuelto.', 'error')
-        return redirect(redirect_url)
+        _refund(user_id, precio, not cobrar)
+        return dict(base, estado='error_inicio', error='Error al procesar. Tu saldo ha sido devuelto.')
 
-    # 3. Recargas en orden; se detiene en el primer fallo
-    for u in state['units']:
-        u['st'] = 'sent'
-        _multi_save_state(tx_id, state)
-        r_prod, r_pkg = u['prod'], u['pkg']
-        resp = _reseller_call('/api/v1/recharge', {
-            'product_id': int(r_prod) if r_prod.isdigit() else r_prod,
-            'package_id': int(r_pkg) if r_pkg.isdigit() else r_pkg,
-            'player_id': player_id, 'player_id2': player_id2 or '', 'external_order_id': u['ext']})
-        api_status = str(resp.get('status') or '').strip().lower()
-        if resp.get('ok'):
-            u.update(st='ok', ref=str(resp.get('reference_no', resp.get('order_id', '')) or ''),
-                     pin=str(resp.get('pin', resp.get('serial_key', '')) or ''),
-                     name=str(resp.get('player_name', resp.get('ingame_name', '')) or ''))
-        elif resp.get('pending') or api_status in ('procesando', 'processing', 'pendiente', 'pending', 'queued'):
-            u['st'] = 'pend'  # el proveedor la aceptó: la cierra el reconciliador
-        elif resp.get('network_error'):
-            break  # no sabemos si llegó: queda 'sent' y el reconciliador consulta su estado
-        else:
-            u.update(st='fail', err=str(resp.get('error') or 'Error del revendedor')[:200])
-            break
-        logger.info(f"[DynGame:{slug}][Reseller Multi] {u['ext']} → {u['st']}")
-    # Si el proveedor no devolvió el nombre, usar el que se verificó antes de comprar
-    from id_verify import nombre_verificado
-    _nv = nombre_verificado(f'dyn_{slug}', player_id, player_id2 or '')
-    if _nv:
+    # 3. Primero el Bot de Free Fire (si está activo para este paquete y tiene PINs)
+    bot_usado = False
+    if plan:
+        r = bot_freefire.intentar_bot(plan, player_id, merchant_code)
+        if r['usado']:
+            bot_usado = True
+            state['units'] = [{'prod': 'BOT', 'pkg': str(plan['monto_id']), 'label': bot_freefire.NOMBRE, 'w': 1.0,
+                               'ext': f"{merchant_code}-B{i + 1}", 'st': 'ok' if i < r['ok'] else 'fail',
+                               'ref': 'BOT' if i < r['ok'] else '', 'pin': '', 'name': r['name'] if i < r['ok'] else '',
+                               'err': '' if i < r['ok'] else (r['err'] or 'El canje con el bot falló')}
+                              for i in range(r['total'])]
+            _multi_save_state(tx_id, state)
+        elif not state['units']:
+            # Sin proveedor: el bot era la única vía
+            state['units'] = [{'prod': 'BOT', 'pkg': str(plan['monto_id']), 'label': bot_freefire.NOMBRE, 'w': 1.0,
+                               'ext': f"{merchant_code}-B1", 'st': 'fail', 'ref': '', 'pin': '', 'name': '',
+                               'err': r['err'] or 'El canje con el bot falló'}]
+
+    # 4. Recargas con el proveedor en orden; se detiene en el primer fallo
+    if not bot_usado:
         for u in state['units']:
-            if not u.get('name'):
-                u['name'] = _nv
+            if u['st'] != 'todo':
+                continue
+            u['st'] = 'sent'
+            _multi_save_state(tx_id, state)
+            r_prod, r_pkg = u['prod'], u['pkg']
+            resp = _reseller_call('/api/v1/recharge', {
+                'product_id': int(r_prod) if r_prod.isdigit() else r_prod,
+                'package_id': int(r_pkg) if r_pkg.isdigit() else r_pkg,
+                'player_id': player_id, 'player_id2': player_id2 or '', 'external_order_id': u['ext']})
+            api_status = str(resp.get('status') or '').strip().lower()
+            if resp.get('ok'):
+                u.update(st='ok', ref=str(resp.get('reference_no', resp.get('order_id', '')) or ''),
+                         pin=str(resp.get('pin', resp.get('serial_key', '')) or ''),
+                         name=str(resp.get('player_name', resp.get('ingame_name', '')) or ''))
+            elif resp.get('pending') or api_status in ('procesando', 'processing', 'pendiente', 'pending', 'queued'):
+                u['st'] = 'pend'  # el proveedor la aceptó: la cierra el reconciliador
+            elif resp.get('network_error'):
+                break  # no sabemos si llegó: queda 'sent' y el reconciliador consulta su estado
+            else:
+                u.update(st='fail', err=str(resp.get('error') or 'Error del revendedor')[:200])
+                break
+            logger.info(f"[DynGame:{slug}][Reseller Multi] {u['ext']} → {u['st']}")
+
+    # Si el proveedor no devolvió el nombre, usar el que se verificó antes de comprar
+    if nombre_fallback:
+        for u in state['units']:
+            if u['st'] in ('ok', 'pend', 'sent') and not u.get('name'):
+                u['name'] = nombre_fallback
     _duration = round(time_module.time() - _start, 1)
 
     tx = {'id': tx_id, 'usuario_id': user_id, 'monto': precio, 'numero_control': numero_control,
           'transaccion_id': merchant_code, 'player_id': player_id, 'player_id2': player_id2,
           'paquete_id': package_id, 'juego_nombre': game['nombre'], 'slug': slug,
-          'paquete_nombre': pkg['nombre'], 'duracion': _duration}
+          'paquete_nombre': pkg['nombre'], 'duracion': _duration, 'sufijo': sufijo_historial}
+    name = next((u['name'] for u in state['units'] if u.get('name')), '')
 
     # Si queda alguna en proceso (o sin respuesta) no se toca el saldo todavía
     if any(u['st'] in ('pend', 'sent') for u in state['units']):
@@ -2023,27 +2093,48 @@ def _purchase_via_reseller_multi(game, pkg, units, slug, user_id, is_admin, prec
                 u['st'] = 'skip'
         state['phase'] = 'pending'
         _multi_save_state(tx_id, state)
-        _sync_session_saldo(user_id)
+        return dict(base, estado='procesando', player_name=name, tx_id=tx_id)
+
+    res = _multi_finalize(tx, state, refund_allowed=cobrar)
+    if not res:
+        return dict(base, estado='procesando', player_name=name, tx_id=tx_id)
+    return dict(base, tx_id=tx_id, bot=bot_usado, player_name=res.get('name') or name,
+                **{k: v for k, v in res.items() if k != 'name'})
+
+
+def _purchase_via_reseller_multi(game, pkg, units, slug, user_id, is_admin, precio,
+                                 package_id, player_id, player_id2, servidor, redirect_url, _start):
+    """Compra web por Mapeo (varias recargas o con el Bot de Free Fire como primer intento)."""
+    from id_verify import nombre_verificado
+    res = ejecutar_recarga_mapeo(game, pkg, units, user_id, not is_admin, player_id, player_id2, servidor,
+                                 nombre_fallback=nombre_verificado(f'dyn_{slug}', player_id, player_id2 or ''),
+                                 _start=_start)
+    estado = res['estado']
+    if estado in ('no_config', 'sin_saldo', 'error_inicio'):
+        if estado == 'no_config':
+            flash(res['error'] + ' Contacta al administrador.', 'error')
+        else:
+            flash(res['error'], 'error')
+        return redirect(redirect_url)
+    _sync_session_saldo(user_id)
+    if estado == 'procesando':
         session[f'compra_dyn_{slug}_exitosa'] = {
-            'paquete_nombre': pkg['nombre'], 'monto_compra': precio, 'numero_control': numero_control,
-            'transaccion_id': merchant_code, 'player_id': player_id, 'player_id2': player_id2,
-            'servidor': servidor, 'player_name': next((u['name'] for u in state['units'] if u['name']), ''),
+            'paquete_nombre': pkg['nombre'], 'monto_compra': precio, 'numero_control': res['numero_control'],
+            'transaccion_id': res['merchant_code'], 'player_id': player_id, 'player_id2': player_id2,
+            'servidor': servidor, 'player_name': res['player_name'],
             'estado': 'procesando', 'gamepoint_ref': '', 'serial_key': '',
         }
         return redirect(f'/juego/d/{slug}?compra=exitosa')
-
-    res = _multi_finalize(tx, state, refund_allowed=not is_admin)
-    _sync_session_saldo(user_id)
-    if not res or res['estado'] == 'rechazado':
-        err = (res or {}).get('error') or 'Error del revendedor'
+    if estado == 'rechazado':
+        err = res.get('error') or 'Error del revendedor'
         flash(f'La recarga falló: {err}. Tu saldo ha sido devuelto.', 'error')
         return redirect(redirect_url)
-    if res['refund']:
+    if res.get('refund'):
         flash(f"Se completaron {res['ok']} de {res['total']} recargas. Se devolvieron ${res['refund']:.2f} a tu saldo.", 'error')
     session[f'compra_dyn_{slug}_exitosa'] = {
-        'paquete_nombre': pkg['nombre'], 'monto_compra': res['cobrado'], 'numero_control': numero_control,
-        'transaccion_id': merchant_code, 'player_id': player_id, 'player_id2': player_id2,
-        'servidor': servidor, 'player_name': res['name'], 'estado': 'completado',
+        'paquete_nombre': pkg['nombre'], 'monto_compra': res['cobrado'], 'numero_control': res['numero_control'],
+        'transaccion_id': res['merchant_code'], 'player_id': player_id, 'player_id2': player_id2,
+        'servidor': servidor, 'player_name': res['player_name'], 'estado': 'completado',
         'gamepoint_ref': ', '.join(res['refs']), 'serial_key': ' | '.join(res['pins']),
     }
     return redirect(f'/juego/d/{slug}?compra=exitosa')

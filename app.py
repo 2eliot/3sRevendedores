@@ -388,6 +388,8 @@ from antiduplic import bp as antiduplic_bp
 app.register_blueprint(antiduplic_bp)
 from api_panel import bp as api_panel_bp
 app.register_blueprint(api_panel_bp)
+from bot_freefire import bp as bot_freefire_bp
+app.register_blueprint(bot_freefire_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
@@ -811,26 +813,6 @@ def init_db():
                 VALUES (?, ?, ?, ?, ?)
             ''', precios_default)
         
-        # Insertar precios de Blood Striker por defecto si no existen
-        cursor.execute('SELECT COUNT(*) FROM precios_bloodstriker')
-        if cursor.fetchone()[0] == 0:
-            precios_bloodstriker = [
-                (1, '100+16 🪙', 0.82, '100+16 Monedas Blood Striker', True),
-                (2, '300+52 🪙', 2.60, '300+52 Monedas Blood Striker', True),
-                (3, '500+94 🪙', 4.30, '500+94 Monedas Blood Striker', True),
-                (4, '1,000+210 🪙', 8.65, '1,000+210 Monedas Blood Striker', True),
-                (5, '2,000+486 🪙', 17.30, '2,000+486 Monedas Blood Striker', True),
-                (6, '5,000+1,380 🪙', 43.15, '5,000+1,380 Monedas Blood Striker', True),
-                (7, 'Pase Elite 🎖️', 3.50, 'Pase Elite Blood Striker', True),
-                (8, 'Pase Elite (Plus) 🎖️', 8.00, 'Pase Elite Plus Blood Striker', True),
-                (9, 'Pase de Mejora 🔫', 1.85, 'Pase de Mejora Blood Striker', True),
-                (10, 'Cofre Camuflaje Ultra 💼', 0.50, 'Cofre Camuflaje Ultra Blood Striker', True)
-            ]
-            cursor.executemany('''
-                INSERT INTO precios_bloodstriker (id, nombre, precio, descripcion, activo)
-                VALUES (?, ?, ?, ?, ?)
-            ''', precios_bloodstriker)
-        
         # Insertar precios de Free Fire Global por defecto si no existen
         cursor.execute('SELECT COUNT(*) FROM precios_freefire_global')
         if cursor.fetchone()[0] == 0:
@@ -846,22 +828,6 @@ def init_db():
                 INSERT INTO precios_freefire_global (id, nombre, precio, descripcion, activo)
                 VALUES (?, ?, ?, ?, ?)
             ''', precios_freefire_global)
-        
-        # Insertar precios de Free Fire ID por defecto si no existen
-        cursor.execute('SELECT COUNT(*) FROM precios_freefire_id')
-        if cursor.fetchone()[0] == 0:
-            precios_freefire_id = [
-                (1, '100+10 💎', 0.90, '100+10 Diamantes Free Fire ID', True),
-                (2, '310+31 💎', 2.95, '310+31 Diamantes Free Fire ID', True),
-                (3, '520+52 💎', 4.10, '520+52 Diamantes Free Fire ID', True),
-                (4, '1.060+106 💎', 7.90, '1.060+106 Diamantes Free Fire ID', True),
-                (5, '2.180+218 💎', 15.50, '2.180+218 Diamantes Free Fire ID', True),
-                (6, '5.600+560 💎', 38.50, '5.600+560 Diamantes Free Fire ID', True)
-            ]
-            cursor.executemany('''
-                INSERT INTO precios_freefire_id (id, nombre, precio, descripcion, activo)
-                VALUES (?, ?, ?, ?, ?)
-            ''', precios_freefire_id)
         
         # Tabla de configuración del redeemer automático
         cursor.execute('''
@@ -2791,6 +2757,42 @@ def debug_database_info():
 # Inicializar la base de datos al iniciar la aplicación
 debug_database_info()
 init_db()
+
+
+def _retirar_juegos_de_ejemplo():
+    """Una sola vez: desactiva los paquetes de ejemplo que el código creaba para Blood Strike y
+    Free Fire ID (nunca configurados por el admin). No borra filas para no romper el historial."""
+    conn = get_db_connection()
+    try:
+        if conn.execute("SELECT 1 FROM configuracion_redeemer WHERE clave = 'migr_juegos_ejemplo_off'").fetchone():
+            return
+        conn.execute('UPDATE precios_bloodstriker SET activo = FALSE')
+        conn.execute('UPDATE precios_freefire_id SET activo = FALSE')
+        conn.execute("INSERT INTO configuracion_redeemer (clave, valor) VALUES ('migr_juegos_ejemplo_off', '1')")
+        conn.commit()
+        logger.info('[Migración] Paquetes de ejemplo de Blood Strike y Free Fire ID desactivados')
+    except Exception as e:
+        conn.rollback()
+        logger.warning(f'[Migración] No se pudieron desactivar los paquetes de ejemplo: {e}')
+    finally:
+        conn.close()
+
+
+_retirar_juegos_de_ejemplo()
+
+# Páginas antiguas que ya no son para clientes: "Free Fire" de Códigos (vendía los PINs del bot),
+# la página del bot (/juego/freefire_id) y Blood Strike de ejemplo. El bot se gestiona en Admin → Bot de Free Fire.
+_RUTAS_RETIRADAS = ('/juego/freefire', '/validar/freefire', '/juego/freefire_id', '/validar/freefire_id',
+                    '/juego/bloodstriker', '/validar/bloodstriker')
+
+
+@app.before_request
+def _bloquear_rutas_retiradas():
+    if request.path.rstrip('/') in _RUTAS_RETIRADAS:
+        if session.get('is_admin'):
+            return redirect('/admin/bot-freefire')
+        flash('Esa sección ya no está disponible.', 'error')
+        return redirect('/')
 
 @app.route('/')
 def index():

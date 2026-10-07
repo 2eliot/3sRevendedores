@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bot de Free Fire — Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <style>
+    .bf-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+    .bf-wrap h1 { margin: 16px 0 4px; font-size: 26px; font-weight: 600; }
+    .bf-lead { margin: 0 0 18px; color: var(--rc-ash); font-size: 14px; line-height: 1.55; }
+    .bf-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .bf-card h2 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+    .bf-card > p { margin: 0 0 12px; color: var(--rc-ash); font-size: 13px; line-height: 1.5; }
+    .bf-switch { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .bf-switch input { width: 20px; height: 20px; }
+    .bf-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .bf-on { background: var(--rc-green-bg); color: var(--rc-green); } .bf-off { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
+    .bf-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+    .bf-row label, .bf-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--rc-ash); }
+    .bf-row input, .bf-row select, .bf-table select, .bf-table input, .bf-field textarea { min-height: 40px; padding: 0 10px; border-radius: 10px; font-size: 14px; }
+    .bf-field textarea { padding: 10px; min-height: 110px; font-family: var(--rc-mono); font-size: 13px; resize: vertical; }
+    .bf-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
+    .bf-btn:hover { background: var(--rc-slate); }
+    .bf-main { background: var(--rc-mist); color: var(--rc-card); border: 0; }
+    .bf-danger { color: var(--rc-coral); }
+    table.bf-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .bf-table th { text-align: left; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; padding: 7px 8px; border-bottom: 1px solid var(--rc-border); }
+    .bf-table td { padding: 8px; border-bottom: 1px solid var(--rc-border); vertical-align: middle; }
+    .bf-tw { overflow-x: auto; }
+    .bf-stock { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .bf-den { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; background: var(--rc-recess); }
+    .bf-den b { display: block; font-size: 15px; }
+    .bf-den span { display: block; margin: 4px 0 8px; font-family: var(--rc-mono); font-size: 13px; color: var(--rc-hl); }
+    .bf-den .bf-zero { color: var(--rc-coral); }
+    .bf-den a { font-size: 12px; color: var(--rc-ash); }
+    .bf-msg { min-height: 18px; font-size: 13px; margin-top: 8px; }
+    .bf-ok { color: var(--rc-green); } .bf-bad { color: var(--rc-coral); } .bf-warn { color: var(--rc-yellow); }
+    .bf-log { font-size: 13px; }
+    .bf-log td { color: var(--rc-mist); }
+    .bf-empty { padding: 12px; color: var(--rc-ash); font-size: 13px; text-align: center; }
+    .bf-mono { font-family: var(--rc-mono); }
+  </style>
+</head>
+<body>
+  <div class="bf-wrap">
+    <a href="/admin" class="back-button">← Volver al Panel Admin</a>
+    <h1>{{ nombre }}</h1>
+    <p class="bf-lead">Respaldo para cuando tu proveedor esté en mantenimiento o caído: cargas PINs de Free Fire y las recargas siguen funcionando. No tiene precios: el cliente paga el precio de tu paquete, como siempre. Los clientes no ven este apartado.</p>
+
+    <section class="bf-card">
+      <h2>Estado</h2>
+      <label class="bf-switch"><input type="checkbox" id="bf-activo" {% if cfg.activo %}checked{% endif %}> Usar el bot antes que el proveedor <span id="bf-estado" class="bf-badge {{ 'bf-on' if cfg.activo else 'bf-off' }}">{{ 'Encendido' if cfg.activo else 'Apagado' }}</span></label>
+      <p style="margin:10px 0 0;">Encendido: si hay PINs del paquete comprado, se recarga con el bot; si no hay o el canje falla, pasa solo al proveedor. Apagado: todas las compras van directo al proveedor.</p>
+      <p class="bf-msg" id="bf-estado-msg"></p>
+    </section>
+
+    <section class="bf-card">
+      <h2>Qué paquetes usan el bot</h2>
+      <p>Indica qué PIN corresponde a cada paquete de tu juego. Si un paquete equivale a varios PINs (por ejemplo, 220 💎 = 2 PINs de 110 💎), pon la cantidad.</p>
+      <div class="bf-row" style="margin-bottom:12px;">
+        <label>Juego
+          <select id="bf-juego">
+            <option value="">— Elige tu juego de Free Fire —</option>
+            {% for g in juegos %}<option value="{{ g.id }}" {% if cfg.juego_id and g.id == cfg.juego_id|int %}selected{% endif %}>{{ g.nombre }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="bf-tw"><table class="bf-table">
+        <thead><tr><th>Tu paquete</th><th>PIN del bot</th><th>Cantidad</th></tr></thead>
+        <tbody id="bf-paquetes"><tr><td colspan="3" class="bf-empty">Elige el juego.</td></tr></tbody>
+      </table></div>
+      <div style="margin-top:12px;"><button type="button" class="bf-btn bf-main" id="bf-guardar">Guardar</button></div>
+      <p class="bf-msg" id="bf-guardar-msg"></p>
+    </section>
+
+    <section class="bf-card">
+      <h2>PINs cargados</h2>
+      <div class="bf-stock" id="bf-stock"></div>
+      <div class="bf-row" style="margin-top:14px;">
+        <label>Agregar PINs de
+          <select id="bf-lote-monto"></select>
+        </label>
+      </div>
+      <div class="bf-field" style="margin-top:8px;">
+        <textarea id="bf-lote" placeholder="Un PIN por línea (máximo 110 por lote)"></textarea>
+      </div>
+      <div style="margin-top:8px;"><button type="button" class="bf-btn bf-main" id="bf-lote-btn">Agregar PINs</button></div>
+      <p class="bf-msg" id="bf-lote-msg"></p>
+    </section>
+
+    <section class="bf-card">
+      <h2>Recarga manual</h2>
+      <p>Recarga un ID directamente con un PIN del bot. No cobra saldo a nadie.</p>
+      <div class="bf-row">
+        <label>ID de jugador <input id="bf-man-id" inputmode="numeric" placeholder="Ej: 1271181990"></label>
+        <label>PIN de <select id="bf-man-monto"></select></label>
+        <button type="button" class="bf-btn bf-main" id="bf-man-btn">Recargar</button>
+      </div>
+      <p class="bf-msg" id="bf-man-msg"></p>
+    </section>
+
+    <section class="bf-card" id="bf-dud-card" hidden>
+      <h2>PINs apartados para revisar</h2>
+      <p>El VPS no confirmó qué pasó con estos PINs (por ejemplo, no respondió a tiempo), así que no se volvieron a usar. Si compruebas que no se canjearon, devuélvelos al stock; si se usaron, descártalos.</p>
+      <div class="bf-tw"><table class="bf-table"><thead><tr><th>Fecha</th><th>PIN</th><th>ID</th><th>Motivo</th><th></th></tr></thead><tbody id="bf-dud"></tbody></table></div>
+    </section>
+
+    <section class="bf-card">
+      <h2>Actividad reciente</h2>
+      <div class="bf-tw"><table class="bf-table bf-log"><thead><tr><th>Fecha</th><th>ID</th><th>PIN de</th><th>Resultado</th><th>Detalle</th></tr></thead><tbody id="bf-log"></tbody></table></div>
+    </section>
+  </div>
+
+  <script>
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
+    function msg(id, ok, t) { var e = document.getElementById(id); e.className = 'bf-msg ' + (ok === true ? 'bf-ok' : ok === false ? 'bf-bad' : 'bf-warn'); e.textContent = t; }
+    async function post(url, body) {
+      var r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
+      var d = {}; try { d = await r.json(); } catch (e) {}
+      return d;
+    }
+    var estado = {config: {}, denominaciones: [], paquetes: []};
+    var RES = {ok: '✓ Recargado', fallo: 'Falló (PIN devuelto)', apartado: 'Apartado para revisar'};
+
+    function opcionesDen(sel) {
+      return '<option value="">No usa el bot</option>' + estado.denominaciones.map(function (d) {
+        return '<option value="' + d.monto_id + '"' + (String(sel) === String(d.monto_id) ? ' selected' : '') + '>' + esc(d.nombre) + ' (' + d.stock + ' PINs)</option>';
+      }).join('');
+    }
+
+    function pintar() {
+      var cfg = estado.config, den = estado.denominaciones;
+      var nombreDen = {}; den.forEach(function (d) { nombreDen[d.monto_id] = d.nombre; });
+      var mismoJuego = String(cfg.juego_id || '') === document.getElementById('bf-juego').value;
+      document.getElementById('bf-paquetes').innerHTML = estado.paquetes.length ? estado.paquetes.map(function (p) {
+        var v = mismoJuego ? (cfg.paquetes[String(p.id)] || {}) : {};
+        return '<tr><td>' + esc(p.nombre) + (p.activo ? '' : ' <span class="bf-badge bf-off">inactivo</span>') + '</td>' +
+               '<td><select data-pkg="' + p.id + '" class="bf-den-sel">' + opcionesDen(v.monto_id) + '</select></td>' +
+               '<td><input type="number" min="1" max="10" value="' + (v.cantidad || 1) + '" data-cant="' + p.id + '" style="width:80px;"></td></tr>';
+      }).join('') : '<tr><td colspan="3" class="bf-empty">' + (document.getElementById('bf-juego').value ? 'Ese juego no tiene paquetes.' : 'Elige el juego.') + '</td></tr>';
+
+      document.getElementById('bf-stock').innerHTML = den.map(function (d) {
+        return '<div class="bf-den"><b>' + esc(d.nombre) + '</b><span class="' + (d.stock ? '' : 'bf-zero') + '">' + d.stock + ' PINs</span>' +
+               '<a href="/admin/pins?game=freefire_global&estado=unused&monto=' + d.monto_id + '">Ver / eliminar</a></div>';
+      }).join('') || '<div class="bf-empty">No hay denominaciones.</div>';
+      var opts = den.map(function (d) { return '<option value="' + d.monto_id + '">' + esc(d.nombre) + '</option>'; }).join('');
+      document.getElementById('bf-lote-monto').innerHTML = opts;
+      document.getElementById('bf-man-monto').innerHTML = opts;
+
+      var dud = estado.dudosos || [];
+      document.getElementById('bf-dud-card').hidden = !dud.length;
+      document.getElementById('bf-dud').innerHTML = dud.map(function (x) {
+        return '<tr><td>' + esc(x.fecha) + '</td><td class="bf-mono">' + esc(x.pin) + '</td><td class="bf-mono">' + esc(x.player_id) + '</td><td>' + esc(x.mensaje) + '</td>' +
+               '<td><button class="bf-btn" data-dud="devolver" data-pin="' + esc(x.pin) + '">Devolver al stock</button> <button class="bf-btn bf-danger" data-dud="descartar" data-pin="' + esc(x.pin) + '">Descartar</button></td></tr>';
+      }).join('');
+
+      var log = estado.log || [];
+      document.getElementById('bf-log').innerHTML = log.length ? log.map(function (x) {
+        var cls = x.resultado === 'ok' ? 'bf-ok' : (x.resultado === 'apartado' ? 'bf-warn' : 'bf-bad');
+        return '<tr><td>' + esc(x.fecha) + '</td><td class="bf-mono">' + esc(x.player_id) + '</td><td>' + esc(nombreDen[x.monto_id] || x.monto_id) + '</td>' +
+               '<td class="' + cls + '">' + esc(RES[x.resultado] || x.resultado) + '</td><td>' + esc(x.mensaje) + '</td></tr>';
+      }).join('') : '<tr><td colspan="5" class="bf-empty">Todavía no hay recargas con el bot.</td></tr>';
+    }
+
+    async function cargar() {
+      var j = document.getElementById('bf-juego').value;
+      var r = await fetch('/admin/bot-freefire/datos?juego_id=' + encodeURIComponent(j));
+      var d = await r.json();
+      estado = d; pintar();
+    }
+
+    document.getElementById('bf-juego').addEventListener('change', cargar);
+
+    document.getElementById('bf-activo').addEventListener('change', async function () {
+      var cfg = estado.config;
+      var d = await post('/admin/bot-freefire/config', {activo: this.checked, juego_id: cfg.juego_id, paquetes: cfg.paquetes});
+      if (d.ok) {
+        estado.config = d.config;
+        var b = document.getElementById('bf-estado');
+        b.textContent = d.config.activo ? 'Encendido' : 'Apagado'; b.className = 'bf-badge ' + (d.config.activo ? 'bf-on' : 'bf-off');
+        msg('bf-estado-msg', true, d.config.activo ? 'Bot encendido: se usará antes que el proveedor cuando haya PINs.' : 'Bot apagado: las compras van directo al proveedor.');
+        if (d.config.activo && !d.config.juego_id) msg('bf-estado-msg', null, 'Encendido, pero falta elegir el juego y los paquetes abajo.');
+      } else { this.checked = !this.checked; msg('bf-estado-msg', false, d.error || 'No se pudo guardar'); }
+    });
+
+    document.getElementById('bf-guardar').addEventListener('click', async function () {
+      var paquetes = {};
+      document.querySelectorAll('.bf-den-sel').forEach(function (s) {
+        if (!s.value) return;
+        var cant = document.querySelector('[data-cant="' + s.dataset.pkg + '"]').value || 1;
+        paquetes[s.dataset.pkg] = {monto_id: +s.value, cantidad: +cant};
+      });
+      var juego = document.getElementById('bf-juego').value || null;
+      var d = await post('/admin/bot-freefire/config', {activo: document.getElementById('bf-activo').checked, juego_id: juego, paquetes: paquetes});
+      if (d.ok) { estado.config = d.config; msg('bf-guardar-msg', true, 'Guardado: ' + Object.keys(d.config.paquetes).length + ' paquete(s) usan el bot.'); }
+      else msg('bf-guardar-msg', false, d.error || 'No se pudo guardar');
+    });
+
+    document.getElementById('bf-lote-btn').addEventListener('click', async function () {
+      var texto = document.getElementById('bf-lote').value.trim();
+      if (!texto) { msg('bf-lote-msg', false, 'Pega al menos un PIN.'); return; }
+      var n = texto.split(/[\n,;]+/).filter(function (x) { return x.trim(); }).length;
+      if (n > 110) { msg('bf-lote-msg', false, 'Máximo 110 PINs por lote (tienes ' + n + ').'); return; }
+      var fd = new FormData();
+      fd.append('game_type', 'freefire_global');
+      fd.append('batch_monto_id', document.getElementById('bf-lote-monto').value);
+      fd.append('pins_batch', texto);
+      try {
+        var r = await fetch('/admin/add_pins_batch', {method: 'POST', headers: {'Accept': 'application/json'}, body: fd});
+        var d = await r.json();
+        if (d.success) { msg('bf-lote-msg', true, d.message || 'PINs agregados'); document.getElementById('bf-lote').value = ''; cargar(); }
+        else msg('bf-lote-msg', false, d.error || 'No se pudieron agregar');
+      } catch (e) { msg('bf-lote-msg', false, 'Error de conexión'); }
+    });
+
+    document.getElementById('bf-man-btn').addEventListener('click', async function () {
+      var id = document.getElementById('bf-man-id').value.trim();
+      if (!/^\d+$/.test(id)) { msg('bf-man-msg', false, 'Escribe un ID numérico.'); return; }
+      if (!confirm('¿Recargar el ID ' + id + ' con un PIN del bot?')) return;
+      this.disabled = true; msg('bf-man-msg', null, 'Recargando… puede tardar unos segundos.');
+      var d = await post('/admin/bot-freefire/recarga-manual', {player_id: id, monto_id: +document.getElementById('bf-man-monto').value});
+      this.disabled = false;
+      msg('bf-man-msg', !!d.ok, d.ok ? d.mensaje : (d.error || 'No se pudo recargar'));
+      cargar();
+    });
+
+    document.addEventListener('click', async function (e) {
+      var b = e.target.closest('[data-dud]');
+      if (!b) return;
+      var txt = b.dataset.dud === 'devolver' ? '¿Devolver este PIN al stock? Hazlo solo si comprobaste que no se canjeó.' : '¿Descartar este PIN?';
+      if (!confirm(txt)) return;
+      var d = await post('/admin/bot-freefire/dudosos', {pin: b.dataset.pin, accion: b.dataset.dud});
+      if (!d.ok) alert(d.error || 'Error');
+      cargar();
+    });
+
+    cargar();
+  </script>
+</body>
+</html>

@@ -88,74 +88,68 @@ def _clave_de_peticion():
 # Catálogo: qué se puede recargar y verificar por API
 # ---------------------------------------------------------------------------
 
-def _verify_cfg_para(product_id, game=None):
-    """Configuración de verificación de ID para un juego del catálogo (o {})."""
+def _verify_cfg_para(game):
+    """Configuración de verificación de ID de un juego creado por el admin (o {})."""
     import id_verify
-    if product_id == -1:
-        return id_verify.get_verify_config('freefire_id')
-    if product_id == -155:
-        if id_verify.get_inefable_key():
-            return {'enabled': True, 'provider': 'inefable', 'inefable_game': 'Inefable-bloodstriker'}
-        return {}
-    if game:
-        return id_verify.get_verify_config(f"dyn_{game['slug']}")
-    return {}
+    return id_verify.get_verify_config(f"dyn_{game['slug']}") if game else {}
 
 
-def _verifica_id(product_id, game=None):
+def _verifica_id(game):
     import id_verify
-    cfg = _verify_cfg_para(product_id, game)
+    cfg = _verify_cfg_para(game)
     return bool(cfg.get('enabled') and id_verify.cfg_ready(cfg))
 
 
-def catalogo():
-    """Juegos activos con sus paquetes, indicando si se pueden recargar y verificar por API."""
-    from dynamic_games import get_all_dynamic_games, get_dynamic_packages, parse_campos_config
-    juegos = []
-
+def paquetes_mapeados(juego_id):
+    """IDs de paquetes con Mapeo activo (recarga automática con el proveedor)."""
     conn = get_db_connection()
     try:
-        ff = conn.execute('SELECT id, nombre, precio FROM precios_freefire_id WHERE activo = TRUE ORDER BY id').fetchall()
-        bs = conn.execute('SELECT id, nombre, precio, gamepoint_package_id FROM precios_bloodstriker '
-                          'WHERE activo = TRUE ORDER BY id').fetchall()
+        rows = conn.execute('SELECT paquete_id FROM rev_item_mappings WHERE juego_id = ? AND auto_enabled = TRUE '
+                            'AND active = TRUE', (juego_id,)).fetchall()
+        return {r['paquete_id'] for r in rows}
+    except Exception:
+        return set()
     finally:
         conn.close()
 
-    if ff:
-        juegos.append({
-            'product_id': -1, 'nombre': 'Free Fire ID', 'slug': 'freefire-id', 'modo': 'id',
-            'player_id2': None, 'servidor': None, 'verifica_id': _verifica_id(-1),
-            'paquetes': [{'package_id': r['id'], 'nombre': r['nombre'], 'precio': float(r['precio']), 'recargable': True}
-                         for r in ff],
-        })
-    if bs:
-        juegos.append({
-            'product_id': -155, 'nombre': 'Blood Strike', 'slug': 'bloodstriker', 'modo': 'id',
-            'player_id2': None, 'servidor': None, 'verifica_id': _verifica_id(-155),
-            'paquetes': [{'package_id': r['id'], 'nombre': r['nombre'], 'precio': float(r['precio']),
-                          'recargable': bool(r['gamepoint_package_id'])} for r in bs],
-        })
+
+def catalogo():
+    """Solo los juegos creados por el admin (recarga por ID) y, de ellos, los paquetes con Mapeo activo,
+    con el precio que puso el admin. No incluye juegos ni precios de ejemplo del código."""
+    from dynamic_games import get_all_dynamic_games, get_dynamic_packages, parse_campos_config
+    juegos = []
     for g in get_all_dynamic_games(only_active=True):
+        if (g.get('modo') or 'id') != 'id' or g.get('usa_stock_local'):
+            continue
+        mapeados = paquetes_mapeados(g['id'])
+        paquetes = [{'package_id': p['id'], 'nombre': p['nombre'], 'precio': float(p['precio']), 'recargable': True}
+                    for p in get_dynamic_packages(g['id'], only_active=True) if p['id'] in mapeados]
+        if not paquetes:
+            continue
         campos = parse_campos_config(g)
         id2 = campos.get('campo_id2') or {}
         srv = campos.get('servidor') or {}
-        modo = g.get('modo') or 'id'
-        paquetes = []
-        for p in get_dynamic_packages(g['id'], only_active=True):
-            paquetes.append({
-                'package_id': p['id'], 'nombre': p['nombre'], 'precio': float(p['precio']),
-                # La API recarga juegos dinámicos solo por GamePoint (sin servidor)
-                'recargable': bool(modo == 'id' and p.get('gamepoint_package_id') and g.get('gamepoint_product_id')
-                                   and not srv.get('enabled')),
-            })
         juegos.append({
-            'product_id': g['id'], 'nombre': g['nombre'], 'slug': g['slug'], 'modo': modo,
+            'product_id': g['id'], 'nombre': g['nombre'], 'slug': g['slug'], 'modo': 'id', 'icono': g.get('icono') or '',
             'player_id2': (id2.get('label') or 'Zone ID') if id2.get('enabled') else None,
             'servidor': (srv.get('opciones') or []) if srv.get('enabled') else None,
-            'verifica_id': modo == 'id' and _verifica_id(g['id'], g),
-            'paquetes': paquetes,
+            'verifica_id': _verifica_id(g), 'paquetes': paquetes,
         })
     return juegos
+
+
+def paquete_mapeado(product_id, package_id):
+    """(juego, paquete) si el paquete pertenece a un juego del catálogo y está mapeado; si no, (None, None)."""
+    from dynamic_games import get_dynamic_game_by_id, get_dynamic_package_by_id
+    pkg = get_dynamic_package_by_id(package_id)
+    if not pkg or not pkg.get('activo') or (product_id is not None and int(pkg['juego_id']) != int(product_id)):
+        return None, None
+    game = get_dynamic_game_by_id(pkg['juego_id'])
+    if not game or not game.get('activo') or (game.get('modo') or 'id') != 'id' or game.get('usa_stock_local'):
+        return None, None
+    if pkg['id'] not in paquetes_mapeados(game['id']):
+        return None, None
+    return game, pkg
 
 
 # ---------------------------------------------------------------------------
@@ -196,14 +190,10 @@ def api_v1_verify_id():
     if not id_verify.PLAYER_RE.match(player_id) or (player_id2 and not id_verify.PLAYER_RE.match(player_id2)):
         return jsonify(ok=False, error='player_id inválido (solo letras, números y - _ .)'), 400
 
-    game = None
-    if product_id > 0:
-        game = get_dynamic_game_by_id(product_id)
-        if not game or not game.get('activo'):
-            return jsonify(ok=False, error='Juego no encontrado o inactivo'), 404
-    elif product_id not in (-1, -155):
-        return jsonify(ok=False, error='Juego no encontrado'), 404
-    cfg = _verify_cfg_para(product_id, game)
+    game = get_dynamic_game_by_id(product_id) if product_id > 0 else None
+    if not game or not game.get('activo') or (game.get('modo') or 'id') != 'id':
+        return jsonify(ok=False, error='Juego no encontrado o inactivo'), 404
+    cfg = _verify_cfg_para(game)
     if not (cfg.get('enabled') and id_verify.cfg_ready(cfg)):
         return jsonify(ok=False, error='La verificación de ID no está disponible para este juego'), 404
     if not _rate_ok(account['id']):

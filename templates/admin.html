@@ -87,6 +87,9 @@
         <a class="side-tab-button" href="/admin/verificacion-ids" aria-label="Verificación de IDs" style="text-decoration:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span><span class="label">Verificar IDs</span>
         </a>
+        <a class="side-tab-button" href="/admin/bot-freefire" aria-label="Bot de Free Fire" style="text-decoration:none;">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/></svg></span><span class="label">Bot Free Fire</span>
+        </a>
         <a class="side-tab-button" href="/admin/api" aria-label="API" style="text-decoration:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2"/><path d="M16 7l3 3"/><path d="M18 5l2 2"/></svg></span><span class="label">API</span>
         </a>
@@ -522,9 +525,7 @@
         <div class="pin-selector-row">
           <label for="pin_game_selector" class="pin-selector-label">🎮 Juego:</label>
           <select id="pin_game_selector" class="pin-selector">
-            {% if games_active.freefire_global or session.get('is_admin') %}
-            <option value="freefire_global" selected>Free Fire</option>
-            {% endif %}
+            <option value="freefire_global" selected>Bot de Free Fire (PINs)</option>
             {% for dg in dyn_games %}
             {% if dg.usa_stock_local %}
             <option value="dyn_{{ dg.slug }}">{{ dg.nombre }}</option>
@@ -1260,7 +1261,7 @@
             ? '<span style="background:rgba(89, 212, 153, 0.15);color:var(--rc-green);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">✅ Exitosa</span>'
             : '<span style="background:rgba(255, 99, 99, 0.15);color:var(--rc-coral);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">❌ Fallida</span>';
           const fecha = (r.fecha||'').replace('T',' ').substring(0,16);
-          const gameName = esc(r.game_name || 'Bot Free Fire');
+          const gameName = esc(r.game_name || 'Bot de Free Fire');
           const pkgName = esc(r.package_name || ('Pkg ' + r.package_id));
           const playerName = esc(r.player_name || '-');
           const errTip = (!ok && r.error_msg) ? '<div style="margin-top:4px;font-size:11px;color:var(--rc-coral);word-break:break-word;">⚠ ' + esc((r.error_msg||'').substring(0,80)) + '</div>' : '';
@@ -1342,7 +1343,7 @@
           <div class="package-card-header pk-info">
             <span class="package-stock">${(stockMap[String(pkg.id)]||0)} pines</span>
             <div class="package-title">${esc(pkg.nombre)}</div>
-            <div class="package-price">$${pkg.precio.toFixed(2)}</div>
+            ${game === 'freefire_global' ? '' : `<div class="package-price">$${pkg.precio.toFixed(2)}</div>`}
           </div>
           <div class="package-actions pk-actions">
             <a href="/admin/pins?game=${game}&estado=unused&monto=${pkg.id}" class="btn btn-outline btn-small btn-compact">Ver/Eliminar</a>

@@ -38,7 +38,7 @@
       </svg>
       <div id="menu-juegos" class="menu-juegos" onclick="event.stopPropagation()">
         {% set n_id = (dynamic_games_id_menu|length) %}
-        {% set n_cod = (dynamic_games_pinjuego_menu|length) + (dynamic_games_pin_menu|length) + (1 if ((games_active and games_active.freefire_global) or session.get('is_admin')) else 0) %}
+        {% set n_cod = (dynamic_games_pinjuego_menu|length) + (dynamic_games_pin_menu|length) %}
         <section class="menu-group">
           <div class="menu-group-head">
             <span class="menu-ico-tile"><svg class="menu-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4"/><circle cx="15.5" cy="11" r="1"/><circle cx="17.5" cy="13" r="1"/></svg></span>
@@ -59,9 +59,6 @@
             <span class="menu-count">{{ n_cod }}</span>
           </div>
           <ul>
-            {% if (games_active and games_active.freefire_global) or session.get('is_admin') %}
-            <li><a href="/juego/freefire" class="menu-item{% if request.path == '/juego/freefire' %} is-current{% endif %}"><span class="menu-item-ini">F</span><span class="menu-item-name">Free Fire</span></a></li>
-            {% endif %}
             {% for dg in dynamic_games_pinjuego_menu %}
             <li><a href="/juego/d/{{ dg.slug }}" class="menu-item{% if request.path == '/juego/d/' ~ dg.slug %} is-current{% endif %}"><span class="menu-item-ini">{{ (dg.nombre)[:1] }}</span><span class="menu-item-name">{{ dg.nombre }}</span></a></li>
             {% endfor %}
