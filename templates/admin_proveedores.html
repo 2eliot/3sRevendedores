@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proveedores — Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <style>
+    .pv2-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+    .pv2-wrap h1 { margin: 16px 0 4px; font-size: 26px; font-weight: 600; }
+    .pv2-lead { margin: 0 0 18px; color: var(--rc-ash); font-size: 14px; line-height: 1.55; }
+    .pv2-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .pv2-card h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pv2-card > p { margin: 0 0 12px; color: var(--rc-ash); font-size: 13px; line-height: 1.5; }
+    .pv2-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 10px 0; }
+    .pv2-kpi { background: var(--rc-recess); border: 1px solid var(--rc-border); border-radius: 12px; padding: 10px 12px; }
+    .pv2-kpi span { display: block; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; }
+    .pv2-kpi strong { display: block; margin-top: 4px; font-size: 17px; font-family: var(--rc-mono); font-weight: 500; }
+    .pv2-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .pv2-on { background: var(--rc-green-bg); color: var(--rc-green); } .pv2-off { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
+    .pv2-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; }
+    .pv2-btn:hover { background: var(--rc-slate); }
+    .pv2-btn[disabled] { opacity: .55; cursor: not-allowed; }
+    .pv2-switch { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .pv2-switch input { width: 20px; height: 20px; }
+    .pv2-msg { min-height: 18px; font-size: 13px; margin-top: 8px; }
+    .pv2-ok { color: var(--rc-green); } .pv2-bad { color: var(--rc-coral); } .pv2-warn { color: var(--rc-yellow); }
+    .pv2-note { font-size: 13px; color: var(--rc-ash); line-height: 1.5; }
+    .pv2-note code { font-family: var(--rc-mono); color: var(--rc-text); background: var(--rc-recess); padding: 1px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="pv2-wrap">
+    <a href="/admin" class="back-button">← Volver al Panel Admin</a>
+    <h1>Proveedores</h1>
+    <p class="pv2-lead">Los proveedores con los que se hacen las recargas del Mapeo. En <a href="/admin#tab=mapeo" style="color:var(--rc-hl);">Mapeo</a> eliges, paquete por paquete, con cuál se recarga y cuál usar de respaldo.</p>
+
+    <section class="pv2-card">
+      <h2>Respaldo automático</h2>
+      <label class="pv2-switch"><input type="checkbox" id="pv2-respaldo"> Si un proveedor falla, intentar con el otro <span id="pv2-resp-badge" class="pv2-badge pv2-off">Apagado</span></label>
+      <p class="pv2-note" style="margin:10px 0 0;">Solo se usa en los paquetes que tengan recargas de respaldo en su Mapeo, y solo cuando el proveedor principal no entregó nada (si entregó una parte, se devuelve el resto al cliente como siempre).</p>
+      <p class="pv2-msg" id="pv2-resp-msg"></p>
+    </section>
+
+    <div id="pv2-list"><section class="pv2-card"><p>Cargando…</p></section></div>
+  </div>
+
+  <script>
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
+    function msg(id, ok, t) { var e = document.getElementById(id); if (!e) return; e.className = 'pv2-msg ' + (ok === true ? 'pv2-ok' : ok === false ? 'pv2-bad' : 'pv2-warn'); e.textContent = t; }
+
+    function saldoTxt(s) {
+      if (!s) return '—';
+      if (s.error) return 'Error';
+      return '$' + Number(s.disponible || 0).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 4});
+    }
+
+    function pintar(d) {
+      var chk = document.getElementById('pv2-respaldo'), b = document.getElementById('pv2-resp-badge');
+      chk.checked = !!d.respaldo; b.textContent = d.respaldo ? 'Encendido' : 'Apagado'; b.className = 'pv2-badge ' + (d.respaldo ? 'pv2-on' : 'pv2-off');
+      document.getElementById('pv2-list').innerHTML = d.proveedores.map(function (p) {
+        var estado = p.configurado ? '<span class="pv2-badge pv2-on">Conectado</span>' : '<span class="pv2-badge pv2-off">Sin configurar</span>';
+        var syncBtn = p.clave === 'centralone'
+          ? '<button class="pv2-btn" data-sync="centralone"' + (p.configurado ? '' : ' disabled') + '>Actualizar catálogo</button>'
+          : '<button class="pv2-btn" data-sync="inefable"' + (p.configurado ? '' : ' disabled') + '>Actualizar catálogo</button>';
+        var aviso = p.configurado ? '' : '<p class="pv2-note">Para conectarlo, tu programador debe poner la llave en la variable <code>' + esc(p.variable) + '</code> del servidor. Por seguridad, la llave nunca se escribe en este panel.</p>';
+        var saldoErr = p.saldo && p.saldo.error ? '<p class="pv2-note pv2-bad">' + esc(p.saldo.error) + '</p>' : '';
+        return '<section class="pv2-card"><h2>' + esc(p.nombre) + ' ' + estado + '</h2>' + aviso +
+          '<div class="pv2-grid">' +
+          '<div class="pv2-kpi"><span>Saldo disponible</span><strong>' + saldoTxt(p.saldo) + '</strong></div>' +
+          '<div class="pv2-kpi"><span>Productos en catálogo</span><strong>' + p.productos + '</strong></div>' +
+          '<div class="pv2-kpi"><span>Paquetes mapeados</span><strong>' + p.paquetes_mapeados + '</strong></div>' +
+          '<div class="pv2-kpi"><span>Catálogo actualizado</span><strong style="font-size:13px;">' + esc((p.actualizado || '—').slice(0, 16)) + '</strong></div>' +
+          '</div>' + saldoErr + syncBtn + '<p class="pv2-msg" id="pv2-msg-' + p.clave + '"></p></section>';
+      }).join('');
+    }
+
+    async function cargar(saldos) {
+      var r = await fetch('/admin/proveedores/datos' + (saldos ? '?saldos=1' : ''));
+      var d = await r.json();
+      pintar(d);
+    }
+
+    document.getElementById('pv2-respaldo').addEventListener('change', async function () {
+      var r = await fetch('/admin/proveedores/config', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({respaldo: this.checked})});
+      var d = await r.json();
+      var b = document.getElementById('pv2-resp-badge');
+      if (d.ok) {
+        b.textContent = d.respaldo ? 'Encendido' : 'Apagado'; b.className = 'pv2-badge ' + (d.respaldo ? 'pv2-on' : 'pv2-off');
+        msg('pv2-resp-msg', true, d.respaldo ? 'Respaldo encendido.' : 'Respaldo apagado: cada paquete usa solo su proveedor principal.');
+      } else { this.checked = !this.checked; msg('pv2-resp-msg', false, d.error || 'No se pudo guardar'); }
+    });
+
+    document.addEventListener('click', async function (e) {
+      var b = e.target.closest('[data-sync]');
+      if (!b) return;
+      var prov = b.dataset.sync;
+      b.disabled = true; msg('pv2-msg-' + prov, null, 'Actualizando catálogo…');
+      try {
+        var url = prov === 'centralone' ? '/admin/proveedores/centralone/sync' : '/admin/revendedores/sync';
+        var opts = {method: 'POST'};
+        if (prov === 'centralone') { opts.headers = {'Content-Type': 'application/json'}; opts.body = '{}'; }
+        var r = await fetch(url, opts); var d = await r.json();
+        if (d.ok) {
+          var t = prov === 'centralone' ? (d.nuevos + ' nuevos, ' + d.actualizados + ' actualizados' + (d.retirados ? ', ' + d.retirados + ' retirados' : ''))
+                                        : (d.inserted + ' nuevos, ' + d.updated + ' actualizados');
+          await cargar(true); msg('pv2-msg-' + prov, true, 'Catálogo actualizado: ' + t + '.');
+        } else { msg('pv2-msg-' + prov, false, d.error || 'No se pudo actualizar'); b.disabled = false; }
+      } catch (x) { msg('pv2-msg-' + prov, false, 'Error de conexión'); b.disabled = false; }
+    });
+
+    cargar(true);
+  </script>
+</body>
+</html>

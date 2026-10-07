@@ -390,6 +390,8 @@ from api_panel import bp as api_panel_bp
 app.register_blueprint(api_panel_bp)
 from bot_freefire import bp as bot_freefire_bp
 app.register_blueprint(bot_freefire_bp)
+from proveedores import bp as proveedores_bp
+app.register_blueprint(proveedores_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
@@ -1124,6 +1126,22 @@ def init_db():
             )
         ''')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_rev_steps_paquete ON rev_item_mapping_steps(juego_id, paquete_id)')
+
+        # Recargas de respaldo de un paquete (otro proveedor), usadas si el principal falla y el respaldo está encendido
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS rev_item_mapping_respaldo (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                juego_id INTEGER NOT NULL,
+                paquete_id INTEGER NOT NULL,
+                orden INTEGER NOT NULL DEFAULT 0,
+                remote_product_id TEXT NOT NULL,
+                remote_package_id TEXT NOT NULL,
+                remote_label TEXT DEFAULT '',
+                cantidad INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_rev_respaldo_paquete ON rev_item_mapping_respaldo(juego_id, paquete_id)')
 
         # Tablas para API de marca blanca (WebService accounts + órdenes)
         init_whitelabel_tables(cursor)
@@ -8087,14 +8105,23 @@ def admin_revendedores_mapping_data():
         'FROM rev_item_mapping_steps ORDER BY juego_id, paquete_id, orden'
     ).fetchall()
     conn.close()
-    prices = {}
+    prices, extras = {}, {}
+    import central_one as _co
     for r in price_rows:
         try:
-            prices[r['id']] = float((json.loads(r['raw_json'] or '{}') or {}).get('price') or 0)
+            raw = json.loads(r['raw_json'] or '{}') or {}
         except Exception:
+            raw = {}
+        try:
+            prices[r['id']] = float(raw.get('price') or 0)
+        except (TypeError, ValueError):
             prices[r['id']] = 0
+        extras[r['id']] = {'campos': [f.get('label') or f.get('key') for f in _co.campos_de(raw)],
+                           'in_stock': raw.get('in_stock', True)}
     for c in catalog:
         c['price'] = prices.get(c['id'], 0)
+        c['prov'] = 'centralone' if str(c['remote_product_id']).startswith('co:') else 'inefable'
+        c.update(extras.get(c['id'], {}))
     steps = {}
     for r in steps_rows:
         steps.setdefault(f"{r['juego_id']}:{r['paquete_id']}", []).append({
@@ -8106,7 +8133,18 @@ def admin_revendedores_mapping_data():
             'remote_product_id': m['remote_product_id'], 'remote_package_id': m['remote_package_id'],
             'remote_label': m['remote_label'], 'cantidad': 1}])
 
-    return jsonify({'games': games_out, 'catalog': catalog, 'mappings': mappings, 'steps': steps})
+    respaldo = {}
+    conn = get_db_connection()
+    try:
+        for r in conn.execute('SELECT juego_id, paquete_id, remote_product_id, remote_package_id, remote_label, cantidad '
+                              'FROM rev_item_mapping_respaldo ORDER BY juego_id, paquete_id, orden').fetchall():
+            respaldo.setdefault(f"{r['juego_id']}:{r['paquete_id']}", []).append({
+                'remote_product_id': r['remote_product_id'], 'remote_package_id': r['remote_package_id'],
+                'remote_label': r['remote_label'], 'cantidad': r['cantidad']})
+    finally:
+        conn.close()
+
+    return jsonify({'games': games_out, 'catalog': catalog, 'mappings': mappings, 'steps': steps, 'respaldo': respaldo})
 
 
 MAX_MAPPING_UNITS = 50  # tope de recargas remotas por compra
@@ -8128,7 +8166,8 @@ def admin_revendedores_mapping_steps():
     except (TypeError, ValueError):
         return jsonify({'error': 'Juego o paquete no válido'}), 400
     items = data.get('items') or []
-    if not isinstance(items, list):
+    items_resp = data.get('respaldo') or []
+    if not isinstance(items, list) or not isinstance(items_resp, list):
         return jsonify({'error': 'Formato de ítems no válido'}), 400
     auto_en = bool(data.get('auto_enabled'))
 
@@ -8138,28 +8177,35 @@ def admin_revendedores_mapping_steps():
         if not pkg:
             conn.close()
             return jsonify({'error': 'El paquete no pertenece a ese juego'}), 400
-        clean = []
-        for it in items:
-            r_prod = str((it or {}).get('remote_product_id') or '').strip()
-            r_pkg = str((it or {}).get('remote_package_id') or '').strip()
-            try:
-                cant = int((it or {}).get('cantidad') or 1)
-            except (TypeError, ValueError):
-                cant = 0
-            if not r_prod or not r_pkg:
-                conn.close()
-                return jsonify({'error': 'Cada ítem necesita producto y paquete remoto'}), 400
-            if cant < 1 or cant > MAX_MAPPING_UNITS:
-                conn.close()
-                return jsonify({'error': f'La cantidad debe estar entre 1 y {MAX_MAPPING_UNITS}'}), 400
-            cat = conn.execute(
-                'SELECT remote_product_name, remote_package_name FROM rev_catalog_items WHERE remote_product_id = ? AND remote_package_id = ?',
-                (r_prod, r_pkg)).fetchone()
-            label = f"{cat['remote_product_name']} – {cat['remote_package_name']}" if cat else ''
-            clean.append((r_prod, r_pkg, label, cant))
-        if sum(c[3] for c in clean) > MAX_MAPPING_UNITS:
+        def _limpiar(lista):
+            out = []
+            for it in lista:
+                r_prod = str((it or {}).get('remote_product_id') or '').strip()
+                r_pkg = str((it or {}).get('remote_package_id') or '').strip()
+                try:
+                    cant = int((it or {}).get('cantidad') or 1)
+                except (TypeError, ValueError):
+                    cant = 0
+                if not r_prod or not r_pkg:
+                    raise ValueError('Cada ítem necesita producto y paquete remoto')
+                if cant < 1 or cant > MAX_MAPPING_UNITS:
+                    raise ValueError(f'La cantidad debe estar entre 1 y {MAX_MAPPING_UNITS}')
+                cat = conn.execute(
+                    'SELECT remote_product_name, remote_package_name FROM rev_catalog_items WHERE remote_product_id = ? AND remote_package_id = ?',
+                    (r_prod, r_pkg)).fetchone()
+                prov = 'Central One' if r_prod.startswith('co:') else 'Inefable'
+                label = f"{prov} · {cat['remote_product_name']} – {cat['remote_package_name']}" if cat else ''
+                out.append((r_prod, r_pkg, label, cant))
+            if sum(x[3] for x in out) > MAX_MAPPING_UNITS:
+                raise ValueError(f'Máximo {MAX_MAPPING_UNITS} recargas por paquete')
+            return out
+
+        try:
+            clean = _limpiar(items)
+            clean_resp = _limpiar(items_resp) if clean else []
+        except ValueError as ve:
             conn.close()
-            return jsonify({'error': f'Máximo {MAX_MAPPING_UNITS} recargas por paquete'}), 400
+            return jsonify({'error': str(ve)}), 400
 
         conn.execute('DELETE FROM rev_item_mapping_steps WHERE juego_id = ? AND paquete_id = ?', (juego_id, paquete_id))
         if not clean:
@@ -8187,13 +8233,21 @@ def admin_revendedores_mapping_steps():
                     (juego_id, paquete_id, orden, remote_product_id, remote_package_id, remote_label, cantidad)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (juego_id, paquete_id, i, r_prod, r_pkg, label, cant))
+        conn.execute('DELETE FROM rev_item_mapping_respaldo WHERE juego_id = ? AND paquete_id = ?', (juego_id, paquete_id))
+        for i, (r_prod, r_pkg, label, cant) in enumerate(clean_resp):
+            conn.execute('''
+                INSERT INTO rev_item_mapping_respaldo
+                (juego_id, paquete_id, orden, remote_product_id, remote_package_id, remote_label, cantidad)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (juego_id, paquete_id, i, r_prod, r_pkg, label, cant))
         conn.commit()
     except Exception as e:
         conn.rollback()
         conn.close()
         return jsonify({'error': str(e)}), 500
     conn.close()
-    return jsonify({'ok': True, 'items': len(clean), 'units': sum(c[3] for c in clean)})
+    return jsonify({'ok': True, 'items': len(clean), 'units': sum(c[3] for c in clean),
+                    'respaldo': sum(c[3] for c in clean_resp)})
 
 
 @app.route('/admin/revendedores/mappings/bulk', methods=['POST'])

@@ -1044,6 +1044,17 @@ def validar_dinamico(slug):
     except Exception as e:
         logger.error(f"[DynGame:{slug}] Bot de Free Fire no disponible, se sigue con el proveedor: {e}")
 
+    # ──── Central One o respaldo automático entre proveedores: flujo común ────
+    try:
+        _units = units_de_mapeo(game['id'], package_id) if _rev_mapping else []
+        if (_units and any(u.get('prov') == 'centralone' for u in _units)) or                 (_units and respaldo_activo() and units_de_respaldo(game['id'], package_id)):
+            return _purchase_via_reseller_multi(
+                game, pkg, _units, slug, user_id, is_admin, precio, package_id,
+                player_id, player_id2, servidor, redirect_url, _start
+            )
+    except Exception as e:
+        logger.error(f"[DynGame:{slug}] Error preparando proveedores, se sigue con Inefable: {e}")
+
     if _rev_mapping:
         _steps = _load_mapping_units(game['id'], package_id)
         if len(_steps) > 1:
@@ -1780,6 +1791,104 @@ def _purchase_via_local_stock(game, pkg, slug, user_id, is_admin, precio,
 MULTI_PREFIX = 'reseller_multi:'
 
 
+def _prov_de(remote_product_id):
+    """Proveedor de un ítem del catálogo: 'centralone' (prefijo co:) o 'inefable'."""
+    return 'centralone' if str(remote_product_id or '').startswith('co:') else 'inefable'
+
+
+def respaldo_activo():
+    """Interruptor del respaldo automático entre proveedores (Admin → Proveedores)."""
+    try:
+        conn = _get_conn()
+        row = conn.execute("SELECT valor FROM configuracion_redeemer WHERE clave = 'proveedores_respaldo'").fetchone()
+        conn.close()
+        return bool(row) and str(row['valor']) == '1'
+    except Exception:
+        return False
+
+
+def units_de_respaldo(juego_id, paquete_id):
+    """Recargas de respaldo de un paquete (otro proveedor), en orden, expandidas por cantidad."""
+    try:
+        conn = _get_conn()
+        rows = conn.execute('SELECT remote_product_id, remote_package_id, remote_label, cantidad FROM rev_item_mapping_respaldo '
+                            'WHERE juego_id = ? AND paquete_id = ? ORDER BY orden', (juego_id, paquete_id)).fetchall()
+        conn.close()
+    except Exception:
+        return []
+    units = []
+    for r in rows:
+        for _ in range(max(1, int(r['cantidad'] or 1))):
+            units.append({'prod': str(r['remote_product_id']), 'pkg': str(r['remote_package_id']),
+                          'label': r['remote_label'] or '', 'w': 1.0, 'prov': _prov_de(r['remote_product_id'])})
+    return units
+
+
+def _proveedor_listo(prov):
+    if prov == 'centralone':
+        import central_one
+        return central_one.configurado()
+    return bool(os.environ.get('REVENDEDORES_BASE_URL', '').strip() and os.environ.get('REVENDEDORES_API_KEY', '').strip())
+
+
+def _recargar_unidad(u, player_id, player_id2, servidor):
+    """Envía UNA recarga al proveedor de la unidad. Devuelve el formato de respuesta de Inefable."""
+    prov = u.get('prov') or _prov_de(u.get('prod'))
+    if not _proveedor_listo(prov):
+        return {'ok': False, 'error': ('Central One' if prov == 'centralone' else 'Inefable') + ' no está configurado'}
+    if prov == 'centralone':
+        import central_one
+        conn = _get_conn()
+        try:
+            item = central_one.item_de_catalogo(conn, u['pkg'])
+        finally:
+            conn.close()
+        resp = central_one.recargar(u['pkg'], item, player_id, player_id2, servidor, u['ext'])
+        if resp.get('co_id'):
+            u['co_id'] = resp['co_id']
+        return resp
+    r_prod, r_pkg = u['prod'], u['pkg']
+    return _reseller_call('/api/v1/recharge', {
+        'product_id': int(r_prod) if r_prod.isdigit() else r_prod,
+        'package_id': int(r_pkg) if r_pkg.isdigit() else r_pkg,
+        'player_id': player_id, 'player_id2': player_id2 or '', 'external_order_id': u['ext']})
+
+
+def _estado_unidad(u, player_id, player_id2, servidor, old):
+    """Reconciliador: actualiza una unidad 'pend'/'sent' consultando a su proveedor."""
+    prov = u.get('prov') or _prov_de(u.get('prod'))
+    if not _proveedor_listo(prov):
+        return
+    if prov == 'centralone':
+        import central_one
+        conn = _get_conn()
+        try:
+            item = central_one.item_de_catalogo(conn, u['pkg'])
+        finally:
+            conn.close()
+        r = central_one.estado(u, item, player_id, player_id2 or '', servidor or '')
+        if r.get('co_id'):
+            u['co_id'] = r['co_id']
+        if r.get('ok'):
+            u.update(st='ok', ref=str(r.get('reference_no') or ''), pin=str(r.get('pin') or ''))
+        elif r.get('pending') or r.get('network_error'):
+            u['st'] = 'pend' if r.get('co_id') else u['st']
+        else:
+            u.update(st='fail', err=str(r.get('error') or 'Central One no pudo entregar')[:200])
+        return
+    data = _reseller_call('/api/v1/order-status', query={'external_order_id': u['ext']})
+    if not data.get('ok'):
+        return
+    est = str(data.get('status') or '').strip().lower()
+    found = bool(data.get('found', True))
+    order = data.get('order') or {}
+    if found and est == 'completada':
+        u.update(st='ok', ref=str(order.get('reference_no') or ''), name=str(order.get('player_name') or ''),
+                 pin=str(order.get('pin') or ''))
+    elif (found and est == 'fallida') or (not found and old):
+        u.update(st='fail', err=str(order.get('error') or 'Recarga fallida en el revendedor')[:200])
+
+
 def _load_mapping_units(juego_id, paquete_id):
     """Lista expandida de recargas remotas (una por unidad) del mapeo con pasos."""
     try:
@@ -1799,7 +1908,7 @@ def _load_mapping_units(juego_id, paquete_id):
                     peso = 0.0
             for _ in range(max(1, int(r['cantidad'] or 1))):
                 units.append({'prod': str(r['remote_product_id']), 'pkg': str(r['remote_package_id']),
-                              'label': r['remote_label'] or '', 'w': peso})
+                              'label': r['remote_label'] or '', 'w': peso, 'prov': _prov_de(r['remote_product_id'])})
         conn.close()
         # Sin precio remoto en alguna unidad → todas pesan igual
         if any(u['w'] <= 0 for u in units):
@@ -1965,7 +2074,7 @@ def units_de_mapeo(juego_id, paquete_id):
     if units:
         return units
     return [{'prod': str(head['remote_product_id']), 'pkg': str(head['remote_package_id']),
-             'label': head['remote_label'] or '', 'w': 1.0}]
+             'label': head['remote_label'] or '', 'w': 1.0, 'prov': _prov_de(head['remote_product_id'])}]
 
 
 def ejecutar_recarga_mapeo(game, pkg, units, user_id, cobrar, player_id, player_id2='', servidor='',
@@ -1992,13 +2101,18 @@ def ejecutar_recarga_mapeo(game, pkg, units, user_id, cobrar, player_id, player_
     plan = bot_freefire.plan_para(game['id'], package_id)
     if plan and not bot_freefire.hay_stock(plan):
         plan = None
-    reseller_ok = bool(os.environ.get('REVENDEDORES_BASE_URL', '').strip() and os.environ.get('REVENDEDORES_API_KEY', '').strip())
-    if not plan and (not units or not reseller_ok):
+    respaldo = units_de_respaldo(game['id'], package_id) if respaldo_activo() else []
+    principal_ok = bool(units) and all(_proveedor_listo(u.get('prov') or 'inefable') for u in units)
+    respaldo_ok = bool(respaldo) and all(_proveedor_listo(u.get('prov') or 'inefable') for u in respaldo)
+    if not plan and not principal_ok and not respaldo_ok:
         return dict(base, estado='no_config',
                     error='El revendedor no está configurado.' if units else 'Este paquete no está mapeado para recarga automática.')
+    if not principal_ok:
+        # Principal sin configurar: se usa directamente el respaldo (si lo hay); si no, solo el bot
+        units, respaldo = (respaldo if respaldo_ok else []), []
 
     state = {'phase': 'running', 'units': [dict(u, ext=f"{merchant_code}-{i + 1}", st='todo', ref='', pin='', name='', err='')
-                                           for i, u in enumerate(units if reseller_ok else [])]}
+                                           for i, u in enumerate(units)]}
 
     # 1. Descontar saldo una sola vez
     if cobrar:
@@ -2048,17 +2162,13 @@ def ejecutar_recarga_mapeo(game, pkg, units, user_id, cobrar, player_id, player_
                                'err': r['err'] or 'El canje con el bot falló'}]
 
     # 4. Recargas con el proveedor en orden; se detiene en el primer fallo
-    if not bot_usado:
-        for u in state['units']:
+    def _enviar(lista):
+        for u in lista:
             if u['st'] != 'todo':
                 continue
             u['st'] = 'sent'
             _multi_save_state(tx_id, state)
-            r_prod, r_pkg = u['prod'], u['pkg']
-            resp = _reseller_call('/api/v1/recharge', {
-                'product_id': int(r_prod) if r_prod.isdigit() else r_prod,
-                'package_id': int(r_pkg) if r_pkg.isdigit() else r_pkg,
-                'player_id': player_id, 'player_id2': player_id2 or '', 'external_order_id': u['ext']})
+            resp = _recargar_unidad(u, player_id, player_id2, servidor)
             api_status = str(resp.get('status') or '').strip().lower()
             if resp.get('ok'):
                 u.update(st='ok', ref=str(resp.get('reference_no', resp.get('order_id', '')) or ''),
@@ -2071,7 +2181,20 @@ def ejecutar_recarga_mapeo(game, pkg, units, user_id, cobrar, player_id, player_
             else:
                 u.update(st='fail', err=str(resp.get('error') or 'Error del revendedor')[:200])
                 break
-            logger.info(f"[DynGame:{slug}][Reseller Multi] {u['ext']} → {u['st']}")
+            logger.info(f"[DynGame:{slug}][Reseller Multi] {u['ext']} [{u.get('prov', 'inefable')}] → {u['st']}")
+
+    if not bot_usado:
+        _enviar(state['units'])
+        # Respaldo automático: si el proveedor principal no entregó NADA y el fallo es seguro
+        # (no quedó nada en proceso ni sin respuesta), se intenta el paquete con el otro proveedor.
+        entregado = any(u['st'] in ('ok', 'pend', 'sent') for u in state['units'])
+        if respaldo and not entregado and respaldo_ok:
+            state['principal_fallido'] = [{'ext': u['ext'], 'prov': u.get('prov'), 'err': u.get('err', '')}
+                                          for u in state['units'] if u['st'] == 'fail']
+            state['units'] = [dict(u, ext=f"{merchant_code}-R{i + 1}", st='todo', ref='', pin='', name='', err='')
+                              for i, u in enumerate(respaldo)]
+            logger.info(f"[DynGame:{slug}] Proveedor principal falló; se intenta el respaldo ({len(respaldo)} recarga(s))")
+            _enviar(state['units'])
 
     # Si el proveedor no devolvió el nombre, usar el que se verificó antes de comprar
     if nombre_fallback:
@@ -2151,16 +2274,15 @@ def _sync_session_saldo(user_id):
 
 
 def poll_pending_reseller_multi():
-    """Cierra compras secuenciales con recargas en proceso (o interrumpidas)."""
-    base_url = os.environ.get('REVENDEDORES_BASE_URL', '').strip()
-    api_key = os.environ.get('REVENDEDORES_API_KEY', '').strip()
-    if not base_url or not api_key:
+    """Cierra compras secuenciales con recargas en proceso (o interrumpidas), con Inefable o Central One."""
+    import central_one
+    if not (_proveedor_listo('inefable') or central_one.configurado()):
         return
     try:
         conn = _get_conn()
         rows = conn.execute('''
             SELECT td.id, td.transaccion_id, td.usuario_id, td.monto, td.numero_control, td.notas,
-                   td.player_id, td.player_id2, td.paquete_id, td.fecha,
+                   td.player_id, td.player_id2, td.servidor, td.paquete_id, td.fecha,
                    jd.nombre AS juego_nombre, jd.slug, pd.nombre AS paquete_nombre
             FROM transacciones_dinamicas td
             JOIN juegos_dinamicos jd ON td.juego_id = jd.id
@@ -2188,17 +2310,7 @@ def poll_pending_reseller_multi():
         for u in state['units']:
             if u['st'] not in ('pend', 'sent'):
                 continue
-            data = _reseller_call('/api/v1/order-status', query={'external_order_id': u['ext']})
-            if not data.get('ok'):
-                continue
-            est = str(data.get('status') or '').strip().lower()
-            found = bool(data.get('found', True))
-            order = data.get('order') or {}
-            if found and est == 'completada':
-                u.update(st='ok', ref=str(order.get('reference_no') or ''), name=str(order.get('player_name') or ''),
-                         pin=str(order.get('pin') or ''))
-            elif (found and est == 'fallida') or (not found and old):
-                u.update(st='fail', err=str(order.get('error') or 'Recarga fallida en el revendedor')[:200])
+            _estado_unidad(u, row['player_id'], row['player_id2'], row['servidor'], old)
             time_module.sleep(0.2)
         if state.get('phase') == 'running':
             # Proceso interrumpido: lo que no se llegó a enviar no se enviará

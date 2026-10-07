@@ -87,6 +87,9 @@
         <a class="side-tab-button" href="/admin/verificacion-ids" aria-label="Verificación de IDs" style="text-decoration:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span><span class="label">Verificar IDs</span>
         </a>
+        <a class="side-tab-button" href="/admin/proveedores" aria-label="Proveedores" style="text-decoration:none;">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg></span><span class="label">Proveedores</span>
+        </a>
         <a class="side-tab-button" href="/admin/bot-freefire" aria-label="Bot de Free Fire" style="text-decoration:none;">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/></svg></span><span class="label">Bot Free Fire</span>
         </a>
@@ -958,7 +961,7 @@
           <div class="mp-head">
             <div>
               <h2>Mapeo de paquetes</h2>
-              <p>Conecta cada paquete de tu tienda con uno o varios paquetes del revendedor. Se recargan en el orden de la lista.</p>
+              <p>Conecta cada paquete de tu tienda con uno o varios paquetes de tus proveedores (Inefable o Central One). Se recargan en el orden de la lista. <a href="/admin/proveedores" style="color:var(--rc-hl);">Ver proveedores</a></p>
             </div>
             <div class="mp-head-actions">
               <button type="button" id="btn-sync-catalog" class="mp-btn" onclick="syncRevCatalog()">Sincronizar Catálogo</button>
@@ -990,6 +993,12 @@
             <div class="mp-cols" aria-hidden="true"><span>Item</span><span>Paquete</span><span>Cantidad</span><span></span></div>
             <div id="mp-items"></div>
             <button type="button" class="mp-add" onclick="mpAddRow()">+ Agregar item</button>
+            <div class="mp-resp">
+              <strong>Respaldo (otro proveedor)</strong>
+              <span>Opcional. Se usa solo si el respaldo automático está encendido en <a href="/admin/proveedores" style="color:var(--rc-hl);">Proveedores</a> y el proveedor de arriba no entrega nada.</span>
+              <div id="mp-items-resp"></div>
+              <button type="button" class="mp-add" onclick="mpAddRow(null, 'mp-items-resp')">+ Agregar item de respaldo</button>
+            </div>
             <label class="mp-check"><input type="checkbox" id="mp-auto"> Recarga automática secuencial</label>
             <p id="mp-summary" class="mp-summary"></p>
             <div class="mp-foot">
@@ -2915,13 +2924,14 @@
       const st = document.getElementById('sync-status');
       btn.disabled = true;
       st.textContent = 'Sincronizando…';
-      fetch('/admin/revendedores/sync', {method: 'POST'})
+      const ine = fetch('/admin/revendedores/sync', {method: 'POST'}).then(r => r.json())
+        .then(d => d.error ? 'Inefable: ❌ ' + d.error : `Inefable: ✅ ${d.inserted} nuevos, ${d.updated} actualizados`)
+        .catch(e => 'Inefable: ❌ ' + e);
+      const co = fetch('/admin/proveedores/centralone/sync', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})
         .then(r => r.json())
-        .then(d => {
-          if (d.error) { st.textContent = '❌ ' + d.error; }
-          else { st.textContent = `✅ ${d.inserted} nuevos, ${d.updated} actualizados (total ${d.total})`; loadMappingData(); }
-        })
-        .catch(e => st.textContent = '❌ ' + e)
+        .then(d => d.ok ? `Central One: ✅ ${d.nuevos} nuevos, ${d.actualizados} actualizados` : 'Central One: ' + (d.error || 'sin configurar'))
+        .catch(e => 'Central One: ❌ ' + e);
+      Promise.all([ine, co]).then(r => { st.textContent = r.join(' · '); loadMappingData(); })
         .finally(() => btn.disabled = false);
     }
 
@@ -2977,13 +2987,25 @@
       mpRenderEditor();
     }
 
+    const MP_PROV = {inefable: 'Inefable', centralone: 'Central One'};
     function mpProducts() {
       const byProd = {};
       (_mapeoData.catalog || []).forEach(c => {
-        if (!byProd[c.remote_product_id]) byProd[c.remote_product_id] = {id: c.remote_product_id, name: c.remote_product_name, items: []};
+        if (!byProd[c.remote_product_id]) byProd[c.remote_product_id] = {id: c.remote_product_id, name: c.remote_product_name, prov: c.prov || 'inefable', items: []};
         byProd[c.remote_product_id].items.push(c);
       });
       return byProd;
+    }
+    function mpFillProdSelect(prodSel) {
+      prodSel.appendChild(new Option('— Seleccionar item —', ''));
+      const prods = Object.values(mpProducts());
+      Object.keys(MP_PROV).forEach(pv => {
+        const lista = prods.filter(pr => pr.prov === pv);
+        if (!lista.length) return;
+        const og = document.createElement('optgroup'); og.label = MP_PROV[pv];
+        lista.forEach(pr => og.appendChild(new Option(pr.name, pr.id)));
+        prodSel.appendChild(og);
+      });
     }
 
     function mpFillPkgSelect(pkgSel, prodId, value) {
@@ -2992,18 +3014,18 @@
       pkgSel.appendChild(new Option(prod ? '— Seleccionar paquete —' : '— Elige un item —', ''));
       pkgSel.disabled = !prod;
       if (prod) prod.items.forEach(c => {
-        pkgSel.appendChild(new Option(c.remote_package_name + (c.price ? ' (' + mpMoney(c.price) + ')' : ''), c.remote_package_id));
+        const extra = (c.prov === 'centralone' && c.in_stock === false) ? ' — sin stock' : '';
+        pkgSel.appendChild(new Option(c.remote_package_name + (c.price ? ' (' + mpMoney(c.price) + ')' : '') + extra, c.remote_package_id));
       });
       if (value != null) pkgSel.value = String(value);
     }
 
-    function mpAddRow(step) {
-      const wrap = document.getElementById('mp-items');
+    function mpAddRow(step, listId) {
+      const wrap = document.getElementById(listId || 'mp-items');
       const row = document.createElement('div');
       row.className = 'mp-row';
-      const prodSel = document.createElement('select'); prodSel.className = 'mp-prod'; prodSel.setAttribute('aria-label', 'Item del revendedor');
-      prodSel.appendChild(new Option('— Seleccionar item —', ''));
-      Object.values(mpProducts()).forEach(pr => prodSel.appendChild(new Option(pr.name, pr.id)));
+      const prodSel = document.createElement('select'); prodSel.className = 'mp-prod'; prodSel.setAttribute('aria-label', 'Item del proveedor');
+      mpFillProdSelect(prodSel);
       const pkgSel = document.createElement('select'); pkgSel.className = 'mp-pkg'; pkgSel.setAttribute('aria-label', 'Paquete del revendedor');
       const qty = document.createElement('input'); qty.type = 'number'; qty.min = 1; qty.max = 50; qty.value = (step && step.cantidad) || 1;
       qty.className = 'mp-qty'; qty.setAttribute('aria-label', 'Cantidad');
@@ -3011,17 +3033,23 @@
       del.setAttribute('aria-label', 'Quitar item');
       if (step) prodSel.value = String(step.remote_product_id);
       mpFillPkgSelect(pkgSel, prodSel.value, step ? step.remote_package_id : null);
-      prodSel.addEventListener('change', () => { mpFillPkgSelect(pkgSel, prodSel.value, null); mpSummary(); });
-      pkgSel.addEventListener('change', mpSummary);
+      const hint = document.createElement('small'); hint.className = 'mp-hint';
+      const pintarHint = () => {
+        const c = (_mapeoData.catalog || []).find(x => String(x.remote_product_id) === prodSel.value && String(x.remote_package_id) === pkgSel.value);
+        hint.textContent = c && c.prov === 'centralone' && (c.campos || []).length ? 'Central One pide: ' + c.campos.join(' + ') : '';
+      };
+      prodSel.addEventListener('change', () => { mpFillPkgSelect(pkgSel, prodSel.value, null); pintarHint(); mpSummary(); });
+      pkgSel.addEventListener('change', () => { pintarHint(); mpSummary(); });
       qty.addEventListener('input', mpSummary);
       del.addEventListener('click', () => { row.remove(); mpSummary(); });
-      row.append(prodSel, pkgSel, qty, del);
+      row.append(prodSel, pkgSel, qty, del, hint);
       wrap.appendChild(row);
+      pintarHint();
       mpSummary();
     }
 
-    function mpCollect() {
-      return [...document.querySelectorAll('#mp-items .mp-row')].map(r => ({
+    function mpCollect(listId) {
+      return [...document.querySelectorAll('#' + (listId || 'mp-items') + ' .mp-row')].map(r => ({
         remote_product_id: r.querySelector('.mp-prod').value,
         remote_package_id: r.querySelector('.mp-pkg').value,
         cantidad: parseInt(r.querySelector('.mp-qty').value) || 0
@@ -3059,8 +3087,10 @@
       const mapping = (_mapeoData.mappings || []).find(m => m.juego_id === g.id && m.paquete_id === p.id);
       document.getElementById('mp-auto').checked = mapping ? !!mapping.auto_enabled : true;
       document.getElementById('mp-items').innerHTML = '';
+      document.getElementById('mp-items-resp').innerHTML = '';
       const steps = mpSteps(g, p);
       if (steps.length) steps.forEach(s => mpAddRow(s)); else mpAddRow();
+      ((_mapeoData.respaldo || {})[g.id + ':' + p.id] || []).forEach(s => mpAddRow(s, 'mp-items-resp'));
     }
 
     function mpSave() {
@@ -3068,23 +3098,24 @@
       const st = document.getElementById('save-status');
       if (!g || !p) return;
       const items = mpCollect();
-      if (items.some(i => !i.remote_product_id || !i.remote_package_id)) {
+      const respaldo = mpCollect('mp-items-resp');
+      if (items.concat(respaldo).some(i => !i.remote_product_id || !i.remote_package_id)) {
         st.className = 'mp-status is-err'; st.textContent = 'Completa el item y el paquete de cada fila (o quita las filas vacías).'; return;
       }
-      if (items.some(i => i.cantidad < 1 || i.cantidad > 50)) {
+      if (items.concat(respaldo).some(i => i.cantidad < 1 || i.cantidad > 50)) {
         st.className = 'mp-status is-err'; st.textContent = 'La cantidad debe estar entre 1 y 50.'; return;
       }
       st.className = 'mp-status'; st.textContent = 'Guardando…';
       fetch('/admin/revendedores/mapping-steps', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({juego_id: g.id, paquete_id: p.id, auto_enabled: document.getElementById('mp-auto').checked, items})
+        body: JSON.stringify({juego_id: g.id, paquete_id: p.id, auto_enabled: document.getElementById('mp-auto').checked, items, respaldo})
       })
         .then(r => r.json())
         .then(d => {
           if (d.error) { st.className = 'mp-status is-err'; st.textContent = d.error; return; }
           return loadMappingData().then(() => {
             st.className = 'mp-status is-ok';
-            st.textContent = d.items ? '✓ Mapeo guardado · ' + d.units + ' recarga' + (d.units === 1 ? '' : 's') + ' en orden' : '✓ Mapeo eliminado';
+            st.textContent = d.items ? '✓ Mapeo guardado · ' + d.units + ' recarga' + (d.units === 1 ? '' : 's') + ' en orden' + (d.respaldo ? ' · ' + d.respaldo + ' de respaldo' : '') : '✓ Mapeo eliminado';
           });
         })
         .catch(e => { st.className = 'mp-status is-err'; st.textContent = 'Error: ' + e; });
