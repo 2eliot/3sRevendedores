@@ -1816,3 +1816,6 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
   .juego-form .form-row:has(#player_id2) { flex-direction: column !important; }
   .juego-form .form-row:has(#player_id2) > .form-col:has(#player_id2) { flex-basis: auto !important; width: 96px; }
 }
+
+/* Icono «Referencias» de la barra del usuario: activo sin relleno, para que se vea la marca de verificación */
+.ref-icon-container .icon.active { fill: none !important; stroke-width: 2.3; color: var(--rc-text); }

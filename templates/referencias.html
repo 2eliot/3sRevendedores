@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Referencias</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
+  <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <style>
+    .rf-wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 64px; }
+    .rf-top { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+    .rf-wrap h1 { margin: 8px 0 4px; font-size: 26px; font-weight: 600; }
+    .rf-lead { margin: 0 0 14px; color: var(--rc-ash); font-size: 14px; line-height: 1.5; }
+    .rf-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; scrollbar-width: none; }
+    .rf-tabs button { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--rc-border); background: var(--rc-recess); color: var(--rc-mist); font-weight: 600; font-size: 13px; cursor: pointer; }
+    .rf-tabs button[aria-selected="true"] { background: var(--rc-mist); color: var(--rc-card); border-color: var(--rc-mist); }
+    .rf-count { display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: var(--rc-yellow-bg); color: var(--rc-yellow); font-size: 11px; }
+    .rf-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .rf-card h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+    .rf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .rf-kpi { background: var(--rc-recess); border: 1px solid var(--rc-border); border-radius: 12px; padding: 10px 12px; }
+    .rf-kpi span { display: block; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; }
+    .rf-kpi strong { display: block; margin-top: 4px; font-size: 19px; font-family: var(--rc-mono); font-weight: 500; }
+    .rf-kpi small { display: block; margin-top: 2px; color: var(--rc-ash); font-size: 12px; }
+    .rf-aviso { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--rc-yellow-bg); color: var(--rc-yellow); font-size: 13px; }
+    .rf-hl { color: var(--rc-hl); } .rf-ok { color: var(--rc-green); } .rf-warn { color: var(--rc-yellow); } .rf-bad { color: var(--rc-coral); }
+    .rf-muted { color: var(--rc-ash); } .rf-small { font-size: 12.5px; } .rf-mono { font-family: var(--rc-mono); }
+    .rf-filtros, .rf-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    .rf-filtros label, .rf-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--rc-ash); flex: 1 1 150px; }
+    .rf-filtros input, .rf-filtros select, .rf-form input, .rf-form select { min-height: 40px; padding: 0 10px; border-radius: 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
+    .rf-filtros .rf-q { flex: 2 1 200px; }
+    .rf-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .rf-btn:hover { background: var(--rc-slate); }
+    .rf-main { background: var(--rc-mist); color: var(--rc-card); border: 0; }
+    .rf-danger { color: var(--rc-coral); }
+    .rf-tw { overflow-x: auto; margin-top: 12px; }
+    table.rf-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .rf-table th { text-align: left; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; padding: 8px 10px; border-bottom: 1px solid var(--rc-border); white-space: nowrap; }
+    .rf-table td { padding: 9px 10px; border-bottom: 1px solid var(--rc-border); vertical-align: top; }
+    .rf-table td.rf-mono { white-space: nowrap; }
+    .rf-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .rf-badge.disponible { background: var(--rc-green-bg); color: var(--rc-green); }
+    .rf-badge.usado { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
+    .rf-badge.revision { background: var(--rc-yellow-bg); color: var(--rc-yellow); }
+    .rf-uso { font-size: 12px; color: var(--rc-ash); line-height: 1.5; } .rf-uso b { color: var(--rc-text); }
+    .rf-empty { padding: 16px; text-align: center; color: var(--rc-ash); font-size: 13px; }
+    .rf-rev { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--rc-recess); }
+    .rf-rev-head { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; margin-bottom: 8px; }
+    .rf-cand { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 6px; border: 1px solid var(--rc-border); border-radius: 10px; background: var(--rc-card); font-size: 13px; }
+    .rf-cuenta, .rf-clave { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-top: 10px; background: var(--rc-recess); display: flex; flex-direction: column; gap: 8px; }
+    .rf-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .rf-perms { display: flex; flex-wrap: wrap; gap: 6px 16px; flex-basis: 100%; }
+    .rf-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; font-size: 13.5px !important; color: var(--rc-text) !important; flex: 0 0 auto !important; }
+    .rf-check input { width: 18px !important; height: 18px; min-height: 0 !important; }
+    .rf-key { font-family: var(--rc-mono); font-size: 13px; padding: 9px 12px; border-radius: 10px; background: var(--rc-card); border: 1px solid var(--rc-border); overflow-wrap: anywhere; flex: 1 1 240px; }
+    .rf-nueva-clave { border: 1px solid var(--rc-green); border-radius: 14px; padding: 14px; margin-bottom: 14px; background: var(--rc-green-bg); display: flex; flex-direction: column; gap: 8px; }
+    .rf-nueva-clave code { font-family: var(--rc-mono); font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--rc-card); overflow-wrap: anywhere; }
+    .rf-msg { min-height: 18px; font-size: 13px; margin: 8px 0 0; }
+    .rf-count[hidden] { display: none; }
+    .rf-filtros .rf-main, .rf-form .rf-main { opacity: 1 !important; background: var(--rc-mist) !important; color: var(--rc-card) !important; }
+    @media (max-width: 640px) {
+      .rf-wrap h1 { font-size: 22px; } .rf-kpi strong { font-size: 16px; }
+      .rf-table thead { display: none; }
+      .rf-table, .rf-table tbody, .rf-table tr, .rf-table td { display: block; width: 100%; box-sizing: border-box; }
+      .rf-table tr { border: 1px solid var(--rc-border); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; background: var(--rc-recess); }
+      .rf-table td { border: 0; padding: 3px 0; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+      .rf-table td::before { content: attr(data-l); color: var(--rc-ash); font-size: 12px; text-align: left; font-family: var(--rc-font); }
+      .rf-table td.rf-empty { display: block; text-align: center; }
+      .rf-table td.rf-empty::before, .rf-table td[data-l=""]::before { content: none; }
+      .rf-table td .rf-uso { text-align: right; }
+      .rf-table td[data-l=""]:empty { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="hamburger" onclick="window.location.href='/'">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M19 12H5m7-7l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="icon-container">
+      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="Mi Dashboard">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+      </div>
+      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+
+      <!-- Referencias: pagos del banco y verificación de referencias del usuario -->
+      <div class="dashboard-icon-container ref-icon-container" onclick="window.location.href='/referencias'" title="Referencias" role="link" aria-label="Referencias">
+        <svg class="icon{% if request.path.startswith('/referencias') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 11.5l2 2 4-4"/></svg>
+      </div>
+
+      <div class="user-icon" onclick="toggleUserBox()">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <div id="user-box" class="user-box">
+          <div class="ub-head">
+            <span class="ub-avatar" aria-hidden="true">{{ (session.get('usuario') or '?')[:1]|upper }}</span>
+            <span class="ub-who"><span class="ub-label">Sesión iniciada</span><span class="ub-mail">{{ session.get('usuario', '---') }}</span></span>
+          </div>
+          <label class="price-toggle" onclick="event.stopPropagation()">
+            <span class="price-toggle-text">Ocultar precios<small>Para capturas a tus clientes</small></span>
+            <input type="checkbox" class="price-toggle-input" role="switch" aria-checked="false">
+            <span class="price-toggle-switch" aria-hidden="true"></span>
+          </label>
+          <button type="button" class="ub-theme" data-open-theme>
+            <span class="ub-theme-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></span>
+            <span class="ub-theme-text">Tema<small class="ub-theme-now">Oscuro · Predeterminado</small></span>
+            <svg class="ub-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          {% if session.get('is_admin') %}
+          <a href="/admin" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Panel Admin</a>
+          {% endif %}
+          {% if not session.get('is_admin') %}
+          <a href="https://wa.me/17868522128?text=Hola%2C%20quiero%20recargar%20saldo.%20Mi%20ID%20es%20{{ user_id }}" target="_blank" rel="noopener noreferrer" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg>Contactar al admin</a>
+          {% endif %}
+          <a href="/logout" class="logout-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="rf-wrap">
+    <div class="rf-top">
+      <h1>Referencias</h1>
+      <a class="rf-btn" href="/referencias/docs">📄 Documentación</a>
+    </div>
+    <p class="rf-lead">Los pagos que recibes en tu banco y qué orden usó cada referencia. Cada pago solo se puede usar una vez: una referencia repetida se rechaza.</p>
+
+    <nav class="rf-tabs" role="tablist">
+      <button role="tab" data-tab="pagos" aria-selected="true">Pagos</button>
+      <button role="tab" data-tab="revisiones">Revisiones <span class="rf-count" id="rf-rev-count" hidden></span></button>
+      <button role="tab" data-tab="asignar">Asignar a mano</button>
+      <button role="tab" data-tab="cuentas">Cuentas bancarias</button>
+      <button role="tab" data-tab="claves">Claves</button>
+    </nav>
+
+    <!-- ====================== PAGOS ====================== -->
+    <section class="rf-panel" data-panel="pagos">
+      <div class="rf-card">
+        <h2>Hoy <span class="rf-mono rf-muted" id="rf-hoy">{{ hoy }}</span></h2>
+        <div class="rf-kpis">
+          <div class="rf-kpi"><span>Total recibido</span><strong class="rf-hl" id="k-total">—</strong><small id="k-n"></small></div>
+          <div class="rf-kpi"><span>Disponibles</span><strong id="k-disp">—</strong></div>
+          <div class="rf-kpi"><span>Usados</span><strong id="k-usados">—</strong></div>
+          <div class="rf-kpi"><span>En revisión</span><strong id="k-rev">—</strong></div>
+          <div class="rf-kpi"><span>Bot del banco</span><strong id="k-bot" style="font-size:15px;">—</strong><small id="k-bot-sub"></small></div>
+        </div>
+        <p class="rf-aviso" id="rf-aviso-bot" hidden></p>
+      </div>
+
+      <div class="rf-card">
+        <form class="rf-filtros" id="rf-filtros">
+          <label>Fecha <input type="date" name="fecha" value="{{ hoy }}"></label>
+          <label>Estado
+            <select name="estado">
+              <option value="">Todos</option><option value="disponible">Disponibles</option>
+              <option value="usado">Usados</option><option value="revision">En revisión</option>
+            </select>
+          </label>
+          <label>Cuenta <select name="cuenta_id" id="rf-filtro-cuenta"><option value="">Todas</option></select></label>
+          <label class="rf-q">Buscar <input type="search" name="q" placeholder="Referencia o monto" autocomplete="off"></label>
+          <button type="submit" class="rf-btn rf-main">Filtrar</button>
+          <button type="button" class="rf-btn" id="rf-todas">Todas las fechas</button>
+        </form>
+        <div class="rf-tw">
+          <table class="rf-table">
+            <thead><tr><th>Referencia</th><th>Fecha</th><th>Hora</th><th>Monto</th><th>Cuenta</th><th>Estado</th><th>Uso</th></tr></thead>
+            <tbody id="rf-tbody"><tr><td colspan="7" class="rf-empty">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== REVISIONES ====================== -->
+    <section class="rf-panel" data-panel="revisiones" hidden>
+      <div class="rf-card">
+        <h2>Revisiones pendientes</h2>
+        <p class="rf-muted rf-small">Órdenes con varios pagos iguales. Elige el pago correcto para asignarlo a esa orden, o descarta la revisión si ninguno es.</p>
+        <div id="rf-rev-list"><div class="rf-empty">Cargando…</div></div>
+      </div>
+    </section>
+
+    <!-- ====================== ASIGNAR ====================== -->
+    <section class="rf-panel" data-panel="asignar" hidden>
+      <div class="rf-card">
+        <h2>Asignar un pago a mano</h2>
+        <p class="rf-muted rf-small">Marca un pago disponible como usado por una orden (por ejemplo, si lo verificaste por fuera). No se puede deshacer.</p>
+        <form id="rf-asignar" class="rf-form">
+          <label>Pago disponible <select name="pago_id" id="rf-asignar-pago" required></select></label>
+          <label>ID de la orden <input name="orden_id" maxlength="80" required placeholder="Ej: ORD-1234"></label>
+          <button type="submit" class="rf-btn rf-main">Asignar</button>
+        </form>
+        <p class="rf-msg" id="rf-asignar-msg"></p>
+      </div>
+    </section>
+
+    <!-- ====================== CUENTAS ====================== -->
+    <section class="rf-panel" data-panel="cuentas" hidden>
+      <div class="rf-card">
+        <h2>Nueva cuenta bancaria</h2>
+        <form id="rf-cuenta-nueva" class="rf-form">
+          <label>Banco <input name="banco" value="Bancamiga" maxlength="60"></label>
+          <label>Nombre <input name="alias" maxlength="60" required placeholder="Ej: Bancamiga principal"></label>
+          <label>Últimos 4 dígitos <input name="ultimos_digitos" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="Ej: 4021"></label>
+          <label>Titular (opcional) <input name="titular" maxlength="80"></label>
+          <button type="submit" class="rf-btn rf-main">Crear cuenta</button>
+        </form>
+        <p class="rf-muted rf-small">Por seguridad solo se guardan los últimos 4 dígitos, nunca el número completo.</p>
+        <p class="rf-msg" id="rf-cuenta-msg"></p>
+      </div>
+      <div class="rf-card">
+        <h2>Tus cuentas</h2>
+        <div id="rf-cuentas"><div class="rf-empty">Cargando…</div></div>
+      </div>
+    </section>
+
+    <!-- ====================== CLAVES ====================== -->
+    <section class="rf-panel" data-panel="claves" hidden>
+      <div class="rf-nueva-clave" id="rf-nueva-clave" hidden>
+        <strong>Tu clave nueva</strong>
+        <code id="rf-nueva-clave-txt"></code>
+        <div class="rf-row"><button type="button" class="rf-btn rf-main" id="rf-copiar-nueva">Copiar</button>
+          <span class="rf-small">Cópiala ahora y guárdala en tu bot: <b>no se volverá a mostrar</b>.</span></div>
+      </div>
+
+      <div class="rf-card">
+        <h2>Claves de lector <span class="rf-muted rf-small">(para el bot que envía los movimientos del banco)</span></h2>
+        <form id="rf-lector-nueva" class="rf-form">
+          <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: PC de la oficina"></label>
+          <label>Cuenta bancaria <select name="cuenta_id" id="rf-lector-cuenta" required></select></label>
+          <button type="submit" class="rf-btn rf-main">Crear clave de lector</button>
+        </form>
+        <p class="rf-msg" id="rf-lector-msg"></p>
+        <div id="rf-lectores"></div>
+      </div>
+
+      <div class="rf-card">
+        <h2>Claves de API <span class="rf-muted rf-small">(para que otro sistema, como tu CRM, verifique pagos)</span></h2>
+        <form id="rf-api-nueva" class="rf-form">
+          <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: Mi CRM"></label>
+          <div class="rf-perms" id="rf-api-perms"></div>
+          <button type="submit" class="rf-btn rf-main">Crear clave de API</button>
+        </form>
+        <p class="rf-muted rf-small">Estas claves solo sirven para Referencias. Las claves para hacer recargas las da el administrador por separado.</p>
+        <p class="rf-msg" id="rf-api-msg"></p>
+        <div id="rf-apis"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function toggleUserBox() { document.getElementById('user-box').classList.toggle('visible'); }
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
+    function bs(n) { return 'Bs ' + Number(n || 0).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+    function minutosDesde(txt, ahora) {
+      if (!txt || !ahora) return null;
+      return Math.round((new Date(ahora.replace(' ', 'T')) - new Date(txt.replace(' ', 'T'))) / 60000);
+    }
+    function msg(id, ok, t) { var e = document.getElementById(id); if (!e) return; e.className = 'rf-msg ' + (ok === true ? 'rf-ok' : ok === false ? 'rf-bad' : 'rf-warn'); e.textContent = t; }
+    async function post(url, body) {
+      var r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
+      var d = {}; try { d = await r.json(); } catch (e) {}
+      if (r.status === 401) { location.href = '/auth'; }
+      return d;
+    }
+    var AVISO_MIN = {{ aviso_min }};
+    var ESTADOS = {disponible: 'Disponible', usado: 'Usado', revision: 'En revisión'};
+    var ORIGEN = {revendedor: 'Revendedor', crm: 'Sistema externo', manual: 'Manual'};
+    var datos = {pagos: [], cuentas: []};
+
+    // ---------- pestañas ----------
+    function abrir(tab) {
+      document.querySelectorAll('.rf-tabs [role=tab]').forEach(function (b) { b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'); });
+      document.querySelectorAll('.rf-panel').forEach(function (p) { p.hidden = p.dataset.panel !== tab; });
+      try { history.replaceState(null, '', '#' + tab); } catch (e) {}
+      if (tab === 'claves') cargarClaves();
+      if (tab === 'cuentas') cargarCuentas();
+    }
+    document.querySelectorAll('.rf-tabs [role=tab]').forEach(function (b) { b.addEventListener('click', function () { abrir(b.dataset.tab); }); });
+
+    // ---------- pagos, resumen y revisiones ----------
+    var form = document.getElementById('rf-filtros');
+    async function cargar() {
+      var p = new URLSearchParams(new FormData(form));
+      try {
+        var r = await fetch('/referencias/datos?' + p.toString());
+        if (r.status === 401) { location.href = '/auth'; return; }
+        var d = await r.json();
+        datos.pagos = d.pagos || [];
+        pintarResumen(d.resumen, d.ahora);
+        pintarPagos(datos.pagos);
+        pintarRevisiones(d.revisiones || []);
+        pintarCuentasFiltro(d.resumen.cuentas || []);
+        pintarAsignar();
+      } catch (e) {
+        document.getElementById('rf-tbody').innerHTML = '<tr><td colspan="7" class="rf-empty">No se pudieron cargar los pagos.</td></tr>';
+      }
+    }
+
+    function pintarResumen(s, ahora) {
+      document.getElementById('k-total').textContent = bs(s.total_hoy);
+      document.getElementById('k-n').textContent = s.pagos_hoy + (s.pagos_hoy === 1 ? ' pago' : ' pagos');
+      document.getElementById('k-disp').textContent = s.disponibles_hoy;
+      document.getElementById('k-usados').textContent = s.usados_hoy;
+      document.getElementById('k-rev').textContent = s.revision_hoy;
+      var bot = document.getElementById('k-bot'), sub = document.getElementById('k-bot-sub'), aviso = document.getElementById('rf-aviso-bot');
+      var min = minutosDesde(s.ultimo_envio_bot, ahora);
+      if (min === null) { bot.textContent = 'Sin envíos'; bot.className = 'rf-bad'; sub.textContent = 'Tu bot aún no ha enviado movimientos'; }
+      else {
+        bot.textContent = min <= 2 ? 'Funcionando' : (min < 60 ? 'Sin envíos hace ' + min + ' min' : 'Detenido');
+        bot.className = min <= 2 ? 'rf-ok' : (min < AVISO_MIN ? 'rf-warn' : 'rf-bad');
+        sub.textContent = 'Último envío ' + s.ultimo_envio_bot.slice(11, 16) + (s.ultimo_movimiento ? ' · último movimiento ' + s.ultimo_movimiento.slice(0, 16) : '');
+      }
+      aviso.hidden = !(min === null || min >= AVISO_MIN) || !(s.cuentas || []).length;
+      aviso.textContent = min === null ? 'Tu bot del banco todavía no ha enviado movimientos. Revisa que tenga una clave de lector.'
+                                       : 'Tu bot del banco no envía movimientos hace ' + min + ' minutos. Revisa que esté encendido.';
+    }
+
+    function textoUso(u) {
+      if (!u) return '';
+      var quien = u.orden_id ? 'Orden ' + esc(u.orden_id) : (u.revendedor ? esc(u.revendedor) : '—');
+      return '<div class="rf-uso"><b>' + quien + '</b> · ' + esc(ORIGEN[u.origen] || u.origen) + '<br>' + esc(u.usado_en) +
+             (u.referencia_reportada ? '<br>Escribió: <span class="rf-mono">' + esc(u.referencia_reportada) + '</span>' +
+               (u.monto_reportado != null ? ' · ' + bs(u.monto_reportado) : '') : '') +
+             (u.hecho_por ? '<br><span class="rf-muted">Por: ' + esc(u.hecho_por) + '</span>' : '') + '</div>';
+    }
+
+    function pintarPagos(pagos) {
+      var tbody = document.getElementById('rf-tbody');
+      if (!pagos.length) { tbody.innerHTML = '<tr><td colspan="7" class="rf-empty">No hay pagos con estos filtros.</td></tr>'; return; }
+      tbody.innerHTML = pagos.map(function (p) {
+        return '<tr><td class="rf-mono" data-l="Referencia">' + esc(p.referencia) + '</td><td class="rf-mono" data-l="Fecha">' + esc(p.fecha) +
+               '</td><td class="rf-mono" data-l="Hora">' + esc(p.hora) + '</td><td class="rf-mono rf-hl" data-l="Monto">' + bs(p.monto) +
+               '</td><td data-l="Cuenta">' + esc(p.cuenta || '') + '</td><td data-l="Estado"><span class="rf-badge ' + esc(p.estado) + '">' +
+               esc(ESTADOS[p.estado] || p.estado) + '</span></td><td data-l="' + (p.uso ? 'Uso' : '') + '">' + textoUso(p.uso) + '</td></tr>';
+      }).join('');
+    }
+
+    function pintarRevisiones(revs) {
+      var c = document.getElementById('rf-rev-count');
+      c.hidden = !revs.length; c.textContent = revs.length;
+      document.getElementById('rf-rev-list').innerHTML = revs.length ? revs.map(function (v) {
+        return '<div class="rf-rev"><div class="rf-rev-head"><b>' + (v.orden_id ? 'Orden ' + esc(v.orden_id) : esc(ORIGEN[v.origen] || v.origen)) + '</b>' +
+               '<span>Escribió <span class="rf-mono">' + esc(v.referencia_reportada) + '</span> · ' + bs(v.monto_reportado) + '</span>' +
+               (v.hora_reportada ? '<span>Hora ' + esc(v.hora_reportada) + '</span>' : '') +
+               '<span class="rf-muted">' + esc(v.creado_en) + '</span></div>' +
+               v.candidatos.map(function (p) {
+                 return '<div class="rf-cand"><span class="rf-mono">' + esc(p.referencia) + ' · ' + esc(p.fecha) + ' ' + esc(p.hora) + ' · ' + bs(p.monto) + '</span>' +
+                        (p.estado === 'revision' ? '<button class="rf-btn rf-main" data-resolver="' + v.id + '" data-pago="' + p.id + '">Asignar este pago</button>'
+                                                 : '<span class="rf-badge ' + esc(p.estado) + '">' + esc(ESTADOS[p.estado] || p.estado) + '</span>') + '</div>';
+               }).join('') +
+               '<div style="margin-top:8px;"><button class="rf-btn" data-descartar="' + v.id + '">Descartar (ninguno es)</button></div></div>';
+      }).join('') : '<div class="rf-empty">No tienes revisiones pendientes.</div>';
+    }
+
+    function pintarCuentasFiltro(cuentas) {
+      datos.cuentas = cuentas;
+      var sel = document.getElementById('rf-filtro-cuenta'), prev = sel.value;
+      sel.innerHTML = '<option value="">Todas</option>' + cuentas.map(function (c) {
+        return '<option value="' + c.id + '">' + esc(c.alias) + (c.ultimos_digitos ? ' ··' + esc(c.ultimos_digitos) : '') + '</option>';
+      }).join('');
+      sel.value = prev;
+    }
+
+    function pintarAsignar() {
+      var disp = datos.pagos.filter(function (p) { return p.estado === 'disponible'; });
+      document.getElementById('rf-asignar-pago').innerHTML = disp.length ? disp.map(function (p) {
+        return '<option value="' + p.id + '">' + esc(p.referencia) + ' · ' + esc(p.fecha) + ' ' + esc(p.hora) + ' · ' + bs(p.monto) + '</option>';
+      }).join('') : '<option value="">No hay pagos disponibles con los filtros de la pestaña Pagos</option>';
+    }
+
+    form.addEventListener('submit', function (e) { e.preventDefault(); cargar(); });
+    document.getElementById('rf-todas').addEventListener('click', function () { form.fecha.value = ''; cargar(); });
+
+    document.getElementById('rf-asignar').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target;
+      if (!f.pago_id.value) { msg('rf-asignar-msg', false, 'Elige un pago disponible.'); return; }
+      if (!confirm('¿Asignar este pago a la orden ' + f.orden_id.value + '? No se puede deshacer.')) return;
+      var d = await post('/referencias/asignar', {pago_id: +f.pago_id.value, orden_id: f.orden_id.value});
+      msg('rf-asignar-msg', !!d.ok, d.mensaje || 'Error');
+      if (d.ok) { f.orden_id.value = ''; cargar(); }
+    });
+
+    // ---------- cuentas bancarias ----------
+    async function cargarCuentas() {
+      var r = await fetch('/referencias/cuentas'); var d = await r.json();
+      pintarCuentas(d.cuentas || []);
+    }
+    function pintarCuentas(cuentas) {
+      document.getElementById('rf-cuentas').innerHTML = cuentas.length ? cuentas.map(function (c) {
+        return '<form class="rf-cuenta" data-cuenta="' + c.id + '"><div class="rf-form">' +
+          '<label>Banco <input name="banco" value="' + esc(c.banco) + '" maxlength="60"></label>' +
+          '<label>Nombre <input name="alias" value="' + esc(c.alias) + '" maxlength="60" required></label>' +
+          '<label>Últimos 4 dígitos <input name="ultimos_digitos" value="' + esc(c.ultimos_digitos) + '" inputmode="numeric" maxlength="4"></label>' +
+          '<label>Titular <input name="titular" value="' + esc(c.titular) + '" maxlength="80"></label></div>' +
+          '<div class="rf-row"><span class="rf-badge ' + (c.activo ? 'disponible">Activa' : 'usado">Desactivada') + '</span>' +
+          '<span class="rf-muted rf-small">Último envío del bot: ' + esc(c.ultimo_envio || 'nunca') + '</span></div>' +
+          '<div class="rf-row"><button type="submit" class="rf-btn">Guardar</button>' +
+          '<button type="button" class="rf-btn" data-cuenta-activo="' + c.id + '" data-v="' + (c.activo ? 0 : 1) + '">' + (c.activo ? 'Desactivar' : 'Activar') + '</button></div></form>';
+      }).join('') : '<div class="rf-empty">Todavía no tienes cuentas. Crea una arriba.</div>';
+    }
+    document.getElementById('rf-cuenta-nueva').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target;
+      var d = await post('/referencias/cuentas', {banco: f.banco.value, alias: f.alias.value, ultimos_digitos: f.ultimos_digitos.value, titular: f.titular.value});
+      msg('rf-cuenta-msg', !!d.ok, d.mensaje || 'Error');
+      if (d.ok) { f.alias.value = ''; f.ultimos_digitos.value = ''; f.titular.value = ''; pintarCuentas(d.cuentas); cargar(); }
+    });
+    document.getElementById('rf-cuentas').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target, id = f.dataset.cuenta;
+      var d = await post('/referencias/cuentas/' + id, {banco: f.banco.value, alias: f.alias.value, ultimos_digitos: f.ultimos_digitos.value, titular: f.titular.value});
+      msg('rf-cuenta-msg', !!d.ok, d.mensaje || 'Error');
+      if (d.ok) { pintarCuentas(d.cuentas); cargar(); }
+    });
+
+    // ---------- claves ----------
+    var permisos = [];
+    function mostrarNueva(clave) {
+      var box = document.getElementById('rf-nueva-clave');
+      box.hidden = !clave; document.getElementById('rf-nueva-clave-txt').textContent = clave || '';
+      if (clave) box.scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
+    async function cargarClaves() {
+      var r = await fetch('/referencias/claves'); var d = await r.json();
+      var rc = await fetch('/referencias/cuentas'); var dc = await rc.json();
+      document.getElementById('rf-lector-cuenta').innerHTML = (dc.cuentas || []).filter(function (c) { return c.activo; }).map(function (c) {
+        return '<option value="' + c.id + '">' + esc(c.alias) + (c.ultimos_digitos ? ' ··' + esc(c.ultimos_digitos) : '') + '</option>';
+      }).join('') || '<option value="">Primero crea una cuenta bancaria</option>';
+      pintarClaves(d);
+    }
+    function pintarClaves(d) {
+      permisos = d.permisos || permisos;
+      document.getElementById('rf-api-perms').innerHTML = permisos.map(function (p) {
+        return '<label class="rf-check"><input type="checkbox" name="perm_' + p[0] + '"' + (p[0] === 'verificar_pago' ? ' checked' : '') + '> ' + esc(p[1]) + '</label>';
+      }).join('');
+      document.getElementById('rf-lectores').innerHTML = (d.lector || []).length ? d.lector.map(function (k) {
+        return '<div class="rf-clave"><div class="rf-row"><b>' + esc(k.nombre) + '</b><span class="rf-badge ' + (k.activo ? 'disponible">Activa' : 'usado">Desactivada') + '</span></div>' +
+          '<div class="rf-muted rf-small">Cuenta: ' + esc(k.cuenta || '—') + ' · <span class="rf-mono">' + esc(k.prefijo) + '…</span> · Último uso: ' + esc(k.ultimo_uso || 'nunca') + '</div>' +
+          '<div class="rf-row"><button class="rf-btn" data-lector="' + k.id + '" data-accion="regenerar">Nueva clave</button>' +
+          '<button class="rf-btn" data-lector="' + k.id + '" data-accion="' + (k.activo ? 'desactivar' : 'activar') + '">' + (k.activo ? 'Desactivar' : 'Activar') + '</button></div></div>';
+      }).join('') : '<div class="rf-empty">Todavía no tienes claves de lector.</div>';
+      document.getElementById('rf-apis').innerHTML = (d.api || []).length ? d.api.map(function (a) {
+        return '<div class="rf-clave"><div class="rf-row"><b>' + esc(a.nombre) + '</b><span class="rf-badge ' + (a.activo ? 'disponible">Activa' : 'usado">Desactivada') + '</span></div>' +
+          '<div class="rf-row"><code class="rf-key" data-key="' + a.id + '">' + '•'.repeat(24) + '</code>' +
+          '<button class="rf-btn" data-ver="' + a.id + '" data-k="' + esc(a.api_key) + '">Mostrar</button>' +
+          '<button class="rf-btn" data-copiar="' + esc(a.api_key) + '">Copiar</button></div>' +
+          '<div class="rf-perms">' + permisos.map(function (p) {
+            return '<label class="rf-check"><input type="checkbox" data-perm="' + p[0] + '" data-api="' + a.id + '"' + (a.permisos[p[0]] ? ' checked' : '') + '> ' + esc(p[1]) + '</label>';
+          }).join('') + '</div>' +
+          '<div class="rf-row"><button class="rf-btn" data-api="' + a.id + '" data-accion="' + (a.activo ? 'desactivar' : 'activar') + '">' + (a.activo ? 'Desactivar' : 'Activar') + '</button>' +
+          '<button class="rf-btn" data-api="' + a.id + '" data-accion="regenerar">Nueva clave</button>' +
+          '<button class="rf-btn rf-danger" data-api="' + a.id + '" data-accion="eliminar">Eliminar</button></div></div>';
+      }).join('') : '<div class="rf-empty">Todavía no tienes claves de API.</div>';
+    }
+    document.getElementById('rf-lector-nueva').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target;
+      if (!f.cuenta_id.value) { msg('rf-lector-msg', false, 'Primero crea una cuenta bancaria.'); return; }
+      var d = await post('/referencias/claves-lector', {nombre: f.nombre.value, cuenta_id: +f.cuenta_id.value});
+      msg('rf-lector-msg', !!d.ok, d.mensaje || 'Error');
+      if (d.ok) { f.nombre.value = ''; mostrarNueva(d.clave); pintarClaves(d); }
+    });
+    document.getElementById('rf-api-nueva').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target, perms = {};
+      permisos.forEach(function (p) { perms[p[0]] = f.querySelector('[name="perm_' + p[0] + '"]').checked; });
+      var d = await post('/referencias/claves-api', {nombre: f.nombre.value, permisos: perms});
+      msg('rf-api-msg', !!d.ok, d.mensaje || 'Error');
+      if (d.ok) { f.nombre.value = ''; pintarClaves(d); }
+    });
+    document.getElementById('rf-copiar-nueva').addEventListener('click', async function () {
+      try { await navigator.clipboard.writeText(document.getElementById('rf-nueva-clave-txt').textContent); this.textContent = 'Copiada ✓'; }
+      catch (x) { this.textContent = 'Cópiala a mano'; }
+    });
+
+    document.addEventListener('change', async function (e) {
+      var c = e.target.closest('[data-perm][data-api]');
+      if (!c) return;
+      var body = {permisos: {}}; body.permisos[c.dataset.perm] = c.checked;
+      var d = await post('/referencias/claves-api/' + c.dataset.api + '/permisos', body);
+      msg('rf-api-msg', !!d.ok, d.ok ? 'Permiso guardado' : (d.mensaje || 'Error'));
+      if (!d.ok) c.checked = !c.checked;
+    });
+
+    document.addEventListener('click', async function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.resolver) {
+        if (!confirm('¿Asignar este pago a esa orden? Los demás candidatos vuelven a estar disponibles.')) return;
+        var d = await post('/referencias/asignar', {pago_id: +b.dataset.pago, revision_id: +b.dataset.resolver});
+        alert(d.mensaje || 'Error'); cargar();
+      } else if (b.dataset.descartar) {
+        if (!confirm('¿Descartar esta revisión? Los pagos candidatos vuelven a estar disponibles.')) return;
+        var d2 = await post('/referencias/descartar', {revision_id: +b.dataset.descartar});
+        alert(d2.mensaje || 'Error'); cargar();
+      } else if (b.dataset.cuentaActivo) {
+        var d3 = await post('/referencias/cuentas/' + b.dataset.cuentaActivo, {activo: b.dataset.v === '1'});
+        msg('rf-cuenta-msg', !!d3.ok, d3.ok ? (b.dataset.v === '1' ? 'Cuenta activada' : 'Cuenta desactivada: su bot ya no podrá enviar movimientos') : (d3.mensaje || 'Error'));
+        if (d3.ok) pintarCuentas(d3.cuentas);
+      } else if (b.dataset.lector) {
+        if (b.dataset.accion === 'regenerar' && !confirm('¿Crear una clave nueva? La actual deja de funcionar al instante y tendrás que cambiarla en tu bot.')) return;
+        var d4 = await post('/referencias/claves-lector/' + b.dataset.lector + '/' + b.dataset.accion);
+        msg('rf-lector-msg', !!d4.ok, d4.mensaje || 'Error');
+        if (d4.ok) { mostrarNueva(d4.clave); pintarClaves(d4); }
+      } else if (b.dataset.api && b.dataset.accion) {
+        var txt = {regenerar: '¿Crear una clave nueva? La actual deja de funcionar al instante.', eliminar: '¿Eliminar esta clave? Dejará de funcionar.'}[b.dataset.accion];
+        if (txt && !confirm(txt)) return;
+        var d5 = await post('/referencias/claves-api/' + b.dataset.api + '/' + b.dataset.accion);
+        msg('rf-api-msg', !!d5.ok, d5.mensaje || 'Error');
+        if (d5.ok) pintarClaves(d5);
+      } else if (b.dataset.ver) {
+        var code = document.querySelector('[data-key="' + b.dataset.ver + '"]');
+        var visible = code.textContent === b.dataset.k;
+        code.textContent = visible ? '•'.repeat(24) : b.dataset.k; b.textContent = visible ? 'Mostrar' : 'Ocultar';
+      } else if (b.dataset.copiar) {
+        try { await navigator.clipboard.writeText(b.dataset.copiar); b.textContent = 'Copiada ✓'; } catch (x) { b.textContent = 'No se pudo'; }
+        setTimeout(function () { b.textContent = 'Copiar'; }, 1500);
+      }
+    });
+
+    cargar();
+    setInterval(cargar, 30000);
+    var inicial = (location.hash || '').replace('#', '');
+    if (['pagos', 'revisiones', 'asignar', 'cuentas', 'claves'].indexOf(inicial) > 0) abrir(inicial);
+  </script>
+</body>
+</html>

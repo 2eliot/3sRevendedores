@@ -49,6 +49,11 @@
       </div>
       <svg class="icon active" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
 
+      <!-- Referencias: pagos del banco y verificación de referencias del usuario -->
+      <div class="dashboard-icon-container ref-icon-container" onclick="window.location.href='/referencias'" title="Referencias" role="link" aria-label="Referencias">
+        <svg class="icon{% if request.path.startswith('/referencias') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 11.5l2 2 4-4"/></svg>
+      </div>
+
       <div class="user-icon" onclick="toggleUserBox()">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">

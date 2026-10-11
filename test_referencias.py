@@ -169,6 +169,53 @@ class ReferenciasTest(unittest.TestCase):
         self.assertEqual(self.c.post('/api/v1/referencias/asignar', headers=H, json={'pago_id': libre, 'orden_id': 'ORD-N'}).status_code, 409)
         self.assertEqual(self.c.post('/api/v1/referencias/asignar', headers=H, json={'pago_id': libre}).status_code, 400)
 
+    # ---------- aislamiento en la pantalla del usuario ----------
+    def entrar(self, uid, correo):
+        with self.c.session_transaction() as s:
+            s.update(usuario=correo, user_db_id=uid, is_admin=False)
+
+    def test_pantalla_aislada_entre_usuarios(self):
+        self.enviar([pago('7000123456', 50, hora='08:00:00'), pago('8000123456', 50, hora='08:00:00')], 'token-antiguo')
+        ad.verificar_y_usar_pago('123456', 50, hora='08:00', origen='crm', orden_id='O-A', usuario_id=self.A)
+        pago_a = q('SELECT id FROM pagos_banco WHERE usuario_id = ? ORDER BY id', (self.A,))[0]['id']
+        rev_a = q('SELECT id FROM revisiones_pago WHERE usuario_id = ?', (self.A,))[0]['id']
+        cuenta_a = q('SELECT id FROM cuentas_banco WHERE usuario_id = ?', (self.A,))[0]['id']
+        lector_a = self.crear_lector(self.A, cuenta_a)
+        lector_a_id = q('SELECT id FROM claves_lector WHERE usuario_id = ?', (self.A,))[0]['id']
+        self.clave_api(self.A, verificar_pago=True)
+        api_a = q("SELECT id FROM webservice_accounts WHERE usuario_id = ?", (self.A,))[0]['id']
+        self.entrar(self.B, 'beto@test.local')
+        d = self.c.get('/referencias/datos').get_json()
+        self.assertEqual((d['pagos'], d['revisiones']), ([], []))
+        self.assertEqual(self.c.post('/referencias/asignar', json={'pago_id': pago_a, 'orden_id': 'X'}).status_code, 404)
+        self.assertEqual(self.c.post('/referencias/asignar', json={'pago_id': pago_a, 'revision_id': rev_a}).status_code, 404)
+        self.assertEqual(self.c.post('/referencias/descartar', json={'revision_id': rev_a}).status_code, 404)
+        self.assertEqual(self.c.post(f'/referencias/cuentas/{cuenta_a}', json={'activo': False}).status_code, 404)
+        self.assertEqual(self.c.post(f'/referencias/claves-lector/{lector_a_id}/regenerar', json={}).status_code, 404)
+        self.assertEqual(self.c.post('/referencias/claves-lector', json={'cuenta_id': cuenta_a}).status_code, 404)
+        self.assertEqual(self.c.post(f'/referencias/claves-api/{api_a}/eliminar', json={}).status_code, 404)
+        claves = self.c.get('/referencias/claves').get_json()
+        self.assertEqual([k['cuenta_id'] for k in claves['lector']], [self.cuenta_b])
+        self.assertEqual(claves['api'], [])
+        self.assertEqual(self.enviar([pago('9999888877', 5)], lector_a).status_code, 200)  # la de A sigue intacta
+        self.assertEqual(q("SELECT activo FROM cuentas_banco WHERE id = ?", (cuenta_a,))[0]['activo'], 1)
+
+    def test_pantalla_del_usuario_crea_cuenta_y_claves(self):
+        self.entrar(self.B, 'beto@test.local')
+        self.assertEqual(self.c.get('/referencias').status_code, 200)
+        self.assertEqual(self.c.post('/referencias/cuentas', json={'alias': 'X', 'ultimos_digitos': '12345678'}).status_code, 400)
+        d = self.c.post('/referencias/cuentas', json={'alias': 'Segunda', 'ultimos_digitos': '4021'}).get_json()
+        nueva = [c for c in d['cuentas'] if c['alias'] == 'Segunda'][0]
+        d = self.c.post('/referencias/claves-lector', json={'nombre': 'PC', 'cuenta_id': nueva['id']}).get_json()
+        self.assertTrue(d['clave'].startswith('lec_'))
+        self.assertNotIn(d['clave'], str(d['lector']))  # la clave completa no se vuelve a mostrar
+        self.assertEqual(self.enviar([pago('1212121212', 9)], d['clave']).status_code, 200)
+        self.assertEqual(q("SELECT cuenta_banco_id FROM pagos_banco WHERE referencia = '1212121212'")[0]['cuenta_banco_id'], nueva['id'])
+        d = self.c.post('/referencias/claves-api', json={'nombre': 'CRM', 'permisos': {'verificar_pago': True, 'recargas': True}}).get_json()
+        fila = q("SELECT tipo, perm_recargas, perm_verificar_pago FROM webservice_accounts WHERE usuario_id = ?", (self.B,))[0]
+        self.assertEqual((fila['tipo'], bool(fila['perm_recargas']), bool(fila['perm_verificar_pago'])), ('referencias', False, True))
+        self.assertEqual(self.c.post('/referencias/cuentas', data='alias=x').status_code, 415)  # solo JSON
+
     # ---------- permisos y tipos de clave ----------
     def test_permisos(self):
         solo_verificar = {'X-API-Key': self.clave_api(self.B, verificar_pago=True)}
