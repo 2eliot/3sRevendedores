@@ -684,8 +684,9 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
 
 @bp.route('/api/verificar-pago', methods=['POST'])
 def api_verificar_pago():
-    """Clave de API de Referencias con permiso «Verificar pagos». Verifica contra los pagos de SU usuario."""
-    from api_panel import cuenta_por_clave, cuenta_puede, limite_ok
+    """Clave de API de Referencias con permiso «Verificar pagos». Verifica contra los pagos de SU usuario en el banco
+    de la clave (una clave del BDV solo ve el BDV; una de Bancamiga, solo Bancamiga)."""
+    from api_panel import banco_clave, cuenta_por_clave, cuenta_puede, limite_ok
     cuenta = cuenta_por_clave(request.headers.get('X-API-Key'))
     if not cuenta:
         return jsonify(error='No autorizado', mensaje='Clave de API inválida o desactivada'), 401
@@ -702,7 +703,7 @@ def api_verificar_pago():
         return jsonify(_r(False, 'revision', 'Falta orden_id')), 400
     res = verificar_y_usar_pago(data.get('referencia'), data.get('monto'), data.get('fecha'), data.get('hora'),
                                 origen, None, data.get('orden_id'), usuario_id=cuenta['usuario_id'],
-                                hecho_por=f"api:{cuenta['nombre']} (#{cuenta['id']})")
+                                hecho_por=f"api:{cuenta['nombre']} (#{cuenta['id']})", banco=banco_clave(cuenta.get('banco')))
     return jsonify(res)
 
 

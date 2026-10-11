@@ -1,7 +1,8 @@
 """
 Referencias — el Antiduplic de cada usuario (Blueprint Flask).
 
-API (X-API-Key de una clave de tipo «Referencias» del usuario; solo sus propios datos):
+API (X-API-Key de una clave de tipo «Referencias» del usuario; solo sus propios datos y SOLO DEL BANCO DE LA CLAVE:
+una clave del BDV solo ve el BDV y una de Bancamiga solo Bancamiga; un pago de otro banco responde 404):
   GET  /api/v1/referencias/resumen                      ver_pagos
   GET  /api/v1/referencias/pagos                        ver_pagos
   GET  /api/v1/referencias/pagos/<id>                   ver_pagos
@@ -57,6 +58,12 @@ def _firma(cuenta):
     return f"api:{cuenta['nombre']} (#{cuenta['id']})"
 
 
+def _banco(cuenta):
+    """El banco lo decide la clave."""
+    from api_panel import banco_clave
+    return banco_clave(cuenta.get('banco'))
+
+
 @bp.route('/api/v1/referencias/resumen')
 def api_resumen():
     cuenta, err = _cuenta_api('ver_pagos')
@@ -67,7 +74,8 @@ def api_resumen():
         return _err(400, 'Fecha no válida (usa AAAA-MM-DD)')
     conn = get_db_connection()
     try:
-        return jsonify(ok=True, resumen=ad.resumen(conn, cuenta['usuario_id'], ad.parse_fecha(fecha) if fecha else None))
+        return jsonify(ok=True, banco=_banco(cuenta),
+                       resumen=ad.resumen(conn, cuenta['usuario_id'], ad.parse_fecha(fecha) if fecha else None, banco=_banco(cuenta)))
     finally:
         conn.close()
 
@@ -98,8 +106,8 @@ def api_pagos():
     conn = get_db_connection()
     try:
         pagos, total = ad.listar_pagos(conn, cuenta['usuario_id'], estado=estado, q=a.get('q') or '',
-                                       cuenta_id=cuenta_id, pagina=pagina, por_pagina=por_pagina, **fechas)
-        return jsonify(ok=True, pagos=pagos, total=total, pagina=pagina, por_pagina=por_pagina)
+                                       cuenta_id=cuenta_id, pagina=pagina, por_pagina=por_pagina, banco=_banco(cuenta), **fechas)
+        return jsonify(ok=True, banco=_banco(cuenta), pagos=pagos, total=total, pagina=pagina, por_pagina=por_pagina)
     finally:
         conn.close()
 
@@ -111,7 +119,7 @@ def api_pago(pago_id):
         return err
     conn = get_db_connection()
     try:
-        pago = ad.detalle_pago(conn, cuenta['usuario_id'], pago_id)
+        pago = ad.detalle_pago(conn, cuenta['usuario_id'], pago_id, banco=_banco(cuenta))
     finally:
         conn.close()
     return jsonify(ok=True, pago=pago) if pago else _err(404, 'Pago no encontrado')
@@ -127,7 +135,8 @@ def api_revisiones():
         return _err(400, 'estado debe ser pendiente, resuelta o descartada')
     conn = get_db_connection()
     try:
-        return jsonify(ok=True, revisiones=ad.listar_revisiones(conn, cuenta['usuario_id'], estado))
+        return jsonify(ok=True, banco=_banco(cuenta), revisiones=ad.listar_revisiones(conn, cuenta['usuario_id'], estado,
+                                                                                     banco=_banco(cuenta)))
     finally:
         conn.close()
 
@@ -139,11 +148,18 @@ def api_cuentas():
         return err
     conn = get_db_connection()
     try:
-        cuentas = ad.listar_cuentas(conn, cuenta['usuario_id'])
+        cuentas = ad.listar_cuentas(conn, cuenta['usuario_id'], banco=_banco(cuenta))
     finally:
         conn.close()
-    return jsonify(ok=True, cuentas=[{k: c[k] for k in ('id', 'banco', 'alias', 'ultimos_digitos', 'titular', 'activo', 'ultimo_envio')}
-                                     for c in cuentas])
+    campos = ('id', 'banco', 'alias', 'ultimos_digitos', 'titular', 'activo', 'ultimo_envio')
+    salida = []
+    for c in cuentas:
+        d = {k: c[k] for k in campos}
+        if 'lector' in c:   # BDV: estado del lector y si está conectada; nunca usuario, clave ni número completo
+            d['conectada'] = c['conectada']
+            d['lector'] = {k: c['lector'][k] for k in ('estado', 'mensaje', 'ultima_lectura', 'ultimo_pago', 'encendido')}
+        salida.append(d)
+    return jsonify(ok=True, banco=_banco(cuenta), cuentas=salida)
 
 
 @bp.route('/api/v1/referencias/asignar', methods=['POST'])
@@ -154,7 +170,8 @@ def api_asignar():
     data = request.get_json(silent=True) or {}
     if not str(data.get('orden_id') or '').strip():
         return _err(400, 'Falta orden_id')
-    status, body = ad.asignar(cuenta['usuario_id'], data.get('pago_id'), orden_id=data.get('orden_id'), hecho_por=_firma(cuenta))
+    status, body = ad.asignar(cuenta['usuario_id'], data.get('pago_id'), orden_id=data.get('orden_id'), hecho_por=_firma(cuenta),
+                              banco=_banco(cuenta))
     return jsonify(body), status
 
 
@@ -164,7 +181,8 @@ def api_resolver(revision_id):
     if err:
         return err
     data = request.get_json(silent=True) or {}
-    status, body = ad.asignar(cuenta['usuario_id'], data.get('pago_id'), revision_id=revision_id, hecho_por=_firma(cuenta))
+    status, body = ad.asignar(cuenta['usuario_id'], data.get('pago_id'), revision_id=revision_id, hecho_por=_firma(cuenta),
+                              banco=_banco(cuenta))
     return jsonify(body), status
 
 
@@ -173,7 +191,7 @@ def api_descartar(revision_id):
     cuenta, err = _cuenta_api('gestionar_pagos', 'escritura')
     if err:
         return err
-    status, body = ad.descartar(cuenta['usuario_id'], revision_id, hecho_por=_firma(cuenta))
+    status, body = ad.descartar(cuenta['usuario_id'], revision_id, hecho_por=_firma(cuenta), banco=_banco(cuenta))
     return jsonify(body), status
 
 

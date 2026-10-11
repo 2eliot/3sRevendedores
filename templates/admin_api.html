@@ -42,7 +42,7 @@
     .ap-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .ap-msg { min-height: 18px; font-size: 13px; margin-top: 8px; }
     .ap-tipos { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 12px; }
-    .ap-perms [hidden] { display: none !important; }
+    .ap-perms [hidden], #ap-bancos[hidden] { display: none !important; }
     .ap-tipo-recargas { background: var(--rc-blue-bg); color: var(--rc-blue); }
     .ap-tipo-referencias { background: var(--rc-yellow-bg); color: var(--rc-yellow); }
     .ap-tipo-antigua { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
@@ -79,6 +79,11 @@
         <label class="ap-perm"><input type="radio" name="ap-tipo" value="{{ k }}" {% if loop.first %}checked{% endif %}> {{ label }}</label>
         {% endfor %}
       </div>
+      <div class="ap-tipos" role="radiogroup" id="ap-bancos" hidden>
+        <span style="font-size:13px;color:var(--rc-ash);">Banco:</span>
+        <label class="ap-perm"><input type="radio" name="ap-banco" value="Bancamiga" checked> Bancamiga</label>
+        <label class="ap-perm"><input type="radio" name="ap-banco" value="BDV"> BDV (Banco de Venezuela)</label>
+      </div>
       <form id="ap-new" class="ap-form" autocomplete="off">
         <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: CRM 3S-Ticket" required></label>
         <label><span id="ap-usuario-label">ID del usuario que paga las recargas</span> <input name="usuario_id" type="number" min="1" placeholder="Ej: 12" required></label>
@@ -106,7 +111,9 @@
       var t = tipoElegido();
       document.querySelectorAll('.ap-perms [data-tipo]').forEach(function (l) { l.hidden = l.dataset.tipo !== t; });
       document.getElementById('ap-usuario-label').textContent = t === 'referencias' ? 'ID del usuario dueño de los pagos' : 'ID del usuario que paga las recargas';
+      document.getElementById('ap-bancos').hidden = t !== 'referencias';   // las de Referencias son de un banco
     }
+    function bancoElegido() { return (document.querySelector('[name="ap-banco"]:checked') || {}).value || 'Bancamiga'; }
     document.querySelectorAll('[name="ap-tipo"]').forEach(function (r) { r.addEventListener('change', pintarTipo); });
     document.addEventListener('DOMContentLoaded', pintarTipo);
     function esc(v) {
@@ -140,6 +147,7 @@
         return '<div class="ap-acc" id="acc-' + a.id + '">' +
           '<div class="ap-acc-head"><span class="ap-acc-name">' + esc(a.nombre) + '</span>' +
           '<span class="ap-badge ap-tipo-' + esc(tipo) + '">' + esc(TIPOS[tipo] || 'Antigua (desconectada)') + '</span>' +
+          (tipo === 'referencias' ? '<span class="ap-badge ap-tipo-referencias">' + esc(a.banco || 'Bancamiga') + '</span>' : '') +
           '<span class="ap-badge ' + (a.activo ? 'ap-on">Activa' : 'ap-off">Desactivada') + '</span></div>' +
           '<div class="ap-meta"><span>' + (tipo === 'referencias' ? 'Pagos de' : (tipo === 'recargas' ? 'Paga' : 'Usuario')) + ': <b>' + esc(a.usuario || '—') + '</b> (ID ' + esc(a.usuario_id) + ')</span>' +
           (tipo === 'recargas' ? '<span>Saldo: <b>$' + Number(a.usuario_saldo).toFixed(2) + '</b></span>' : '') +
@@ -163,7 +171,8 @@
       e.preventDefault();
       var f = e.target, permisos = {}, tipo = tipoElegido();
       PERMISOS.filter(function (p) { return p[2] === tipo; }).forEach(function (p) { permisos[p[0]] = document.querySelector('[name="perm_' + p[0] + '"]').checked; });
-      var d = await post('/admin/api/cuentas', {nombre: f.nombre.value, usuario_id: f.usuario_id.value, tipo: tipo, permisos: permisos});
+      var d = await post('/admin/api/cuentas', {nombre: f.nombre.value, usuario_id: f.usuario_id.value, tipo: tipo, permisos: permisos,
+                                                banco: tipo === 'referencias' ? bancoElegido() : null});
       var m = document.getElementById('ap-new-msg');
       if (d.ok) { msg(m, true, 'Clave creada. Cópiala arriba: no se volverá a mostrar.'); mostrarNueva(d.clave, f.nombre.value); f.reset(); document.querySelectorAll('[name^="perm_"]').forEach(function (x) { x.checked = false; }); cargar(); }
       else msg(m, false, d.error || 'No se pudo crear');

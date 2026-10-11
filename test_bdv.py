@@ -343,5 +343,114 @@ class BdvPantallaTest(unittest.TestCase):
         self.assertFalse(q('SELECT lector_encendido FROM cuentas_banco WHERE id = ?', (cid,))[0]['lector_encendido'])
 
 
+
+class BdvApiTest(unittest.TestCase):
+    """Los mismos endpoints de siempre: el banco lo decide la clave."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = webapp.app
+        cls.app.config['TESTING'] = True
+        ad.init_tablas()
+        cls.A = BdvPantallaTest.usuario('ana-api@test.local')
+        cls.B = BdvPantallaTest.usuario('beto-api@test.local')
+
+    def setUp(self):
+        os.environ['BDV_LLAVE_CIFRADO'] = LLAVE
+        for t in ('usos_referencia', 'revisiones_pago', 'pagos_banco', 'claves_lector', 'cuentas_banco', 'webservice_accounts'):
+            q(f'DELETE FROM {t}')
+        api_panel._limites.clear()
+        self.c = self.app.test_client()
+        conn = get_db_connection()
+        try:
+            _, d = bdv.guardar_conexion(conn, self.A, USUARIO, CLAVE, NUMERO, 'Mi BDV', True)
+            self.cuenta_bdv = d['cuenta_id']
+            self.clave_bdv = api_panel.crear_cuenta(conn, 'CRM BDV', self.A, 'referencias',
+                                                    {'verificar_pago': True, 'ver_pagos': True, 'gestionar_pagos': True}, banco='BDV')[1]
+            self.clave_bm = api_panel.crear_cuenta(conn, 'CRM BM', self.A, 'referencias',
+                                                   {'verificar_pago': True, 'ver_pagos': True, 'gestionar_pagos': True})[1]
+            conn.commit()
+        finally:
+            conn.close()
+        self.cuenta_bm = q("INSERT INTO cuentas_banco (usuario_id, banco, alias, activo, creado_en) VALUES (?, 'Bancamiga', 'BM', TRUE, 'x') "
+                           'RETURNING id', (self.A,))[0][0]
+        ad.guardar_pagos([pago('9000111222333', 50)], self.A, self.cuenta_bdv)
+        ad.guardar_pagos([pago('7000111222333', 50, hora='10:00')], self.A, self.cuenta_bm)
+
+    def get(self, url, clave):
+        return self.c.get(url, headers={'X-API-Key': clave})
+
+    def post(self, url, clave, datos):
+        return self.c.post(url, headers={'X-API-Key': clave}, json=datos)
+
+    def verificar(self, clave, ref, orden):
+        return self.post('/api/verificar-pago', clave, {'referencia': ref, 'monto': 50, 'orden_id': orden}).get_json()
+
+    def test_verificar_pago_segun_la_clave(self):
+        self.assertEqual(self.verificar(self.clave_bdv, '7000111222333', 'O-1')['codigo'], 'no_encontrado')
+        self.assertEqual(self.verificar(self.clave_bm, '9000111222333', 'O-1')['codigo'], 'no_encontrado')
+        self.assertEqual(self.verificar(self.clave_bdv, '9000111222333', 'O-1')['codigo'], 'aprobado')
+        self.assertEqual(self.verificar(self.clave_bm, '7000111222333', 'O-1')['codigo'], 'aprobado')   # misma orden, otro banco
+        self.assertEqual(self.verificar(self.clave_bdv, '9000111222333', 'O-2')['codigo'], 'usado')
+
+    def test_consultas_solo_del_banco_de_la_clave(self):
+        d = self.get('/api/v1/referencias/pagos', self.clave_bdv).get_json()
+        self.assertEqual((d['banco'], [p['referencia'] for p in d['pagos']]), ('BDV', ['9000111222333']))
+        d = self.get('/api/v1/referencias/pagos', self.clave_bm).get_json()
+        self.assertEqual((d['banco'], [p['referencia'] for p in d['pagos']]), ('Bancamiga', ['7000111222333']))
+        id_bm = d['pagos'][0]['id']
+        self.assertEqual(self.get(f'/api/v1/referencias/pagos/{id_bm}', self.clave_bdv).status_code, 404)   # de otro banco
+        self.assertEqual(self.get(f'/api/v1/referencias/pagos/{id_bm}', self.clave_bm).status_code, 200)
+        self.assertEqual(self.get('/api/v1/referencias/resumen?fecha=2026-10-11', self.clave_bdv).get_json()['resumen']['pagos_hoy'], 1)
+        self.assertEqual(self.post('/api/v1/referencias/asignar', self.clave_bdv, {'pago_id': id_bm, 'orden_id': 'X'}).status_code, 404)
+
+    def test_cuentas_del_bdv_con_estado_y_sin_datos(self):
+        r = self.get('/api/v1/referencias/cuentas', self.clave_bdv)
+        texto = r.get_data(as_text=True)
+        for secreto in (USUARIO, CLAVE, NUMERO, NUMERO[4:16], 'cifrad', 'gAAAA'):
+            self.assertNotIn(secreto, texto)
+        cuentas = r.get_json()['cuentas']
+        self.assertEqual([(c['banco'], c['ultimos_digitos']) for c in cuentas], [('BDV', '2411')])
+        self.assertEqual(cuentas[0]['lector']['estado'], 'pendiente')
+        self.assertEqual([c['banco'] for c in self.get('/api/v1/referencias/cuentas', self.clave_bm).get_json()['cuentas']], ['Bancamiga'])
+
+    def test_revisiones_por_banco(self):
+        ad.guardar_pagos([pago('1234567890', 33, hora='11:00'), pago('99991234567890', 33, hora='11:00')], self.A, self.cuenta_bdv)
+        res = self.post('/api/verificar-pago', self.clave_bdv, {'referencia': '1234567890', 'monto': 33, 'hora': '11:00',
+                                                                 'orden_id': 'R-1'}).get_json()
+        self.assertEqual(res['codigo'], 'revision')
+        self.assertEqual(len(self.get('/api/v1/referencias/revisiones', self.clave_bdv).get_json()['revisiones']), 1)
+        self.assertEqual(self.get('/api/v1/referencias/revisiones', self.clave_bm).get_json()['revisiones'], [])
+        rid = self.get('/api/v1/referencias/revisiones', self.clave_bdv).get_json()['revisiones'][0]['id']
+        self.assertEqual(self.post(f'/api/v1/referencias/revisiones/{rid}/descartar', self.clave_bm, {}).status_code, 404)
+        self.assertEqual(self.post(f'/api/v1/referencias/revisiones/{rid}/descartar', self.clave_bdv, {}).status_code, 200)
+
+    def test_otro_usuario_y_bot_de_bancamiga_igual(self):
+        conn = get_db_connection()
+        try:
+            clave_b = api_panel.crear_cuenta(conn, 'B', self.B, 'referencias', {'ver_pagos': True}, banco='BDV')[1]
+            conn.commit()
+        finally:
+            conn.close()
+        self.assertEqual(self.get('/api/v1/referencias/pagos', clave_b).get_json()['pagos'], [])   # otro usuario, nada
+        # el bot de Bancamiga sigue igual: su clave de lector escribe en Bancamiga
+        clave, h, pref = ad.nueva_clave_lector()
+        q("INSERT INTO claves_lector (usuario_id, cuenta_banco_id, nombre, clave_hash, prefijo_visible, activo, creado_en) "
+          "VALUES (?, ?, 'PC', ?, ?, TRUE, 'x')", (self.A, self.cuenta_bm, h, pref))
+        r = self.c.post('/api/pagos-banco', json=[pago('5550001112', 9)], headers={'Authorization': f'Bearer {clave}'})
+        self.assertEqual(r.get_json()['insertados'], 1)
+        res = self.post('/api/verificar-pago', self.clave_bm, {'referencia': '5550001112', 'monto': 9, 'orden_id': 'B-9'}).get_json()
+        self.assertEqual(res['codigo'], 'aprobado')
+
+    def test_admin_crea_claves_del_bdv(self):
+        with self.c.session_transaction() as s:
+            s.update(usuario='admin@test.local', user_db_id=self.B, is_admin=True)
+        d = self.c.post('/admin/api/cuentas', json={'nombre': 'CRM BDV', 'usuario_id': self.A, 'tipo': 'referencias', 'banco': 'BDV',
+                                                    'permisos': {'verificar_pago': True}}).get_json()
+        self.assertEqual(d['cuenta']['banco'], 'BDV')
+        self.assertEqual(self.verificar(d['clave'], '9000111222333', 'ADM-1')['codigo'], 'aprobado')
+        d = self.c.post('/admin/api/cuentas', json={'nombre': 'Recargas', 'usuario_id': self.A, 'tipo': 'recargas'}).get_json()
+        self.assertIsNone(d['cuenta']['banco'])   # las de Recargas no tienen banco
+
 if __name__ == '__main__':
     unittest.main()
