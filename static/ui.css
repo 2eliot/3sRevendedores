@@ -1834,3 +1834,20 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 /* La campana y la billetera con su número, también en las páginas que no cargan styles.css */
 .news-icon-container, .wallet-icon-container { position: relative; cursor: pointer; }
 .news-notification-badge, .wallet-notification-badge { position: absolute; display: flex; align-items: center; justify-content: center; font-weight: 700; box-sizing: border-box; line-height: 1; }
+
+/* Barra de arriba: todos los iconos en la misma caja cuadrada, del mismo color y con el mismo sombreado.
+   Unos iconos son el <svg> suelto (Inicio, Billetera) y otros van dentro de un <div>; aquí se igualan. */
+:root { --nav-caja: 40px; }
+@media (max-width: 720px) { :root { --nav-caja: 44px; } }
+@media (max-width: 420px) { :root { --nav-caja: 38px; } }
+@media (max-width: 370px) { :root { --nav-caja: 35px; } }
+.header .icon-container > div, .header .icon-container > a, .header .icon-container > svg.icon {
+  box-sizing: border-box !important;
+  width: var(--nav-caja) !important; min-width: var(--nav-caja) !important; height: var(--nav-caja) !important;
+  border-radius: 10px !important;
+  transform: none !important;
+  transition: background-color 0.15s ease;
+}
+.header .icon-container > svg.icon { padding: calc((var(--nav-caja) - 22px) / 2); }
+.header .icon-container > div:hover, .header .icon-container > a:hover, .header .icon-container > svg.icon:hover { background: rgba(var(--rc-ink), 0.06); }
+.header .icon-container .icon { color: var(--rc-text) !important; stroke: currentColor !important; filter: none !important; }
