@@ -4,6 +4,7 @@ Arranca la web completa sobre una base SQLite temporal (sin tocar el BDV real).
 
     python -m unittest test_bdv -v
 """
+import json
 import os
 import tempfile
 import unittest
@@ -217,6 +218,129 @@ class BdvDatosTest(unittest.TestCase):
         id_bdv = api_panel.claves_de_usuario(self.conn, self.A, 'referencias', 'BDV')['api'][0]['id']
         self.assertEqual(api_panel.accion_clave_usuario(self.conn, self.A, 'referencias', id_bdv, 'desactivar', banco='Bancamiga')[0], 404)
         self.assertEqual(api_panel.cuenta_por_clave(datos['clave'])['banco'], 'BDV')
+
+
+class BdvPantallaTest(unittest.TestCase):
+    """La pantalla Referencias con pestañas de banco y la vista del admin."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = webapp.app
+        cls.app.config['TESTING'] = True
+        ad.init_tablas()
+        cls.A = cls.usuario('ana-pantalla@test.local')
+        cls.B = cls.usuario('beto-pantalla@test.local')
+
+    @staticmethod
+    def usuario(correo):
+        filas = q('SELECT id FROM usuarios WHERE correo = ?', (correo,))
+        if filas:
+            return filas[0]['id']
+        return q("INSERT INTO usuarios (nombre, apellido, telefono, correo, contraseña, saldo) "
+                 "VALUES ('Prueba', 'P', '0', ?, 'x', 0) RETURNING id", (correo,))[0][0]
+
+    def setUp(self):
+        os.environ['BDV_LLAVE_CIFRADO'] = LLAVE
+        for t in ('usos_referencia', 'revisiones_pago', 'pagos_banco', 'claves_lector', 'cuentas_banco', 'webservice_accounts'):
+            q(f'DELETE FROM {t}')
+        self.c = self.app.test_client()
+
+    def entrar(self, uid, correo, admin=False):
+        with self.c.session_transaction() as s:
+            s.update(usuario=correo, user_db_id=uid, is_admin=admin)
+
+    def conectar(self, **extra):
+        datos = {'usuario': USUARIO, 'clave': CLAVE, 'numero_cuenta': NUMERO, 'alias': 'Mi BDV', 'consentimiento': True}
+        datos.update(extra)
+        return self.c.post('/referencias/bdv/cuentas', json=datos)
+
+    def sin_secretos(self, texto):
+        for secreto in (USUARIO, CLAVE, NUMERO, NUMERO[4:16], 'gAAAA'):
+            self.assertNotIn(secreto, texto)
+
+    def test_pestanas_y_conexion_sin_secretos(self):
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        html = self.c.get('/referencias').get_data(as_text=True)
+        self.assertIn('data-banco="BDV"', html)
+        self.assertIn('Leer movimientos', html)
+        self.assertEqual(self.c.post('/referencias/bdv/cuentas', data='x').status_code, 415)
+        self.assertEqual(self.conectar(consentimiento=False).status_code, 400)
+        r = self.conectar()
+        self.assertEqual(r.status_code, 200)
+        self.sin_secretos(r.get_data(as_text=True))
+        d = self.c.get('/referencias/bdv/cuentas').get_json()
+        self.sin_secretos(json.dumps(d))
+        self.assertTrue(d['disponible'])
+        self.assertEqual(d['cuentas'][0]['ultimos_digitos'], '2411')
+        self.assertEqual(d['cuentas'][0]['lector']['estado'], 'pendiente')
+        for url in ('/referencias/datos?banco=BDV', '/referencias/claves?banco=BDV', '/referencias/cuentas'):
+            self.sin_secretos(self.c.get(url).get_data(as_text=True))
+
+    def test_sin_llave_la_pestana_avisa_y_no_guarda(self):
+        os.environ['BDV_LLAVE_CIFRADO'] = ''
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        self.assertFalse(self.c.get('/referencias/bdv/cuentas').get_json()['disponible'])
+        self.assertEqual(self.conectar().status_code, 503)
+
+    def test_cada_pestana_ve_solo_su_banco(self):
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        cid = self.conectar().get_json()['cuentas'][0]['id']
+        bm = q("INSERT INTO cuentas_banco (usuario_id, banco, alias, activo, creado_en) VALUES (?, 'Bancamiga', 'BM', TRUE, 'x') "
+               'RETURNING id', (self.A,))[0][0]
+        ad.guardar_pagos([pago('9000111222333', 50)], self.A, cid)
+        ad.guardar_pagos([pago('7000111222333', 50, hora='10:00')], self.A, bm)
+        bdv_d = self.c.get('/referencias/datos?banco=BDV&fecha=2026-10-11').get_json()
+        bm_d = self.c.get('/referencias/datos?banco=Bancamiga&fecha=2026-10-11').get_json()
+        self.assertEqual([p['referencia'] for p in bdv_d['pagos']], ['9000111222333'])
+        self.assertEqual([p['referencia'] for p in bm_d['pagos']], ['7000111222333'])
+        self.assertEqual([c['banco'] for c in bdv_d['resumen']['cuentas']], ['BDV'])
+        pid_bm = bm_d['pagos'][0]['id']   # un pago de Bancamiga no existe en la pestaña BDV
+        self.assertEqual(self.c.post('/referencias/asignar', json={'pago_id': pid_bm, 'orden_id': 'O-1', 'banco': 'BDV'}).status_code, 404)
+        self.assertEqual(self.c.post('/referencias/asignar', json={'pago_id': pid_bm, 'orden_id': 'O-1', 'banco': 'Bancamiga'}).status_code, 200)
+        self.assertEqual([c['banco'] for c in self.c.get('/referencias/cuentas').get_json()['cuentas']], ['Bancamiga'])
+        self.assertEqual(self.c.post(f'/referencias/cuentas/{cid}', json={'activo': False}).status_code, 404)
+        self.assertEqual(self.c.post('/referencias/cuentas', json={'banco': 'BDV', 'alias': 'x'}).status_code, 400)
+
+    def test_claves_del_bdv_aparte(self):
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        d = self.c.post('/referencias/claves-api', json={'nombre': 'CRM BDV', 'banco': 'BDV', 'permisos': {'verificar_pago': True}}).get_json()
+        self.assertTrue(d['ok'])
+        self.assertEqual(d['lector'], [])
+        self.assertEqual([k['banco'] for k in d['api']], ['BDV'])
+        self.assertEqual(self.c.get('/referencias/claves?banco=Bancamiga').get_json()['api'], [])
+        kid = d['api'][0]['id']
+        self.assertEqual(self.c.post(f'/referencias/claves-api/{kid}/desactivar', json={'banco': 'Bancamiga'}).status_code, 404)
+        self.assertEqual(self.c.post(f'/referencias/claves-api/{kid}/desactivar', json={'banco': 'BDV'}).status_code, 200)
+
+    def test_interruptor_reanudar_borrar_y_aislamiento(self):
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        cid = self.conectar().get_json()['cuentas'][0]['id']
+        d = self.c.post(f'/referencias/bdv/cuentas/{cid}/pausar', json={}).get_json()
+        self.assertFalse(d['cuentas'][0]['lector']['encendido'])
+        d = self.c.post(f'/referencias/bdv/cuentas/{cid}/leer', json={}).get_json()
+        self.assertTrue(d['cuentas'][0]['lector']['encendido'])
+        q("UPDATE cuentas_banco SET lector_estado = 'detenido' WHERE id = ?", (cid,))
+        d = self.c.post(f'/referencias/bdv/cuentas/{cid}/reanudar', json={}).get_json()
+        self.assertEqual(d['cuentas'][0]['lector']['estado'], 'pendiente')
+        self.entrar(self.B, 'beto-pantalla@test.local')   # otro usuario no la ve ni la toca
+        self.assertEqual(self.c.get('/referencias/bdv/cuentas').get_json()['cuentas'], [])
+        for accion in ('pausar', 'leer', 'reanudar', 'borrar'):
+            self.assertEqual(self.c.post(f'/referencias/bdv/cuentas/{cid}/{accion}', json={}).status_code, 404)
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        d = self.c.post(f'/referencias/bdv/cuentas/{cid}/borrar', json={}).get_json()
+        self.assertFalse(d['cuentas'][0]['conectada'])
+
+    def test_admin_ve_conexiones_sin_datos_y_puede_pausar(self):
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        cid = self.conectar().get_json()['cuentas'][0]['id']
+        self.assertEqual(self.c.post(f'/admin/antiduplic/bdv/{cid}/pausar', json={}).status_code, 403)
+        self.entrar(self.B, 'admin@test.local', admin=True)
+        self.sin_secretos(self.c.get('/admin/antiduplic').get_data(as_text=True))
+        d = self.c.get('/admin/antiduplic/datos?banco=BDV').get_json()
+        self.sin_secretos(json.dumps(d))
+        self.assertEqual([c['id'] for c in d['conexiones_bdv']], [cid])
+        self.assertEqual(self.c.post(f'/admin/antiduplic/bdv/{cid}/pausar', json={}).status_code, 200)
+        self.assertFalse(q('SELECT lector_encendido FROM cuentas_banco WHERE id = ?', (cid,))[0]['lector_encendido'])
 
 
 if __name__ == '__main__':

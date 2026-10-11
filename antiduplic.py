@@ -1022,9 +1022,10 @@ def admin_antiduplic():
         dueno = usuario_dueno(conn)
     finally:
         conn.close()
+    import bdv
     return render_template('admin_antiduplic.html', hoy=hoy_local(), usuarios=usuarios, dueno=dueno,
                            token_banco=bool(os.environ.get('PAGOS_BANCO_TOKEN', '').strip()),
-                           api_url=request.host_url.rstrip('/'))
+                           bdv_llave=bdv.cifrado_disponible(), api_url=request.host_url.rstrip('/'))
 
 
 @bp.route('/admin/antiduplic/docs')
@@ -1052,7 +1053,8 @@ def admin_antiduplic_datos():
                                     q=request.args.get('q') or '', por_pagina=500, banco=banco)
         return jsonify(pagos=pagos, total=total, resumen=resumen(conn, uid, banco=banco),
                        revisiones=listar_revisiones(conn, uid, banco=banco),
-                       conexiones_bdv=listar_cuentas(conn, uid, banco=BDV), ahora=ahora_local())
+                       conexiones_bdv=listar_cuentas(conn, uid, banco=BDV), lector_bdv=_estado_lector_bdv(conn),
+                       ahora=ahora_local())
     finally:
         conn.close()
 
@@ -1080,3 +1082,33 @@ def admin_antiduplic_descartar():
         return jsonify(ok=False, mensaje='Se espera JSON'), 415
     status, body = descartar(None, (request.get_json(silent=True) or {}).get('revision_id'), hecho_por=_admin_firma())
     return jsonify(body), status
+
+
+def _estado_lector_bdv(conn):
+    """Lo último que informó lector_bdv.py: latido, cuentas leyendo y memoria real (o None)."""
+    try:
+        return json.loads(_config_get(conn, 'bdv_lector_estado') or 'null')
+    except ValueError:
+        return None
+
+
+@bp.route('/admin/antiduplic/bdv/<int:cuenta_id>/<accion>', methods=['POST'])
+def admin_antiduplic_bdv(cuenta_id, accion):
+    """El admin pausa (cierra la sesión en el banco) o vuelve a encender una conexión BDV. Nunca ve sus datos."""
+    import bdv
+    err = _solo_admin_json()
+    if err:
+        return err
+    if not request.is_json:
+        return jsonify(ok=False, mensaje='Se espera JSON'), 415
+    if accion not in ('pausar', 'leer'):
+        return jsonify(ok=False, mensaje='Acción no encontrada'), 404
+    init_tablas()
+    conn = get_db_connection()
+    try:
+        status, datos = bdv.cambiar_lectura(conn, None, cuenta_id, accion == 'leer')
+    finally:
+        conn.close()
+    if status == 200:
+        logger.info(f'[BDV] El admin {"encendió" if accion == "leer" else "pausó"} la cuenta {cuenta_id}')
+    return jsonify(ok=status == 200, mensaje=datos['mensaje']), status

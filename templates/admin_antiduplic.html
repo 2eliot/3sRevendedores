@@ -95,6 +95,18 @@
       </div>
     </section>
 
+    <section class="ad-card" id="ad-bdv-card">
+      <h2>Conexiones del BDV</h2>
+      <p class="ad-lead" style="margin-bottom:10px;">Cuentas del Banco de Venezuela que lee la web (proceso <code>lector_bdv.py</code>). Nunca se ven los datos de acceso de nadie. «Pausar» cierra la sesión de esa cuenta en el banco, igual que el interruptor del usuario.</p>
+      <p class="ad-api" id="ad-bdv-lector"></p>
+      <div class="ad-table-wrap">
+        <table class="ad-table">
+          <thead><tr><th>Usuario</th><th>Cuenta</th><th>Estado</th><th>Última lectura</th><th>Último pago</th><th></th></tr></thead>
+          <tbody id="ad-bdv-tbody"><tr><td colspan="6" class="ad-empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="ad-card" id="ad-rev-card" hidden>
       <h2>Revisión manual <span class="ad-badge revision" id="ad-rev-count"></span></h2>
       <p class="ad-lead" style="margin-bottom:10px;">Órdenes con varios pagos iguales. Elige el pago correcto para asignarlo a esa orden.</p>
@@ -108,6 +120,13 @@
           <select name="usuario_id">
             <option value="">Todos</option>
             {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nombre }} (ID {{ u.id }}){% if u.id == dueno %} · dueño{% endif %}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Banco
+          <select name="banco">
+            <option value="">Todos</option>
+            <option value="Bancamiga">Bancamiga</option>
+            <option value="BDV">BDV</option>
           </select>
         </label>
         <label>Fecha <input type="date" name="fecha" value="{{ hoy }}"></label>
@@ -138,7 +157,9 @@
         La clave antigua <code>PAGOS_BANCO_TOKEN</code> sigue valiendo y deja los pagos al usuario dueño (ID {{ dueno }}):
         {% if token_banco %}<span class="ad-ok">configurada en el servidor</span>{% else %}<span class="ad-bad">no configurada</span>{% endif %}.<br>
         Verificar pagos: <code>POST {{ api_url }}/api/verificar-pago</code> con una <strong>clave de API de Referencias</strong> del usuario (la crea él en Referencias o tú en
-        <a href="/admin/api" style="color:var(--rc-hl);">API</a>). Verifica solo contra los pagos de ese usuario.
+        <a href="/admin/api" style="color:var(--rc-hl);">API</a>). Verifica solo contra los pagos de ese usuario <strong>y de su banco</strong>: las claves del BDV solo ven el BDV y las de Bancamiga solo Bancamiga.<br>
+        BDV: la web lee sola las cuentas que cada usuario conecta en su pestaña «BDV» (proceso aparte <code>python lector_bdv.py</code>, llave
+        <code>BDV_LLAVE_CIFRADO</code>: {% if bdv_llave %}<span class="ad-ok">configurada</span>{% else %}<span class="ad-bad">no configurada</span>{% endif %}).
       </p>
     </section>
   </div>
@@ -171,6 +192,13 @@
     var ESTADOS = {disponible: 'Disponible', usado: 'Usado', revision: 'En revisión'};
     var ORIGEN = {revendedor: 'Revendedor', crm: 'CRM', manual: 'Manual'};
     var form = document.getElementById('ad-filtros');
+    var USUARIOS = {{ usuarios|tojson }};
+    var NOMBRE = {}; USUARIOS.forEach(function (u) { NOMBRE[u.id] = u.nombre; });
+    var ESTADO_BDV = {
+      conectado: ['Conectado ✅', 'ad-ok'], pendiente: ['Conectando…', 'ad-warn'], conectando: ['Conectando…', 'ad-warn'],
+      banco_no_responde: ['El banco no responde ⏳', 'ad-warn'], rechazado: ['Rechazado, reintentando ⏳', 'ad-warn'],
+      detenido: ['Datos rechazados ❌', 'ad-bad'], pausado: ['Pausado ⏸', ''], en_espera: ['En espera ⏳', 'ad-warn'], sin_conexion: ['Sin conectar', '']
+    };
 
     async function postJSON(url, body) {
       var r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
@@ -185,6 +213,7 @@
         var r = await fetch('/admin/antiduplic/datos?' + p.toString());
         var d = await r.json();
         pintarResumen(d.resumen, d.ahora);
+        pintarBdv(d.conexiones_bdv || [], d.lector_bdv);
         pintarRevisiones(d.revisiones || []);
         pintarPagos(d.pagos || []);
       } catch (e) {
@@ -208,6 +237,29 @@
       }
     }
 
+    function pintarBdv(cuentas, lector) {
+      var info = document.getElementById('ad-bdv-lector');
+      if (lector && lector.latido) {
+        info.innerHTML = 'Lector: última señal <span class="ad-mono">' + esc(lector.latido) + '</span> · leyendo ' + esc(lector.cuentas_leyendo) +
+          ' de máx. ' + esc(lector.max_cuentas) + (lector.en_espera ? ' · ' + esc(lector.en_espera) + ' en espera' : '') +
+          (lector.memoria_mb ? ' · memoria real: <b>' + esc(lector.memoria_mb) + ' MB</b>' +
+           (lector.por_cuenta_mb ? ' (~' + esc(lector.por_cuenta_mb) + ' MB por cuenta)' : '') : '');
+      } else {
+        info.innerHTML = 'El lector del BDV todavía no ha dado señales (¿está arrancado <code>python lector_bdv.py</code>?).';
+      }
+      var con = cuentas.filter(function (c) { return c.conectada; });
+      document.getElementById('ad-bdv-tbody').innerHTML = con.length ? con.map(function (c) {
+        var e = c.lector || {}, est = ESTADO_BDV[e.estado] || [e.estado || '—', ''];
+        if (!e.encendido && e.estado !== 'pausado') est = ['Pausando…', 'ad-warn'];
+        if (e.encendido && e.estado === 'pausado') est = ['Volviendo a entrar…', 'ad-warn'];
+        return '<tr><td>' + esc(NOMBRE[c.usuario_id] || 'Usuario') + '<br><span class="ad-mono" style="color:var(--rc-ash);font-size:11px;">ID ' + esc(c.usuario_id) +
+          '</span></td><td>' + esc(c.alias) + ' <span class="ad-mono" style="color:var(--rc-ash);">··' + esc(c.ultimos_digitos) + '</span></td>' +
+          '<td><span class="' + est[1] + '">' + esc(est[0]) + '</span>' + (e.mensaje ? '<br><span style="color:var(--rc-ash);font-size:12px;">' + esc(e.mensaje) + '</span>' : '') +
+          '</td><td class="ad-mono">' + esc(e.ultima_lectura || '—') + '</td><td class="ad-mono">' + esc(e.ultimo_pago || '—') + '</td>' +
+          '<td><button type="button" class="ad-btn" data-bdv="' + c.id + '" data-accion="' + (e.encendido ? 'pausar' : 'leer') + '">' + (e.encendido ? 'Pausar' : 'Encender') + '</button></td></tr>';
+      }).join('') : '<tr><td colspan="6" class="ad-empty">Nadie ha conectado todavía una cuenta del BDV.</td></tr>';
+    }
+
     function pintarPagos(pagos) {
       var tbody = document.getElementById('ad-tbody');
       if (!pagos.length) { tbody.innerHTML = '<tr><td colspan="9" class="ad-empty">No hay pagos con estos filtros.</td></tr>'; return; }
@@ -225,7 +277,7 @@
           ? '<button type="button" class="ad-btn" data-asignar="' + p.id + '" data-desc="' + esc(p.referencia + ' · ' + bs(p.monto)) + '">Asignar</button>' : '';
         return '<tr><td>' + esc(p.usuario || '—') + '<br><span class="ad-mono" style="color:var(--rc-ash);font-size:11px;">ID ' + esc(p.usuario_id) + '</span></td>' +
                '<td class="ad-mono">' + esc(p.referencia) + '</td><td class="ad-mono">' + esc(p.fecha) + '</td><td class="ad-mono">' + esc(p.hora) +
-               '</td><td class="ad-mono ad-hl">' + bs(p.monto) + '</td><td>' + esc(p.cuenta || '') + '</td><td><span class="ad-badge ' + esc(p.estado) + '">' +
+               '</td><td class="ad-mono ad-hl">' + bs(p.monto) + '</td><td>' + esc(p.cuenta || '') + '<br><span style="color:var(--rc-ash);font-size:11px;">' + esc(p.banco || '') + '</span></td><td><span class="ad-badge ' + esc(p.estado) + '">' +
                esc(ESTADOS[p.estado] || p.estado) + '</span></td><td>' + uso + '</td><td>' + accion + '</td></tr>';
       }).join('');
     }
@@ -254,6 +306,12 @@
     document.getElementById('ad-todas').addEventListener('click', function () { form.fecha.value = ''; cargar(); });
 
     document.addEventListener('click', async function (e) {
+      var bb = e.target.closest('[data-bdv]');
+      if (bb) {
+        if (bb.dataset.accion === 'pausar' && !confirm('¿Pausar esta conexión? La web cierra su sesión en el banco y deja de leer hasta que el usuario (o tú) la vuelva a encender.')) return;
+        var dz = await postJSON('/admin/antiduplic/bdv/' + bb.dataset.bdv + '/' + bb.dataset.accion, {});
+        alert(dz.mensaje || 'Error'); cargar(); return;
+      }
       var b = e.target.closest('[data-resolver]');
       if (b) {
         if (!confirm('¿Asignar este pago a esa orden? Los demás candidatos vuelven a estar disponibles.')) return;

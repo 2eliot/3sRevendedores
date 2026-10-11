@@ -68,6 +68,23 @@
     .rf-nueva-clave code { font-family: var(--rc-mono); font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--rc-card); overflow-wrap: anywhere; }
     .rf-msg { min-height: 18px; font-size: 13px; margin: 8px 0 0; }
     .rf-count[hidden], .rf-nueva-clave[hidden] { display: none; }
+    /* Pestañas de banco (arriba de todo) */
+    .rf-bancos { display: inline-flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--rc-recess); border: 1px solid var(--rc-border); margin: 0 0 12px; }
+    .rf-bancos button { min-height: 40px; padding: 0 20px; border-radius: 10px; border: 0; background: transparent; color: var(--rc-ash); font-weight: 600; font-size: 14px; cursor: pointer; }
+    .rf-bancos button[aria-selected="true"] { background: var(--rc-card); color: var(--rc-text); box-shadow: inset 0 0 0 1.5px var(--rc-hl); }
+    #rf-cuentas-bm[hidden], #rf-cuentas-bdv[hidden], #rf-lector-box[hidden], #rf-bdv-sin-llave[hidden] { display: none !important; }
+    /* Cuentas del BDV */
+    .rf-bdv { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-top: 10px; background: var(--rc-recess); display: flex; flex-direction: column; gap: 8px; }
+    .rf-bdv.rf-borrada { opacity: .65; }
+    .rf-estado { font-size: 13px; font-weight: 600; }
+    .rf-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; margin-left: auto; color: var(--rc-text); }
+    .rf-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .rf-switch span { width: 40px; height: 22px; border-radius: 999px; background: rgba(var(--rc-ink), .2); position: relative; transition: background .15s; flex: 0 0 auto; }
+    .rf-switch span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--rc-card); transition: left .15s; }
+    .rf-switch input:checked + span { background: var(--rc-green); }
+    .rf-switch input:checked + span::after { left: 21px; }
+    .rf-switch input:focus-visible + span { outline: 2px solid var(--rc-hl); outline-offset: 2px; }
+    .rf-consent { flex-basis: 100% !important; align-items: flex-start !important; line-height: 1.4; }
     .rf-plegable > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding-right: 26px; position: relative; }
     .rf-plegable > summary::-webkit-details-marker { display: none; }
     .rf-plegable > summary::after { content: ''; position: absolute; right: 4px; top: 6px; width: 8px; height: 8px; border-right: 2px solid var(--rc-ash); border-bottom: 2px solid var(--rc-ash); transform: rotate(45deg); transition: transform .2s; }
@@ -160,9 +177,14 @@
   <main class="rf-wrap">
     <div class="rf-top">
       <h1>Referencias</h1>
-      <a class="rf-btn" href="/referencias/docs">📄 Documentación</a>
+      <a class="rf-btn" id="rf-docs" href="/referencias/docs">📄 Documentación</a>
     </div>
-    <p class="rf-lead">Los pagos que recibes en tu banco y qué orden usó cada referencia. Cada pago solo se puede usar una vez: una referencia repetida se rechaza.</p>
+    <p class="rf-lead">Los pagos que recibes en tu banco y qué orden usó cada referencia. Cada pago solo se puede usar una vez: una referencia repetida se rechaza. Cada banco tiene sus propios pagos, órdenes y claves.</p>
+
+    <nav class="rf-bancos" role="tablist" aria-label="Banco">
+      <button role="tab" data-banco="Bancamiga" aria-selected="true">Bancamiga</button>
+      <button role="tab" data-banco="BDV" aria-selected="false">BDV</button>
+    </nav>
 
     <nav class="rf-tabs" role="tablist">
       <button role="tab" data-tab="pagos" aria-selected="true">Pagos</button>
@@ -181,7 +203,7 @@
           <div class="rf-kpi"><span>Disponibles</span><strong id="k-disp">—</strong></div>
           <div class="rf-kpi"><span>Usados</span><strong id="k-usados">—</strong></div>
           <div class="rf-kpi"><span>En revisión</span><strong id="k-rev">—</strong></div>
-          <div class="rf-kpi"><span>Bot del banco</span><strong id="k-bot" style="font-size:15px;">—</strong><small id="k-bot-sub"></small></div>
+          <div class="rf-kpi"><span id="k-bot-label">Bot del banco</span><strong id="k-bot" style="font-size:15px;">—</strong><small id="k-bot-sub"></small></div>
         </div>
         <p class="rf-aviso" id="rf-aviso-bot" hidden></p>
       </div>
@@ -234,6 +256,7 @@
 
     <!-- ====================== CUENTAS ====================== -->
     <section class="rf-panel" data-panel="cuentas" hidden>
+      <div id="rf-cuentas-bm">
       <div class="rf-card">
         <h2>Nueva cuenta bancaria</h2>
         <form id="rf-cuenta-nueva" class="rf-form">
@@ -249,6 +272,32 @@
       <div class="rf-card">
         <h2>Tus cuentas</h2>
         <div id="rf-cuentas"><div class="rf-empty">Cargando…</div></div>
+      </div>
+      </div>
+
+      <div id="rf-cuentas-bdv" hidden>
+        <div class="rf-card">
+          <h2>Conectar tu cuenta del BDV</h2>
+          <p class="rf-muted rf-small">La web entra a tu BDV en línea con tus datos y lee tus movimientos sola: no tienes que instalar nada.
+            <b>Solo lee</b>: nunca hace pagos ni transferencias. Tus datos se guardan <b>cifrados</b> y nadie puede volver a verlos, ni tú ni el administrador.</p>
+          <p class="rf-aviso" id="rf-bdv-sin-llave" hidden>El BDV todavía no está disponible en este servidor. Avísale al administrador.</p>
+          <form id="rf-bdv-form" class="rf-form" autocomplete="off">
+            <label>Usuario del BDV <input name="usuario" maxlength="60" autocomplete="off" required></label>
+            <label>Contraseña del BDV <input name="clave" type="password" maxlength="100" autocomplete="new-password" required></label>
+            <label>Número de cuenta (20 dígitos) <input name="numero_cuenta" inputmode="numeric" maxlength="24" placeholder="0102…" required></label>
+            <label>Nombre (opcional) <input name="alias" maxlength="60" placeholder="Ej: BDV personal"></label>
+            <label class="rf-check rf-consent"><input type="checkbox" name="consentimiento" required> Autorizo a 3srevendedores a entrar a mi BDV solo para leer mis movimientos.</label>
+            <button type="submit" class="rf-btn rf-main">Guardar y conectar</button>
+          </form>
+          <p class="rf-muted rf-small">Para cambiar tu usuario o tu contraseña, vuelve a guardar este formulario con el mismo número de cuenta. Solo se ven los últimos 4 dígitos.</p>
+          <p class="rf-msg" id="rf-bdv-msg"></p>
+        </div>
+        <div class="rf-card">
+          <h2>Tus cuentas del BDV</h2>
+          <p class="rf-muted rf-small">El BDV no deja entrar con otra sesión abierta: si necesitas entrar desde tu teléfono o tu computadora, apaga
+            «Leer movimientos» (la web cierra su sesión en el banco). Al encenderlo, vuelve a entrar y lee lo que llegó mientras tanto.</p>
+          <div id="rf-bdv-cuentas"><div class="rf-empty">Cargando…</div></div>
+        </div>
       </div>
     </section>
 
@@ -268,7 +317,7 @@
           <div class="rf-perms" id="rf-api-perms"></div>
           <button type="submit" class="rf-btn rf-main">Crear clave de API</button>
         </form>
-        <p class="rf-muted rf-small">Estas claves solo sirven para Referencias. Las claves para hacer recargas están en el apartado <a href="/mi-api" style="color:var(--rc-hl);">API</a> (icono de arriba).</p>
+        <p class="rf-muted rf-small" id="rf-api-nota">Estas claves solo sirven para los pagos de <b>Bancamiga</b>. Las del BDV se crean en su pestaña. Las claves para hacer recargas están en el apartado <a href="/mi-api" style="color:var(--rc-hl);">API</a> (icono de arriba).</p>
         <p class="rf-msg" id="rf-api-msg"></p>
         <div id="rf-apis"></div>
       </div>
@@ -308,7 +357,18 @@
       if (r.status === 401) { location.href = '/auth'; }
       return d;
     }
+    function postBanco(url, body) { body = body || {}; body.banco = BANCO; return post(url, body); }
     var AVISO_MIN = {{ aviso_min }};
+    // Banco elegido arriba: cada banco ve solo sus pagos, órdenes, revisiones y claves
+    var BANCO = 'Bancamiga';
+    try { if (localStorage.getItem('rf_banco') === 'BDV') BANCO = 'BDV'; } catch (e) {}
+    function conBanco(url) { return url + (url.indexOf('?') < 0 ? '?' : '&') + 'banco=' + encodeURIComponent(BANCO); }
+    var ESTADO_BDV = {
+      conectado: ['Conectado ✅', 'rf-ok'], pendiente: ['Conectando…', 'rf-warn'], conectando: ['Conectando…', 'rf-warn'],
+      banco_no_responde: ['El banco no responde, reintentando ⏳', 'rf-warn'], rechazado: ['El banco rechazó la entrada, reintentando ⏳', 'rf-warn'],
+      detenido: ['Datos rechazados ❌', 'rf-bad'], pausado: ['Pausado ⏸', 'rf-muted'], en_espera: ['En espera de un lugar ⏳', 'rf-warn'],
+      sin_conexion: ['Sin conectar', 'rf-muted']
+    };
     var ESTADOS = {disponible: 'Disponible', usado: 'Usado', revision: 'En revisión'};
     var ORIGEN = {revendedor: 'Revendedor', crm: 'Sistema externo', manual: 'Manual'};
     var datos = {pagos: [], cuentas: []};
@@ -322,13 +382,38 @@
       if (tab === 'cuentas') cargarCuentas();
     }
     document.querySelectorAll('.rf-tabs [role=tab]').forEach(function (b) { b.addEventListener('click', function () { abrir(b.dataset.tab); }); });
+    function pestanaActual() { var b = document.querySelector('.rf-tabs [aria-selected="true"]'); return b ? b.dataset.tab : 'pagos'; }
+
+    // ---------- banco ----------
+    function cambiarBanco(b, inicio) {
+      BANCO = b === 'BDV' ? 'BDV' : 'Bancamiga';
+      try { localStorage.setItem('rf_banco', BANCO); } catch (e) {}
+      var bdv = BANCO === 'BDV';
+      document.querySelectorAll('.rf-bancos [data-banco]').forEach(function (x) { x.setAttribute('aria-selected', x.dataset.banco === BANCO ? 'true' : 'false'); });
+      document.getElementById('rf-cuentas-bm').hidden = bdv;
+      document.getElementById('rf-cuentas-bdv').hidden = !bdv;
+      document.getElementById('rf-lector-box').hidden = bdv;
+      document.getElementById('rf-docs').href = bdv ? '/referencias/docs/bdv' : '/referencias/docs';
+      document.getElementById('k-bot-label').textContent = bdv ? 'Lector del BDV' : 'Bot del banco';
+      document.getElementById('rf-api-nota').innerHTML = bdv
+        ? 'Estas claves solo sirven para los pagos del <b>BDV</b> y son distintas de las de Bancamiga. Las claves para hacer recargas están en el apartado <a href="/mi-api" style="color:var(--rc-hl);">API</a>.'
+        : 'Estas claves solo sirven para los pagos de <b>Bancamiga</b>. Las del BDV se crean en su pestaña. Las claves para hacer recargas están en el apartado <a href="/mi-api" style="color:var(--rc-hl);">API</a> (icono de arriba).';
+      document.getElementById('rf-filtro-cuenta').value = '';
+      if (inicio) return;
+      mostrarNueva(null);
+      cargar();
+      var tab = pestanaActual();
+      if (tab === 'claves') cargarClaves();
+      if (tab === 'cuentas') cargarCuentas();
+    }
+    document.querySelectorAll('.rf-bancos [data-banco]').forEach(function (b) { b.addEventListener('click', function () { cambiarBanco(b.dataset.banco); }); });
 
     // ---------- pagos, resumen y revisiones ----------
     var form = document.getElementById('rf-filtros');
     async function cargar() {
       var p = new URLSearchParams(new FormData(form));
       try {
-        var r = await fetch('/referencias/datos?' + p.toString());
+        var r = await fetch(conBanco('/referencias/datos?' + p.toString()));
         if (r.status === 401) { location.href = '/auth'; return; }
         var d = await r.json();
         datos.pagos = d.pagos || [];
@@ -349,6 +434,7 @@
       document.getElementById('k-usados').textContent = s.usados_hoy;
       document.getElementById('k-rev').textContent = s.revision_hoy;
       var bot = document.getElementById('k-bot'), sub = document.getElementById('k-bot-sub'), aviso = document.getElementById('rf-aviso-bot');
+      if (BANCO === 'BDV') { pintarLectorBdv(s.cuentas || [], bot, sub, aviso); return; }
       var min = minutosDesde(s.ultimo_envio_bot, ahora);
       if (min === null) { bot.textContent = 'Sin envíos'; bot.className = 'rf-bad'; sub.textContent = 'Tu bot aún no ha enviado movimientos'; }
       else {
@@ -359,6 +445,21 @@
       aviso.hidden = !(min === null || min >= AVISO_MIN) || !(s.cuentas || []).length;
       aviso.textContent = min === null ? 'Tu bot del banco todavía no ha enviado movimientos. Revisa que tenga una clave de lector.'
                                        : 'Tu bot del banco no envía movimientos hace ' + min + ' minutos. Revisa que esté encendido.';
+    }
+
+    function pintarLectorBdv(cuentas, bot, sub, aviso) {
+      var con = cuentas.filter(function (c) { return c.conectada; });
+      if (!con.length) {
+        bot.textContent = 'Sin conectar'; bot.className = 'rf-bad'; sub.textContent = 'Conecta tu cuenta en «Cuentas bancarias»';
+        aviso.hidden = false; aviso.textContent = 'Todavía no has conectado tu cuenta del BDV. Hazlo en la pestaña «Cuentas bancarias».';
+        return;
+      }
+      var e = con[0].lector || {}, est = ESTADO_BDV[e.estado] || [e.estado || '—', ''];
+      bot.textContent = con.length > 1 ? con.length + ' cuentas' : est[0]; bot.className = est[1];
+      sub.textContent = e.ultima_lectura ? 'Última lectura ' + e.ultima_lectura.slice(11, 16) : (e.mensaje || '');
+      var problema = con.filter(function (c) { return c.lector && ['detenido', 'banco_no_responde', 'rechazado'].indexOf(c.lector.estado) >= 0; })[0];
+      aviso.hidden = !problema;
+      if (problema) aviso.textContent = (problema.alias || 'Tu cuenta') + ': ' + (problema.lector.mensaje || (ESTADO_BDV[problema.lector.estado] || [''])[0]);
     }
 
     function textoUso(u) {
@@ -422,16 +523,62 @@
       var f = e.target;
       if (!f.pago_id.value) { msg('rf-asignar-msg', false, 'Elige un pago disponible.'); return; }
       if (!confirm('¿Asignar este pago a la orden ' + f.orden_id.value + '? No se puede deshacer.')) return;
-      var d = await post('/referencias/asignar', {pago_id: +f.pago_id.value, orden_id: f.orden_id.value});
+      var d = await postBanco('/referencias/asignar', {pago_id: +f.pago_id.value, orden_id: f.orden_id.value});
       msg('rf-asignar-msg', !!d.ok, d.mensaje || 'Error');
       if (d.ok) { f.orden_id.value = ''; cargar(); }
     });
 
     // ---------- cuentas bancarias ----------
     async function cargarCuentas() {
+      if (BANCO === 'BDV') { cargarBdv(); return; }
       var r = await fetch('/referencias/cuentas'); var d = await r.json();
       pintarCuentas(d.cuentas || []);
     }
+
+    // ---------- cuentas del BDV (la web lee sola) ----------
+    async function cargarBdv() {
+      var r = await fetch('/referencias/bdv/cuentas');
+      if (r.status === 401) { location.href = '/auth'; return; }
+      pintarBdv(await r.json());
+    }
+    function estadoVisible(e) {
+      // el interruptor se aplica en segundos: mientras tanto se dice lo que está pasando
+      if (!e.encendido && e.estado !== 'pausado') return ['Pausando…', 'rf-warn'];
+      if (e.encendido && e.estado === 'pausado') return ['Volviendo a entrar…', 'rf-warn'];
+      return ESTADO_BDV[e.estado] || [e.estado || '—', ''];
+    }
+    function pintarBdv(d) {
+      var disponible = d.disponible !== false;
+      document.getElementById('rf-bdv-sin-llave').hidden = disponible;
+      document.querySelectorAll('#rf-bdv-form input, #rf-bdv-form button').forEach(function (x) { x.disabled = !disponible; });
+      var cs = d.cuentas || [];
+      document.getElementById('rf-bdv-cuentas').innerHTML = cs.length ? cs.map(function (c) {
+        var e = c.lector || {}, est = estadoVisible(e);
+        if (!c.conectada) {
+          return '<div class="rf-bdv rf-borrada"><div class="rf-row"><b>' + esc(c.alias) + '</b><span class="rf-mono rf-muted">··' + esc(c.ultimos_digitos) + '</span>' +
+                 '<span class="rf-estado rf-muted">Conexión borrada</span></div><div class="rf-muted rf-small">Sus pagos ya guardados siguen aquí. Para volver a conectarla, guarda tus datos arriba.</div></div>';
+        }
+        return '<div class="rf-bdv"><div class="rf-row"><b>' + esc(c.alias) + '</b><span class="rf-mono rf-muted">··' + esc(c.ultimos_digitos) + '</span>' +
+          '<span class="rf-estado ' + est[1] + '">' + esc(est[0]) + '</span>' +
+          '<label class="rf-switch"><input type="checkbox" data-bdv-leer="' + c.id + '"' + (e.encendido ? ' checked' : '') + '><span></span> Leer movimientos</label></div>' +
+          (e.mensaje ? '<div class="rf-small">' + esc(e.mensaje) + '</div>' : '') +
+          '<div class="rf-muted rf-small">Usuario: •••••• · Contraseña: •••••• · Última lectura: <span class="rf-mono">' + esc(e.ultima_lectura || '—') +
+          '</span> · Último pago nuevo: <span class="rf-mono">' + esc(e.ultimo_pago || '—') + '</span></div>' +
+          '<div class="rf-row">' + (e.estado === 'detenido' ? '<button type="button" class="rf-btn rf-main" data-bdv="' + c.id + '" data-accion="reanudar">Reanudar</button>' : '') +
+          '<button type="button" class="rf-btn rf-danger" data-bdv="' + c.id + '" data-accion="borrar">Borrar conexión</button></div></div>';
+      }).join('') : '<div class="rf-empty">Todavía no has conectado tu cuenta del BDV.</div>';
+    }
+    document.getElementById('rf-bdv-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target;
+      var d = await post('/referencias/bdv/cuentas', {usuario: f.usuario.value, clave: f.clave.value, numero_cuenta: f.numero_cuenta.value,
+                                                       alias: f.alias.value, consentimiento: f.consentimiento.checked});
+      msg('rf-bdv-msg', !!d.ok, d.mensaje || 'Error');
+      f.clave.value = '';   // la contraseña nunca se queda en la página
+      if (d.ok) { f.reset(); pintarBdv(d); cargar(); }
+    });
+    // Mientras se miran las cuentas del BDV, su estado se actualiza solo
+    setInterval(function () { if (BANCO === 'BDV' && pestanaActual() === 'cuentas' && !document.hidden) cargarBdv(); }, 5000);
     function pintarCuentas(cuentas) {
       document.getElementById('rf-cuentas').innerHTML = cuentas.length ? cuentas.map(function (c) {
         return '<form class="rf-cuenta" data-cuenta="' + c.id + '"><div class="rf-form">' +
@@ -469,7 +616,8 @@
       if (clave) box.scrollIntoView({behavior: 'smooth', block: 'center'});
     }
     async function cargarClaves() {
-      var r = await fetch('/referencias/claves'); var d = await r.json();
+      var r = await fetch(conBanco('/referencias/claves')); var d = await r.json();
+      if (BANCO === 'BDV') { pintarClaves(d); return; }   // el BDV no usa claves de lector
       var rc = await fetch('/referencias/cuentas'); var dc = await rc.json();
       document.getElementById('rf-lector-cuenta').innerHTML = (dc.cuentas || []).filter(function (c) { return c.activo; }).map(function (c) {
         return '<option value="' + c.id + '">' + esc(c.alias) + (c.ultimos_digitos ? ' ··' + esc(c.ultimos_digitos) : '') + '</option>';
@@ -512,7 +660,7 @@
       e.preventDefault();
       var f = e.target, perms = {};
       permisos.forEach(function (p) { perms[p[0]] = f.querySelector('[name="perm_' + p[0] + '"]').checked; });
-      var d = await post('/referencias/claves-api', {nombre: f.nombre.value, permisos: perms});
+      var d = await postBanco('/referencias/claves-api', {nombre: f.nombre.value, permisos: perms});
       msg('rf-api-msg', !!d.ok, d.mensaje || 'Error');
       if (d.ok) { f.nombre.value = ''; mostrarNueva(d.clave); pintarClaves(d); }
     });
@@ -522,10 +670,17 @@
     });
 
     document.addEventListener('change', async function (e) {
+      var leer = e.target.closest('[data-bdv-leer]');
+      if (leer) {
+        var dl = await post('/referencias/bdv/cuentas/' + leer.dataset.bdvLeer + '/' + (leer.checked ? 'leer' : 'pausar'));
+        msg('rf-bdv-msg', !!dl.ok, dl.mensaje || 'Error');
+        if (dl.ok) pintarBdv(dl); else leer.checked = !leer.checked;
+        return;
+      }
       var c = e.target.closest('[data-perm][data-api]');
       if (!c) return;
       var body = {permisos: {}}; body.permisos[c.dataset.perm] = c.checked;
-      var d = await post('/referencias/claves-api/' + c.dataset.api + '/permisos', body);
+      var d = await postBanco('/referencias/claves-api/' + c.dataset.api + '/permisos', body);
       msg('rf-api-msg', !!d.ok, d.ok ? 'Permiso guardado' : (d.mensaje || 'Error'));
       if (!d.ok) c.checked = !c.checked;
     });
@@ -535,11 +690,11 @@
       if (!b) return;
       if (b.dataset.resolver) {
         if (!confirm('¿Asignar este pago a esa orden? Los demás candidatos vuelven a estar disponibles.')) return;
-        var d = await post('/referencias/asignar', {pago_id: +b.dataset.pago, revision_id: +b.dataset.resolver});
+        var d = await postBanco('/referencias/asignar', {pago_id: +b.dataset.pago, revision_id: +b.dataset.resolver});
         alert(d.mensaje || 'Error'); cargar();
       } else if (b.dataset.descartar) {
         if (!confirm('¿Descartar esta revisión? Los pagos candidatos vuelven a estar disponibles.')) return;
-        var d2 = await post('/referencias/descartar', {revision_id: +b.dataset.descartar});
+        var d2 = await postBanco('/referencias/descartar', {revision_id: +b.dataset.descartar});
         alert(d2.mensaje || 'Error'); cargar();
       } else if (b.dataset.cuentaActivo) {
         var d3 = await post('/referencias/cuentas/' + b.dataset.cuentaActivo, {activo: b.dataset.v === '1'});
@@ -553,12 +708,18 @@
       } else if (b.dataset.api && b.dataset.accion) {
         var txt = {regenerar: '¿Crear una clave nueva? La actual deja de funcionar al instante.', eliminar: '¿Eliminar esta clave? Dejará de funcionar.'}[b.dataset.accion];
         if (txt && !confirm(txt)) return;
-        var d5 = await post('/referencias/claves-api/' + b.dataset.api + '/' + b.dataset.accion);
+        var d5 = await postBanco('/referencias/claves-api/' + b.dataset.api + '/' + b.dataset.accion);
         msg('rf-api-msg', !!d5.ok, d5.mensaje || 'Error');
         if (d5.ok) { if (d5.clave) mostrarNueva(d5.clave); pintarClaves(d5); }
+      } else if (b.dataset.bdv && b.dataset.accion) {
+        if (b.dataset.accion === 'borrar' && !confirm('¿Borrar la conexión con tu BDV? La web cierra su sesión en el banco y borra tus datos guardados. Los pagos ya guardados se quedan.')) return;
+        var d6 = await post('/referencias/bdv/cuentas/' + b.dataset.bdv + '/' + b.dataset.accion);
+        msg('rf-bdv-msg', !!d6.ok, d6.mensaje || 'Error');
+        if (d6.ok) pintarBdv(d6);
       }
     });
 
+    cambiarBanco(BANCO, true);
     cargar();
     setInterval(cargar, 30000);
     var inicial = (location.hash || '').replace('#', '');

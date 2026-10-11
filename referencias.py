@@ -13,6 +13,9 @@ API (X-API-Key de una clave de tipo «Referencias» del usuario; solo sus propio
 (POST /api/verificar-pago y POST /api/pagos-banco viven en antiduplic.py.)
 
 Un ID que no es del usuario responde 404 (nunca 403), para no confirmar que existe.
+
+Bancos: la pantalla tiene una pestaña por banco (Bancamiga y BDV) y cada una ve solo lo suyo (parámetro «banco»).
+Las rutas /referencias/bdv/* gestionan la conexión del usuario con su BDV (ver bdv.py): nunca devuelven sus datos.
 """
 import logging
 import re
@@ -202,6 +205,14 @@ def _firma_usuario():
     return f"usuario:{session.get('usuario') or session.get('user_db_id')}"
 
 
+def _banco_peticion():
+    """Banco elegido en la pantalla: 'BDV' o 'Bancamiga' (parámetro o campo JSON «banco»)."""
+    valor = request.args.get('banco')
+    if valor is None and request.is_json:
+        valor = (request.get_json(silent=True) or {}).get('banco')
+    return ad.banco_de(valor)
+
+
 @bp.route('/referencias')
 def pagina_referencias():
     uid = _uid()
@@ -231,12 +242,13 @@ def referencias_datos():
         cuenta_id = int(a['cuenta_id']) if a.get('cuenta_id') else None
     except ValueError:
         cuenta_id = None
+    banco = _banco_peticion()
     conn = get_db_connection()
     try:
         pagos, total = ad.listar_pagos(conn, uid, fecha=fecha, estado=a.get('estado') or '', q=a.get('q') or '',
-                                       cuenta_id=cuenta_id, por_pagina=500)
-        return jsonify(ok=True, pagos=pagos, total=total, resumen=ad.resumen(conn, uid),
-                       revisiones=ad.listar_revisiones(conn, uid), ahora=ad.ahora_local())
+                                       cuenta_id=cuenta_id, por_pagina=500, banco=banco)
+        return jsonify(ok=True, banco=banco, pagos=pagos, total=total, resumen=ad.resumen(conn, uid, banco=banco),
+                       revisiones=ad.listar_revisiones(conn, uid, banco=banco), ahora=ad.ahora_local())
     finally:
         conn.close()
 
@@ -250,7 +262,7 @@ def referencias_asignar():
     if not data.get('revision_id') and not str(data.get('orden_id') or '').strip():
         return _err(400, 'Indica el ID de la orden')
     status, body = ad.asignar(uid, data.get('pago_id'), orden_id=data.get('orden_id'),
-                              revision_id=data.get('revision_id'), hecho_por=_firma_usuario())
+                              revision_id=data.get('revision_id'), hecho_por=_firma_usuario(), banco=_banco_peticion())
     return jsonify(body), status
 
 
@@ -259,7 +271,8 @@ def referencias_descartar():
     uid, err = _sesion_json(post=True)
     if err:
         return err
-    status, body = ad.descartar(uid, (request.get_json(silent=True) or {}).get('revision_id'), hecho_por=_firma_usuario())
+    status, body = ad.descartar(uid, (request.get_json(silent=True) or {}).get('revision_id'), hecho_por=_firma_usuario(),
+                                banco=_banco_peticion())
     return jsonify(body), status
 
 
@@ -328,8 +341,10 @@ def referencias_cuenta_editar(cuenta_id):
 
 # ---------- Claves (lector y API) ----------
 
-def _claves(conn, uid):
+def _claves(conn, uid, banco=ad.BANCAMIGA):
     from api_panel import claves_de_usuario
+    if ad.banco_de(banco) == ad.BDV:   # el BDV no usa claves de lector: lo lee la web
+        return {'lector': [], **claves_de_usuario(conn, uid, 'referencias', ad.BDV)}
     lector = [{'id': r['id'], 'nombre': r['nombre'], 'cuenta_id': r['cuenta_banco_id'], 'cuenta': r['alias'],
                'prefijo': r['prefijo_visible'], 'activo': bool(r['activo']), 'ultimo_uso': r['ultimo_uso'],
                'creado_en': r['creado_en']}
@@ -345,7 +360,7 @@ def referencias_claves():
         return err
     conn = get_db_connection()
     try:
-        return jsonify(ok=True, **_claves(conn, uid))
+        return jsonify(ok=True, **_claves(conn, uid, _banco_peticion()))
     finally:
         conn.close()
 
@@ -414,10 +429,11 @@ def referencias_api_crear():
     nombre = str(data.get('nombre') or '').strip()[:60] or 'Mi sistema'
     conn = get_db_connection()
     try:
-        status, datos = crear_clave_usuario(conn, uid, 'referencias', nombre, data.get('permisos') or {}, banco='Bancamiga')
+        banco = _banco_peticion()
+        status, datos = crear_clave_usuario(conn, uid, 'referencias', nombre, data.get('permisos') or {}, banco=banco)
         if status != 200:
             return _err(status, datos['error'])
-        return jsonify(ok=True, **datos, **_claves(conn, uid))
+        return jsonify(ok=True, **datos, **_claves(conn, uid, banco))
     finally:
         conn.close()
 
@@ -430,10 +446,63 @@ def referencias_api_accion(cuenta_id, accion):
     from api_panel import accion_clave_usuario
     conn = get_db_connection()
     try:
+        banco = _banco_peticion()
         status, datos = accion_clave_usuario(conn, uid, 'referencias', cuenta_id, accion,
-                                             (request.get_json(silent=True) or {}).get('permisos'), banco='Bancamiga')
+                                             (request.get_json(silent=True) or {}).get('permisos'), banco=banco)
         if status != 200:
             return _err(status, datos['error'])
-        return jsonify(ok=True, **datos, **_claves(conn, uid))
+        return jsonify(ok=True, **datos, **_claves(conn, uid, banco))
+    finally:
+        conn.close()
+
+
+# ---------- BDV: la conexión del usuario con su banco (la web lee sola sus movimientos) ----------
+
+def _cuentas_bdv(conn, uid):
+    import bdv
+    return {'cuentas': ad.listar_cuentas(conn, uid, banco=ad.BDV), 'disponible': bdv.cifrado_disponible()}
+
+
+@bp.route('/referencias/bdv/cuentas', methods=['GET', 'POST'])
+def referencias_bdv_cuentas():
+    """GET: sus conexiones del BDV con su estado (nunca sus datos). POST: guardar y conectar."""
+    import bdv
+    uid, err = _sesion_json(post=request.method == 'POST')
+    if err:
+        return err
+    conn = get_db_connection()
+    try:
+        if request.method == 'GET':
+            return jsonify(ok=True, **_cuentas_bdv(conn, uid))
+        data = request.get_json(silent=True) or {}
+        status, datos = bdv.guardar_conexion(conn, uid, data.get('usuario'), data.get('clave'), data.get('numero_cuenta'),
+                                             data.get('alias'), bool(data.get('consentimiento')))
+        if status != 200:
+            return _err(status, datos['mensaje'])
+        return jsonify(ok=True, mensaje=datos['mensaje'], **_cuentas_bdv(conn, uid))
+    finally:
+        conn.close()
+
+
+@bp.route('/referencias/bdv/cuentas/<int:cuenta_id>/<accion>', methods=['POST'])
+def referencias_bdv_accion(cuenta_id, accion):
+    """leer (encender) / pausar / reanudar / borrar."""
+    import bdv
+    uid, err = _sesion_json(post=True)
+    if err:
+        return err
+    conn = get_db_connection()
+    try:
+        if accion in ('leer', 'pausar'):
+            status, datos = bdv.cambiar_lectura(conn, uid, cuenta_id, accion == 'leer')
+        elif accion == 'reanudar':
+            status, datos = bdv.reanudar(conn, uid, cuenta_id)
+        elif accion == 'borrar':
+            status, datos = bdv.borrar_conexion(conn, uid, cuenta_id)
+        else:
+            return _err(404, 'Acción no encontrada')
+        if status != 200:
+            return _err(status, datos['mensaje'])
+        return jsonify(ok=True, mensaje=datos['mensaje'], **_cuentas_bdv(conn, uid))
     finally:
         conn.close()
