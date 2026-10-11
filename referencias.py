@@ -271,6 +271,8 @@ def _datos_cuenta(data):
     alias = str(data.get('alias') or '').strip()[:60]
     digitos = re.sub(r'[^0-9]', '', str(data.get('ultimos_digitos') or ''))
     titular = str(data.get('titular') or '').strip()[:80]
+    if ad.banco_de(banco) == ad.BDV:
+        return None, 'Las cuentas del BDV se conectan en la pestaña «BDV»'
     if not alias:
         return None, 'Ponle un nombre a la cuenta (por ejemplo «Bancamiga principal»)'
     if digitos and len(digitos) != 4:
@@ -286,7 +288,7 @@ def referencias_cuentas():
     conn = get_db_connection()
     try:
         if request.method == 'GET':
-            return jsonify(ok=True, cuentas=ad.listar_cuentas(conn, uid))
+            return jsonify(ok=True, cuentas=ad.listar_cuentas(conn, uid, banco=ad.BANCAMIGA))
         vals, error = _datos_cuenta(request.get_json(silent=True) or {})
         if error:
             return _err(400, error)
@@ -294,7 +296,7 @@ def referencias_cuentas():
                      'VALUES (?, ?, ?, ?, ?, TRUE, ?)',
                      (uid, vals['banco'], vals['alias'], vals['ultimos_digitos'], vals['titular'], ad.ahora_local()))
         conn.commit()
-        return jsonify(ok=True, mensaje='Cuenta creada', cuentas=ad.listar_cuentas(conn, uid))
+        return jsonify(ok=True, mensaje='Cuenta creada', cuentas=ad.listar_cuentas(conn, uid, banco=ad.BANCAMIGA))
     finally:
         conn.close()
 
@@ -307,8 +309,9 @@ def referencias_cuenta_editar(cuenta_id):
     data = request.get_json(silent=True) or {}
     conn = get_db_connection()
     try:
-        if not conn.execute('SELECT 1 FROM cuentas_banco WHERE id = ? AND usuario_id = ?', (cuenta_id, uid)).fetchone():
-            return _err(404, 'Cuenta no encontrada')
+        if not conn.execute("SELECT 1 FROM cuentas_banco WHERE id = ? AND usuario_id = ? AND banco <> 'BDV'",
+                            (cuenta_id, uid)).fetchone():
+            return _err(404, 'Cuenta no encontrada')  # las del BDV se gestionan en su pestaña
         if set(data) - {'activo'}:
             vals, error = _datos_cuenta(data)
             if error:
@@ -318,7 +321,7 @@ def referencias_cuenta_editar(cuenta_id):
         if 'activo' in data:
             conn.execute('UPDATE cuentas_banco SET activo = ? WHERE id = ? AND usuario_id = ?', (bool(data['activo']), cuenta_id, uid))
         conn.commit()
-        return jsonify(ok=True, mensaje='Cuenta guardada', cuentas=ad.listar_cuentas(conn, uid))
+        return jsonify(ok=True, mensaje='Cuenta guardada', cuentas=ad.listar_cuentas(conn, uid, banco=ad.BANCAMIGA))
     finally:
         conn.close()
 
@@ -332,7 +335,7 @@ def _claves(conn, uid):
                'creado_en': r['creado_en']}
               for r in conn.execute('SELECT k.*, c.alias FROM claves_lector k LEFT JOIN cuentas_banco c ON c.id = k.cuenta_banco_id '
                                     'WHERE k.usuario_id = ? ORDER BY k.id', (uid,)).fetchall()]
-    return {'lector': lector, **claves_de_usuario(conn, uid, 'referencias')}
+    return {'lector': lector, **claves_de_usuario(conn, uid, 'referencias', 'Bancamiga')}
 
 
 @bp.route('/referencias/claves')
@@ -360,8 +363,9 @@ def referencias_lector_crear():
         return _err(400, 'Elige la cuenta bancaria de esta clave')
     conn = get_db_connection()
     try:
-        if not conn.execute('SELECT 1 FROM cuentas_banco WHERE id = ? AND usuario_id = ? AND activo = TRUE', (cuenta_id, uid)).fetchone():
-            return _err(404, 'Cuenta no encontrada o desactivada')
+        if not conn.execute("SELECT 1 FROM cuentas_banco WHERE id = ? AND usuario_id = ? AND activo = TRUE AND banco <> 'BDV'",
+                            (cuenta_id, uid)).fetchone():
+            return _err(404, 'Cuenta no encontrada o desactivada')  # el BDV no usa claves de lector: lo lee la web
         activas = conn.execute('SELECT COUNT(*) AS n FROM claves_lector WHERE usuario_id = ? AND activo = TRUE', (uid,)).fetchone()['n']
         if activas >= MAX_CLAVES_LECTOR:
             return _err(409, f'Máximo {MAX_CLAVES_LECTOR} claves de lector activas')
@@ -410,7 +414,7 @@ def referencias_api_crear():
     nombre = str(data.get('nombre') or '').strip()[:60] or 'Mi sistema'
     conn = get_db_connection()
     try:
-        status, datos = crear_clave_usuario(conn, uid, 'referencias', nombre, data.get('permisos') or {})
+        status, datos = crear_clave_usuario(conn, uid, 'referencias', nombre, data.get('permisos') or {}, banco='Bancamiga')
         if status != 200:
             return _err(status, datos['error'])
         return jsonify(ok=True, **datos, **_claves(conn, uid))
@@ -427,7 +431,7 @@ def referencias_api_accion(cuenta_id, accion):
     conn = get_db_connection()
     try:
         status, datos = accion_clave_usuario(conn, uid, 'referencias', cuenta_id, accion,
-                                             (request.get_json(silent=True) or {}).get('permisos'))
+                                             (request.get_json(silent=True) or {}).get('permisos'), banco='Bancamiga')
         if status != 200:
             return _err(status, datos['error'])
         return jsonify(ok=True, **datos, **_claves(conn, uid))

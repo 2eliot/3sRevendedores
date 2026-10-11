@@ -14,6 +14,10 @@ Flujo:
 
 No toca el saldo de nadie: solo verifica y registra el uso de pagos.
 
+Bancos: cada cuenta bancaria es de un banco. 'BDV' (Banco de Venezuela) va totalmente aparte: sus pagos los saca la
+propia web (lector_bdv.py), tiene sus revisiones, sus usos (una orden del BDV no choca con una de Bancamiga) y sus
+claves de API (webservice_accounts.banco = 'BDV'). Todo lo demás es Bancamiga, igual que antes.
+
 Variables de entorno:
   PAGOS_BANCO_TOKEN          clave del bot antiguo → usuario dueño
   ANTIDUPLIC_USUARIO_DUENO   ID del usuario dueño de los datos anteriores (por defecto el admin principal)
@@ -42,6 +46,32 @@ ORIGENES = ('revendedor', 'crm', 'manual')
 TOL = 0.005          # tolerancia al comparar montos con 2 decimales
 LECTOR_PREFIJO = 'lec_'
 AVISO_BOT_MIN = 10   # minutos sin envíos del bot para mostrar aviso
+BANCAMIGA, BDV = 'Bancamiga', 'BDV'
+BANCOS = (BANCAMIGA, BDV)
+
+
+def banco_de(valor):
+    """'BDV' o 'Bancamiga' (cualquier otro valor cuenta como Bancamiga)."""
+    return BDV if str(valor or '').strip().upper() == BDV else BANCAMIGA
+
+
+_CUENTAS_BDV = "SELECT id FROM cuentas_banco WHERE banco = 'BDV'"
+
+
+def _cond_banco(banco, col='p.cuenta_banco_id'):
+    """Condición SQL para los pagos de un banco (por la cuenta del pago). banco=None → todos."""
+    if banco is None:
+        return '1=1'
+    if banco_de(banco) == BDV:
+        return f'{col} IN ({_CUENTAS_BDV})'
+    return f'({col} IS NULL OR {col} NOT IN ({_CUENTAS_BDV}))'
+
+
+def _cond_banco_col(banco, col):
+    """Condición SQL para tablas con columna banco (usos y revisiones). banco=None → todos."""
+    if banco is None:
+        return '1=1'
+    return f"COALESCE({col}, 'Bancamiga') = '{banco_de(banco)}'"
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +197,16 @@ def usuario_dueno(conn=None):
 _tablas_listas = False
 _tablas_lock = threading.Lock()
 
+# Cuentas del BDV (cuentas_banco con banco = 'BDV'). Los datos de acceso van cifrados (bdv.py) y nunca se devuelven.
+_COLUMNAS_BDV = (
+    ('bdv_usuario_cifrado', 'TEXT'), ('bdv_clave_cifrada', 'TEXT'), ('numero_cuenta_cifrado', 'TEXT'),
+    ('lector_estado', 'TEXT'), ('lector_mensaje', 'TEXT'), ('lector_ultima_lectura', 'TEXT'),
+    ('lector_ultimo_pago', 'TEXT'), ('lector_fallos_login', 'INTEGER DEFAULT 0'),
+    ('lector_encendido', 'BOOLEAN DEFAULT TRUE'),   # interruptor «Leer movimientos»
+    ('lector_cambio', 'TEXT'),                      # cambia al guardar datos o reanudar: el lector vuelve a entrar
+    ('consentimiento_en', 'TEXT'),
+)
+
 
 def _suelto(sql, params=()):
     """Ejecuta una sentencia en su propia conexión; devuelve False si falla (p. ej. columna ya existente)."""
@@ -193,7 +233,8 @@ _USOS_SQL = '''
         referencia_reportada TEXT,
         monto_reportado NUMERIC(15,2),
         usado_en TEXT NOT NULL,
-        hecho_por TEXT
+        hecho_por TEXT,
+        banco TEXT DEFAULT 'Bancamiga'
     )'''
 
 
@@ -236,7 +277,8 @@ def init_tablas():
                     estado TEXT NOT NULL DEFAULT 'pendiente',
                     creado_en TEXT NOT NULL,
                     resuelto_en TEXT,
-                    resuelto_por TEXT
+                    resuelto_por TEXT,
+                    banco TEXT DEFAULT 'Bancamiga'
                 )''')
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS cuentas_banco (
@@ -249,7 +291,7 @@ def init_tablas():
                     activo BOOLEAN DEFAULT TRUE,
                     ultimo_envio TEXT,
                     creado_en TEXT NOT NULL
-                )''')
+                )''')  # columnas del BDV: ver _COLUMNAS_BDV
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS claves_lector (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -273,7 +315,10 @@ def init_tablas():
         # Columnas nuevas en instalaciones anteriores (ya existentes → se ignora el error)
         for tabla, col, tipo in (('pagos_banco', 'usuario_id', 'INTEGER'), ('pagos_banco', 'cuenta_banco_id', 'INTEGER'),
                                  ('usos_referencia', 'usuario_id', 'INTEGER'), ('usos_referencia', 'hecho_por', 'TEXT'),
-                                 ('revisiones_pago', 'usuario_id', 'INTEGER'), ('revisiones_pago', 'resuelto_por', 'TEXT')):
+                                 ('revisiones_pago', 'usuario_id', 'INTEGER'), ('revisiones_pago', 'resuelto_por', 'TEXT'),
+                                 ('usos_referencia', 'banco', "TEXT DEFAULT 'Bancamiga'"),
+                                 ('revisiones_pago', 'banco', "TEXT DEFAULT 'Bancamiga'"),
+                                 *(('cuentas_banco', c, t) for c, t in _COLUMNAS_BDV)):
             _suelto(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}')
         _quitar_unico_orden()
 
@@ -282,11 +327,12 @@ def init_tablas():
         _suelto('DROP INDEX IF EXISTS ix_pagos_banco_ult6_monto')
         _suelto('DROP INDEX IF EXISTS ix_pagos_banco_fecha')
         _suelto('DROP INDEX IF EXISTS ix_pagos_banco_estado')
+        _suelto('DROP INDEX IF EXISTS ux_usos_usuario_orden')  # ahora la orden es única por usuario Y banco
         for sql in ('CREATE UNIQUE INDEX IF NOT EXISTS ux_pagos_banco_usuario_mov ON pagos_banco (usuario_id, referencia, fecha, hora, monto)',
                     'CREATE INDEX IF NOT EXISTS ix_pagos_banco_usuario_ult6 ON pagos_banco (usuario_id, ref_ultimos6, monto)',
                     'CREATE INDEX IF NOT EXISTS ix_pagos_banco_usuario_fecha ON pagos_banco (usuario_id, fecha)',
                     'CREATE INDEX IF NOT EXISTS ix_pagos_banco_usuario_estado ON pagos_banco (usuario_id, estado)',
-                    'CREATE UNIQUE INDEX IF NOT EXISTS ux_usos_usuario_orden ON usos_referencia (usuario_id, orden_id)',
+                    'CREATE UNIQUE INDEX IF NOT EXISTS ux_usos_usuario_banco_orden ON usos_referencia (usuario_id, banco, orden_id)',
                     'CREATE INDEX IF NOT EXISTS ix_revisiones_usuario_estado ON revisiones_pago (usuario_id, estado)',
                     'CREATE INDEX IF NOT EXISTS ix_cuentas_banco_usuario ON cuentas_banco (usuario_id)',
                     'CREATE INDEX IF NOT EXISTS ix_claves_lector_usuario ON claves_lector (usuario_id)'):
@@ -321,8 +367,9 @@ def _quitar_unico_orden():
 
 
 def cuenta_principal(conn, usuario_id, crear=True):
-    """Primera cuenta activa del usuario (la crea como «Bancamiga principal» si no tiene ninguna)."""
-    row = conn.execute('SELECT id FROM cuentas_banco WHERE usuario_id = ? AND activo = TRUE ORDER BY id LIMIT 1',
+    """Primera cuenta activa de Bancamiga del usuario (la crea como «Bancamiga principal» si no tiene ninguna).
+    Nunca devuelve una cuenta del BDV: a esas solo les escribe el lector del BDV."""
+    row = conn.execute("SELECT id FROM cuentas_banco WHERE usuario_id = ? AND activo = TRUE AND banco <> 'BDV' ORDER BY id LIMIT 1",
                        (usuario_id,)).fetchone()
     if row:
         return int(row['id'])
@@ -385,10 +432,11 @@ def autenticar_bot():
     try:
         if token.startswith(LECTOR_PREFIJO):
             row = conn.execute(
-                'SELECT k.id, k.usuario_id, k.cuenta_banco_id, k.activo, c.activo AS cuenta_activa, c.usuario_id AS cuenta_usuario '
-                'FROM claves_lector k JOIN cuentas_banco c ON c.id = k.cuenta_banco_id WHERE k.clave_hash = ?',
+                'SELECT k.id, k.usuario_id, k.cuenta_banco_id, k.activo, c.activo AS cuenta_activa, c.usuario_id AS cuenta_usuario, '
+                'c.banco FROM claves_lector k JOIN cuentas_banco c ON c.id = k.cuenta_banco_id WHERE k.clave_hash = ?',
                 (hash_clave(token),)).fetchone()
-            if not row or not row['activo'] or not row['cuenta_activa'] or row['cuenta_usuario'] != row['usuario_id']:
+            if (not row or not row['activo'] or not row['cuenta_activa'] or row['cuenta_usuario'] != row['usuario_id']
+                    or banco_de(row['banco']) == BDV):  # las cuentas del BDV solo las escribe el lector del BDV
                 return None
             return int(row['usuario_id']), int(row['cuenta_banco_id']), int(row['id'])
         esperado = os.environ.get('PAGOS_BANCO_TOKEN', '').strip()
@@ -493,12 +541,14 @@ def _coincide_ref(banco, rep, corta):
     return b.endswith(r) or r.endswith(b)
 
 
-def _buscar(conn, uid, rep, monto, fecha, corta, con_monto=True):
-    """Pagos del usuario (cualquier estado) cuya referencia coincide; filtrados por monto si con_monto."""
+def _buscar(conn, uid, rep, monto, fecha, corta, con_monto=True, banco=BANCAMIGA):
+    """Pagos del usuario y del banco (cualquier estado) cuya referencia coincide; filtrados por monto si con_monto."""
+    cond = _cond_banco(banco, 'cuenta_banco_id')
     if corta:
-        rows = conn.execute('SELECT * FROM pagos_banco WHERE usuario_id = ? AND fecha = ?', (uid, fecha)).fetchall()
+        rows = conn.execute(f'SELECT * FROM pagos_banco WHERE usuario_id = ? AND fecha = ? AND {cond}', (uid, fecha)).fetchall()
     else:
-        rows = conn.execute('SELECT * FROM pagos_banco WHERE usuario_id = ? AND ref_ultimos6 = ?', (uid, rep[-6:])).fetchall()
+        rows = conn.execute(f'SELECT * FROM pagos_banco WHERE usuario_id = ? AND ref_ultimos6 = ? AND {cond}',
+                            (uid, rep[-6:])).fetchall()
     out = [r for r in rows if _coincide_ref(r['referencia'], rep, corta)]
     if con_monto:
         out = [r for r in out if abs(float(r['monto']) - monto) < TOL]
@@ -515,11 +565,12 @@ def _desempatar(cands, fecha, hora):
     return cands
 
 
-def _uso_de_orden(conn, uid, orden_id):
+def _uso_de_orden(conn, uid, orden_id, banco=BANCAMIGA):
+    """Uso de esa orden en ese banco (cada banco tiene sus propias órdenes)."""
     return conn.execute(
         'SELECT u.*, p.referencia, p.fecha, p.hora, p.monto, p.tipo, p.estado, p.id AS pid '
-        'FROM usos_referencia u JOIN pagos_banco p ON p.id = u.pago_id WHERE u.usuario_id = ? AND u.orden_id = ?',
-        (uid, orden_id)).fetchone()
+        'FROM usos_referencia u JOIN pagos_banco p ON p.id = u.pago_id WHERE u.usuario_id = ? AND u.orden_id = ? AND '
+        + _cond_banco_col(banco, 'u.banco'), (uid, orden_id)).fetchone()
 
 
 def _pago_de_uso(row):
@@ -527,7 +578,8 @@ def _pago_de_uso(row):
             'hora': str(row['hora']), 'monto': _f2(row['monto']), 'tipo': row['tipo'], 'estado': row['estado']}
 
 
-def usar_pago(conn, uid, pago_id, origen, revendedor_id, orden_id, ref_rep, monto_rep, hecho_por='', desde_revision=False):
+def usar_pago(conn, uid, pago_id, origen, revendedor_id, orden_id, ref_rep, monto_rep, hecho_por='', desde_revision=False,
+              banco=BANCAMIGA):
     """Marca el pago del usuario como usado de forma atómica. True si lo tomó esta llamada."""
     estados = "('disponible', 'revision')" if desde_revision else "('disponible')"
     cur = conn.execute(f"UPDATE pagos_banco SET estado = 'usado' WHERE id = ? AND usuario_id = ? AND estado IN {estados}",
@@ -536,15 +588,16 @@ def usar_pago(conn, uid, pago_id, origen, revendedor_id, orden_id, ref_rep, mont
         return False
     conn.execute(
         'INSERT INTO usos_referencia (pago_id, usuario_id, origen, revendedor_id, orden_id, referencia_reportada, '
-        'monto_reportado, usado_en, hecho_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        (pago_id, uid, origen, revendedor_id, orden_id, ref_rep, monto_rep, ahora_local(), hecho_por or None))
+        'monto_reportado, usado_en, hecho_por, banco) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (pago_id, uid, origen, revendedor_id, orden_id, ref_rep, monto_rep, ahora_local(), hecho_por or None, banco_de(banco)))
     return True
 
 
 def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='revendedor',
-                          revendedor_id=None, orden_id=None, usuario_id=None, hecho_por=''):
-    """Verifica una referencia contra los pagos DEL USUARIO y, si hay uno solo, lo marca como usado."""
+                          revendedor_id=None, orden_id=None, usuario_id=None, hecho_por='', banco=BANCAMIGA):
+    """Verifica una referencia contra los pagos DEL USUARIO en ESE BANCO y, si hay uno solo, lo marca como usado."""
     init_tablas()
+    banco = banco_de(banco)
     if origen not in ORIGENES:
         return _r(False, 'revision', 'Origen no válido')
     orden_id = (str(orden_id).strip()[:80] or None) if orden_id is not None else None
@@ -554,7 +607,7 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
         uid = int(usuario_id) if usuario_id is not None else usuario_dueno(conn)
         # Idempotencia: la misma orden (de este usuario) nunca consume un segundo pago
         if orden_id:
-            previo = _uso_de_orden(conn, uid, orden_id)
+            previo = _uso_de_orden(conn, uid, orden_id, banco)
             if previo:
                 return _r(True, 'ya_aprobado', 'Esta orden ya tiene un pago aprobado', _pago_de_uso(previo))
 
@@ -573,7 +626,7 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
         if corta and not fecha:
             return _r(False, 'falta_fecha', 'Con 4 o 5 dígitos indica también la fecha del pago')
 
-        todos = _buscar(conn, uid, ref, monto, fecha, corta)
+        todos = _buscar(conn, uid, ref, monto, fecha, corta, banco=banco)
         disponibles = _desempatar([c for c in todos if c['estado'] == 'disponible'], fecha, hora)
 
         if not disponibles:
@@ -584,7 +637,7 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
                 return _r(False, 'usado', f'Referencia ya utilizada{(" el " + str(cuando)) if cuando else ""}', usado_en=cuando)
             if any(c['estado'] == 'revision' for c in todos):
                 return _r(False, 'revision', 'Este pago está en revisión manual')
-            if _buscar(conn, uid, ref, monto, fecha, corta, con_monto=False):
+            if _buscar(conn, uid, ref, monto, fecha, corta, con_monto=False, banco=banco):
                 return _r(False, 'monto_no_coincide', 'La referencia existe pero el monto no coincide')
             return _r(False, 'no_encontrado', 'Pago no encontrado. Puede que el banco aún no lo haya enviado: '
                                               'inténtalo de nuevo en 1 minuto.')
@@ -600,14 +653,16 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
                              (pid, uid))
             conn.execute(
                 'INSERT INTO revisiones_pago (usuario_id, origen, revendedor_id, orden_id, referencia_reportada, monto_reportado, '
-                'fecha_reportada, hora_reportada, candidatos, estado, creado_en) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (uid, origen, revendedor_id, orden_id, referencia, monto, fecha, hora, json.dumps(ids), 'pendiente', ahora_local()))
+                'fecha_reportada, hora_reportada, candidatos, estado, creado_en, banco) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (uid, origen, revendedor_id, orden_id, referencia, monto, fecha, hora, json.dumps(ids), 'pendiente', ahora_local(),
+                 banco))
             conn.commit()
             return _r(False, 'revision', 'Requiere revisión manual: hay varios pagos iguales. Un administrador lo revisará.')
 
         pago = disponibles[0]
         try:
-            tomado = usar_pago(conn, uid, pago['id'], origen, revendedor_id, orden_id, str(referencia), monto, hecho_por)
+            tomado = usar_pago(conn, uid, pago['id'], origen, revendedor_id, orden_id, str(referencia), monto, hecho_por,
+                               banco=banco)
             if not tomado:
                 conn.rollback()
                 return _r(False, 'usado', 'Referencia ya utilizada')
@@ -616,7 +671,7 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
             # p. ej. la misma orden_id aprobada a la vez por otra petición
             conn.rollback()
             if orden_id:
-                previo = _uso_de_orden(conn, uid, orden_id)
+                previo = _uso_de_orden(conn, uid, orden_id, banco)
                 if previo:
                     return _r(True, 'ya_aprobado', 'Esta orden ya tiene un pago aprobado', _pago_de_uso(previo))
             return _r(False, 'usado', 'Referencia ya utilizada')
@@ -684,14 +739,15 @@ def _pago_completo(r):
     d['usuario'] = ' '.join(x for x in (r['dueno_nombre'], r['dueno_apellido']) if x) or r['dueno_correo'] or None
     d['cuenta_id'] = r['cuenta_banco_id']
     d['cuenta'] = r['cuenta_alias'] or r['cuenta_banco_nombre'] or None
+    d['banco'] = banco_de(r['cuenta_banco_nombre'])
     d['uso'] = _uso_dict(r)
     return d
 
 
 def listar_pagos(conn, uid=None, fecha=None, desde=None, hasta=None, estado='', q='', cuenta_id=None,
-                 pagina=1, por_pagina=500):
-    """(pagos, total) con filtros. uid=None → todos (admin)."""
-    where, params = ['1=1'], []
+                 pagina=1, por_pagina=500, banco=None):
+    """(pagos, total) con filtros. uid=None → todos (admin). banco=None → todos los bancos."""
+    where, params = [_cond_banco(banco)], []
     if uid is not None:
         where.append('p.usuario_id = ?')
         params.append(uid)
@@ -732,9 +788,9 @@ def listar_pagos(conn, uid=None, fecha=None, desde=None, hasta=None, estado='', 
     return [_pago_completo(r) for r in rows], int(total or 0)
 
 
-def detalle_pago(conn, uid, pago_id):
-    """Un pago con su uso; None si no existe o no es del usuario (uid=None → cualquiera)."""
-    sql, params = f'{_SQL_PAGOS} WHERE p.id = ?', [pago_id]
+def detalle_pago(conn, uid, pago_id, banco=None):
+    """Un pago con su uso; None si no existe, no es del usuario o es de otro banco (uid=None → cualquiera)."""
+    sql, params = f'{_SQL_PAGOS} WHERE p.id = ? AND {_cond_banco(banco)}', [pago_id]
     if uid is not None:
         sql += ' AND p.usuario_id = ?'
         params.append(uid)
@@ -742,34 +798,55 @@ def detalle_pago(conn, uid, pago_id):
     return _pago_completo(row) if row else None
 
 
-def listar_cuentas(conn, uid, solo_activas=False):
-    sql = 'SELECT * FROM cuentas_banco WHERE usuario_id = ?' + (' AND activo = TRUE' if solo_activas else '') + ' ORDER BY id'
-    return [{'id': r['id'], 'banco': r['banco'], 'alias': r['alias'], 'ultimos_digitos': r['ultimos_digitos'] or '',
-             'titular': r['titular'] or '', 'activo': bool(r['activo']), 'ultimo_envio': r['ultimo_envio'],
-             'creado_en': r['creado_en']} for r in conn.execute(sql, (uid,)).fetchall()]
+def _cuenta_publica(r):
+    """Una cuenta sin datos secretos. Las del BDV traen además el estado de su lector (nunca usuario, clave ni número)."""
+    d = {'id': r['id'], 'usuario_id': r['usuario_id'], 'banco': r['banco'], 'alias': r['alias'],
+         'ultimos_digitos': r['ultimos_digitos'] or '',
+         'titular': r['titular'] or '', 'activo': bool(r['activo']), 'ultimo_envio': r['ultimo_envio'],
+         'creado_en': r['creado_en']}
+    if banco_de(r['banco']) == BDV:
+        d['conectada'] = bool(r['bdv_clave_cifrada'])
+        d['lector'] = {'estado': r['lector_estado'] or ('pendiente' if d['conectada'] else 'sin_conexion'),
+                       'mensaje': r['lector_mensaje'] or '', 'ultima_lectura': r['lector_ultima_lectura'],
+                       'ultimo_pago': r['lector_ultimo_pago'],
+                       'encendido': r['lector_encendido'] is None or bool(r['lector_encendido'])}
+    return d
 
 
-def resumen(conn, uid=None, fecha=None):
-    """Resumen del día (por defecto hoy) y último envío del bot, por cuenta."""
+def listar_cuentas(conn, uid, solo_activas=False, banco=None):
+    """Cuentas del usuario (uid=None → de todos). banco=None → de todos los bancos."""
+    where, params = [], []
+    if uid is not None:
+        where.append('usuario_id = ?')
+        params.append(uid)
+    if solo_activas:
+        where.append('activo = TRUE')
+    if banco is not None:
+        where.append("banco = 'BDV'" if banco_de(banco) == BDV else "banco <> 'BDV'")
+    sql = 'SELECT * FROM cuentas_banco' + (' WHERE ' + ' AND '.join(where) if where else '') + ' ORDER BY usuario_id, id'
+    return [_cuenta_publica(r) for r in conn.execute(sql, tuple(params)).fetchall()]
+
+
+def resumen(conn, uid=None, fecha=None, banco=None):
+    """Resumen del día (por defecto hoy) y último envío del bot (o lectura del BDV), por cuenta."""
     fecha = fecha or hoy_local()
-    cond, params = ('usuario_id = ? AND ', (uid,)) if uid is not None else ('', ())
+    cond = _cond_banco(banco, 'cuenta_banco_id')
+    params = ()
+    if uid is not None:
+        cond, params = f'usuario_id = ? AND {cond}', (uid,)
     res = conn.execute(
         "SELECT COUNT(*) AS n, COALESCE(SUM(monto), 0) AS total, "
         "SUM(CASE WHEN estado = 'disponible' THEN 1 ELSE 0 END) AS disp, "
         "SUM(CASE WHEN estado = 'usado' THEN 1 ELSE 0 END) AS usados, "
         "SUM(CASE WHEN estado = 'revision' THEN 1 ELSE 0 END) AS rev "
-        f"FROM pagos_banco WHERE {cond}fecha = ?", params + (fecha,)).fetchone()
-    ultimo_pago = conn.execute(f"SELECT MAX(creado_en) AS t FROM pagos_banco{' WHERE usuario_id = ?' if uid is not None else ''}",
-                               params).fetchone()['t']
-    ultimo_mov = conn.execute(f"SELECT fecha, hora FROM pagos_banco{' WHERE usuario_id = ?' if uid is not None else ''} "
-                              'ORDER BY fecha DESC, hora DESC LIMIT 1', params).fetchone()
-    if uid is not None:
-        cuentas = [{'id': c['id'], 'alias': c['alias'], 'banco': c['banco'], 'ultimos_digitos': c['ultimos_digitos'],
-                    'activo': c['activo'], 'ultimo_envio': c['ultimo_envio']} for c in listar_cuentas(conn, uid)]
-    else:
-        cuentas = [{'id': r['id'], 'alias': r['alias'], 'banco': r['banco'], 'ultimos_digitos': r['ultimos_digitos'] or '',
-                    'activo': bool(r['activo']), 'ultimo_envio': r['ultimo_envio'], 'usuario_id': r['usuario_id']}
-                   for r in conn.execute('SELECT * FROM cuentas_banco ORDER BY usuario_id, id').fetchall()]
+        f"FROM pagos_banco WHERE {cond} AND fecha = ?", params + (fecha,)).fetchone()
+    ultimo_pago = conn.execute(f'SELECT MAX(creado_en) AS t FROM pagos_banco WHERE {cond}', params).fetchone()['t']
+    ultimo_mov = conn.execute(f'SELECT fecha, hora FROM pagos_banco WHERE {cond} ORDER BY fecha DESC, hora DESC LIMIT 1',
+                              params).fetchone()
+    cuentas = listar_cuentas(conn, uid, banco=banco)
+    for c in cuentas:
+        c.pop('titular', None)
+        c.pop('creado_en', None)
     envios = [c['ultimo_envio'] for c in cuentas if c['activo'] and c['ultimo_envio']]
     return {
         'hoy': fecha, 'pagos_hoy': int(res['n'] or 0), 'total_hoy': _f2(res['total'] or 0),
@@ -783,11 +860,11 @@ def resumen(conn, uid=None, fecha=None):
     }
 
 
-def listar_revisiones(conn, uid=None, estado='pendiente'):
+def listar_revisiones(conn, uid=None, estado='pendiente', banco=None):
     estado = estado if estado in ('pendiente', 'resuelta', 'descartada') else 'pendiente'
     sql = ('SELECT r.*, us.nombre, us.apellido, du.nombre AS dueno_nombre, du.apellido AS dueno_apellido, du.correo AS dueno_correo '
            'FROM revisiones_pago r LEFT JOIN usuarios us ON us.id = r.revendedor_id LEFT JOIN usuarios du ON du.id = r.usuario_id '
-           'WHERE r.estado = ?')
+           f"WHERE r.estado = ? AND {_cond_banco_col(banco, 'r.banco')}")
     params = [estado]
     if uid is not None:
         sql += ' AND r.usuario_id = ?'
@@ -801,7 +878,7 @@ def listar_revisiones(conn, uid=None, estado='pendiente'):
             if c:
                 cands.append(_pago_dict(c))
         out.append({
-            'id': v['id'], 'estado': v['estado'], 'usuario_id': v['usuario_id'],
+            'id': v['id'], 'estado': v['estado'], 'usuario_id': v['usuario_id'], 'banco': banco_de(v['banco']),
             'usuario': ' '.join(x for x in (v['dueno_nombre'], v['dueno_apellido']) if x) or v['dueno_correo'] or None,
             'origen': v['origen'], 'revendedor_id': v['revendedor_id'], 'orden_id': v['orden_id'],
             'revendedor': ' '.join(x for x in (v['nombre'], v['apellido']) if x) or None,
@@ -813,10 +890,11 @@ def listar_revisiones(conn, uid=None, estado='pendiente'):
     return out
 
 
-def asignar(uid, pago_id, orden_id=None, revision_id=None, revendedor_id=None, hecho_por=''):
+def asignar(uid, pago_id, orden_id=None, revision_id=None, revendedor_id=None, hecho_por='', banco=None):
     """Asigna a mano un pago a una orden (o resuelve una revisión). uid=None → admin (cualquier usuario).
 
-    Devuelve (http_status, dict con ok y mensaje). Un pago o revisión de otro usuario → 404.
+    Devuelve (http_status, dict con ok y mensaje). Un pago o revisión de otro usuario o de otro banco → 404.
+    banco=None → el del pago (solo el admin); la orden se busca entre las órdenes de ese banco.
     """
     init_tablas()
     try:
@@ -826,18 +904,22 @@ def asignar(uid, pago_id, orden_id=None, revision_id=None, revendedor_id=None, h
     orden_id = str(orden_id or '').strip()[:80] or None
     conn = get_db_connection()
     try:
-        pago = conn.execute('SELECT id, usuario_id, estado FROM pagos_banco WHERE id = ?' + (' AND usuario_id = ?' if uid is not None else ''),
+        pago = conn.execute('SELECT p.id, p.usuario_id, p.estado, cb.banco FROM pagos_banco p '
+                            'LEFT JOIN cuentas_banco cb ON cb.id = p.cuenta_banco_id WHERE p.id = ?'
+                            + (' AND p.usuario_id = ?' if uid is not None else ''),
                             (pago_id, uid) if uid is not None else (pago_id,)).fetchone()
-        if not pago:
+        if not pago or (banco is not None and banco_de(pago['banco']) != banco_de(banco)):
             return 404, {'ok': False, 'mensaje': 'Pago no encontrado'}
         dueno = int(pago['usuario_id'])
+        banco = banco_de(pago['banco'])
         revision = None
         if revision_id:
             try:
                 revision_id = int(revision_id)
             except (TypeError, ValueError):
                 return 400, {'ok': False, 'mensaje': 'Revisión no válida'}
-            revision = conn.execute('SELECT * FROM revisiones_pago WHERE id = ? AND usuario_id = ?', (revision_id, dueno)).fetchone()
+            revision = conn.execute('SELECT * FROM revisiones_pago WHERE id = ? AND usuario_id = ? AND '
+                                    + _cond_banco_col(banco, 'banco'), (revision_id, dueno)).fetchone()
             if not revision:
                 return 404, {'ok': False, 'mensaje': 'Revisión no encontrada'}
             if revision['estado'] != 'pendiente':
@@ -857,13 +939,13 @@ def asignar(uid, pago_id, orden_id=None, revision_id=None, revendedor_id=None, h
             revendedor_id = None
         if not revision and not orden_id and not revendedor_id:
             return 400, {'ok': False, 'mensaje': 'Indica el ID de la orden'}
-        if orden_id and _uso_de_orden(conn, dueno, orden_id):
+        if orden_id and _uso_de_orden(conn, dueno, orden_id, banco):
             return 409, {'ok': False, 'mensaje': 'Esa orden ya tiene un pago asignado'}
 
         ref_rep = revision['referencia_reportada'] if revision else 'asignación manual'
         monto_rep = revision['monto_reportado'] if revision else None
         if not usar_pago(conn, dueno, pago_id, 'manual', revendedor_id, orden_id, ref_rep, monto_rep, hecho_por,
-                         desde_revision=True):
+                         desde_revision=True, banco=banco):
             conn.rollback()
             return 409, {'ok': False, 'mensaje': 'Ese pago ya fue usado'}
         if revision:
@@ -883,8 +965,8 @@ def asignar(uid, pago_id, orden_id=None, revision_id=None, revendedor_id=None, h
         conn.close()
 
 
-def descartar(uid, revision_id, hecho_por=''):
-    """Cierra una revisión sin asignar; los candidatos vuelven a disponibles. uid=None → admin."""
+def descartar(uid, revision_id, hecho_por='', banco=None):
+    """Cierra una revisión sin asignar; los candidatos vuelven a disponibles. uid=None → admin. banco=None → cualquiera."""
     init_tablas()
     try:
         revision_id = int(revision_id)
@@ -892,7 +974,8 @@ def descartar(uid, revision_id, hecho_por=''):
         return 400, {'ok': False, 'mensaje': 'Revisión no válida'}
     conn = get_db_connection()
     try:
-        sql = 'SELECT * FROM revisiones_pago WHERE id = ?' + (' AND usuario_id = ?' if uid is not None else '')
+        sql = f"SELECT * FROM revisiones_pago WHERE id = ? AND {_cond_banco_col(banco, 'banco')}" \
+            + (' AND usuario_id = ?' if uid is not None else '')
         rev = conn.execute(sql, (revision_id, uid) if uid is not None else (revision_id,)).fetchone()
         if not rev:
             return 404, {'ok': False, 'mensaje': 'Revisión no encontrada'}
@@ -962,12 +1045,14 @@ def admin_antiduplic_datos():
     uid = request.args.get('usuario_id')
     uid = int(uid) if uid and uid.isdigit() else None
     fecha = parse_fecha(request.args.get('fecha')) if request.args.get('fecha') else None
+    banco = banco_de(request.args.get('banco')) if request.args.get('banco') else None
     conn = get_db_connection()
     try:
         pagos, total = listar_pagos(conn, uid, fecha=fecha, estado=request.args.get('estado') or '',
-                                    q=request.args.get('q') or '', por_pagina=500)
-        return jsonify(pagos=pagos, total=total, resumen=resumen(conn, uid), revisiones=listar_revisiones(conn, uid),
-                       ahora=ahora_local())
+                                    q=request.args.get('q') or '', por_pagina=500, banco=banco)
+        return jsonify(pagos=pagos, total=total, resumen=resumen(conn, uid, banco=banco),
+                       revisiones=listar_revisiones(conn, uid, banco=banco),
+                       conexiones_bdv=listar_cuentas(conn, uid, banco=BDV), ahora=ahora_local())
     finally:
         conn.close()
 

@@ -46,6 +46,12 @@ PERMISOS = {
     'gestionar_pagos': ('perm_gestionar_pagos', False, 'Asignar pagos y resolver revisiones', 'referencias'),
 }
 TIPOS_CLAVE = {'recargas': 'Recargas', 'referencias': 'Referencias (verificar pagos)'}
+# Las claves de Referencias son de un banco: 'Bancamiga' (todas las anteriores) o 'BDV'. El banco lo decide la clave.
+BANCOS_CLAVE = ('Bancamiga', 'BDV')
+
+
+def banco_clave(valor):
+    return 'BDV' if str(valor or '').strip().upper() == 'BDV' else 'Bancamiga'
 
 
 def permisos_de(tipo):
@@ -72,6 +78,7 @@ def init_permisos():
         columnas = [f"{v[0]} BOOLEAN DEFAULT {'TRUE' if v[1] else 'FALSE'}" for v in PERMISOS.values()]
         columnas.append("tipo TEXT DEFAULT 'recargas'")
         columnas.append("prefijo TEXT DEFAULT ''")
+        columnas.append("banco TEXT DEFAULT 'Bancamiga'")
         for col in columnas:
             conn = get_db_connection()
             try:
@@ -341,38 +348,51 @@ MAX_CLAVES_USUARIO = 5  # claves activas por usuario y por tipo
 _ACCIONES_USUARIO = ('permisos', 'activar', 'desactivar', 'regenerar', 'eliminar')
 
 
-def _activas(conn, uid, tipo):
-    return conn.execute('SELECT COUNT(*) AS n FROM webservice_accounts WHERE usuario_id = ? AND tipo = ? AND activo = TRUE',
-                        (uid, tipo)).fetchone()['n']
+def _filtro_banco(banco):
+    """(sql, params) para limitar las claves a un banco; banco=None → sin filtro."""
+    if banco is None:
+        return '', ()
+    return " AND COALESCE(banco, 'Bancamiga') = ?", (banco_clave(banco),)
 
 
-def claves_de_usuario(conn, uid, tipo):
+def _activas(conn, uid, tipo, banco=None):
+    sql, extra = _filtro_banco(banco)
+    return conn.execute('SELECT COUNT(*) AS n FROM webservice_accounts WHERE usuario_id = ? AND tipo = ? AND activo = TRUE' + sql,
+                        (uid, tipo) + extra).fetchone()['n']
+
+
+def claves_de_usuario(conn, uid, tipo, banco=None):
+    """Claves del usuario de ese tipo (y de ese banco, si se indica). Nunca la clave completa."""
     init_permisos()
-    filas = conn.execute('SELECT * FROM webservice_accounts WHERE usuario_id = ? AND tipo = ? ORDER BY id', (uid, tipo)).fetchall()
+    sql, extra = _filtro_banco(banco)
+    filas = conn.execute('SELECT * FROM webservice_accounts WHERE usuario_id = ? AND tipo = ?' + sql + ' ORDER BY id',
+                         (uid, tipo) + extra).fetchall()
     return {
         'api': [{'id': r['id'], 'nombre': r['nombre'], 'prefijo': r['prefijo'] or 'wsk_', 'activo': bool(r['activo']),
+                 'banco': banco_clave(r['banco']),
                  'permisos': {k: cuenta_puede(dict(r), k) for k in permisos_de(tipo)}} for r in filas],
         'permisos': [(k, PERMISOS[k][2]) for k in permisos_de(tipo)],
     }
 
 
-def crear_clave_usuario(conn, uid, tipo, nombre, permisos):
-    """(status HTTP, datos). La clave va en datos['clave'] y no se vuelve a mostrar."""
+def crear_clave_usuario(conn, uid, tipo, nombre, permisos, banco='Bancamiga'):
+    """(status HTTP, datos). La clave va en datos['clave'] y no se vuelve a mostrar. El límite es por tipo y banco."""
     init_permisos()
-    if _activas(conn, uid, tipo) >= MAX_CLAVES_USUARIO:
+    if _activas(conn, uid, tipo, banco) >= MAX_CLAVES_USUARIO:
         return 409, {'error': f'Máximo {MAX_CLAVES_USUARIO} claves activas'}
-    _, clave = crear_cuenta(conn, nombre, uid, tipo, permisos or {})
+    _, clave = crear_cuenta(conn, nombre, uid, tipo, permisos or {}, banco=banco)
     conn.commit()
     return 200, {'clave': clave, 'mensaje': 'Copia la clave ahora: no se volverá a mostrar'}
 
 
-def accion_clave_usuario(conn, uid, tipo, cuenta_id, accion, permisos=None):
-    """permisos / activar / desactivar / regenerar / eliminar, solo sobre claves del usuario y de ese tipo."""
+def accion_clave_usuario(conn, uid, tipo, cuenta_id, accion, permisos=None, banco=None):
+    """permisos / activar / desactivar / regenerar / eliminar, solo sobre claves del usuario, de ese tipo (y banco)."""
     init_permisos()
     if accion not in _ACCIONES_USUARIO:
         return 404, {'error': 'Acción no encontrada'}
-    if not conn.execute('SELECT 1 FROM webservice_accounts WHERE id = ? AND usuario_id = ? AND tipo = ?',
-                        (cuenta_id, uid, tipo)).fetchone():
+    sql, extra = _filtro_banco(banco)
+    if not conn.execute('SELECT 1 FROM webservice_accounts WHERE id = ? AND usuario_id = ? AND tipo = ?' + sql,
+                        (cuenta_id, uid, tipo) + extra).fetchone():
         return 404, {'error': 'Clave no encontrada'}
     datos = {}
     if accion == 'permisos':
@@ -382,7 +402,7 @@ def accion_clave_usuario(conn, uid, tipo, cuenta_id, accion, permisos=None):
                              (bool(v), cuenta_id, uid))
         datos['mensaje'] = 'Permisos guardados'
     elif accion in ('activar', 'desactivar'):
-        if accion == 'activar' and _activas(conn, uid, tipo) >= MAX_CLAVES_USUARIO:
+        if accion == 'activar' and _activas(conn, uid, tipo, banco) >= MAX_CLAVES_USUARIO:
             return 409, {'error': f'Máximo {MAX_CLAVES_USUARIO} claves activas'}
         conn.execute('UPDATE webservice_accounts SET activo = ? WHERE id = ? AND usuario_id = ?', (accion == 'activar', cuenta_id, uid))
         datos['mensaje'] = 'Clave activada' if accion == 'activar' else 'Clave desactivada'
@@ -479,21 +499,23 @@ def _cuenta_json(r):
         'usuario_correo': r['u_correo'], 'usuario_saldo': float(r['u_saldo'] or 0),
         'webhook_url': r['webhook_url'] or '', 'activo': bool(r['activo']),
         'tipo': r['tipo'] or 'recargas',
+        'banco': banco_clave(r['banco']) if (r['tipo'] or 'recargas') == 'referencias' else None,
         'permisos': {k: cuenta_puede(dict(r), k) for k in permisos_de(r['tipo'] or 'recargas')},
     }
     return d
 
 
-def crear_cuenta(conn, nombre, usuario_id, tipo, permisos, webhook_url=''):
+def crear_cuenta(conn, nombre, usuario_id, tipo, permisos, webhook_url='', banco='Bancamiga'):
     """Crea una clave del tipo indicado; los permisos de otro tipo quedan siempre apagados.
-    Devuelve (id, clave): la clave solo existe en esta respuesta, en la base queda su huella."""
+    Devuelve (id, clave): la clave solo existe en esta respuesta, en la base queda su huella.
+    banco: solo para las de Referencias ('Bancamiga' o 'BDV'); decide de qué banco son los pagos que ve."""
     clave, huella, prefijo = nueva_clave()
     cols = [v[0] for v in PERMISOS.values()]
     vals = [bool(permisos.get(k, v[1])) if v[3] == tipo else False for k, v in PERMISOS.items()]
     cur = conn.execute(
-        f"INSERT INTO webservice_accounts (nombre, api_key, prefijo, usuario_id, webhook_url, activo, tipo, {', '.join(cols)}) "
-        f"VALUES (?, ?, ?, ?, ?, TRUE, ?, {', '.join('?' for _ in cols)}) RETURNING id",
-        (nombre, huella, prefijo, usuario_id, webhook_url, tipo, *vals))
+        f"INSERT INTO webservice_accounts (nombre, api_key, prefijo, usuario_id, webhook_url, activo, tipo, banco, {', '.join(cols)}) "
+        f"VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, {', '.join('?' for _ in cols)}) RETURNING id",
+        (nombre, huella, prefijo, usuario_id, webhook_url, tipo, banco_clave(banco), *vals))
     return cur.fetchone()[0], clave
 
 
@@ -543,7 +565,7 @@ def admin_api_cuentas():
         if tipo not in TIPOS_CLAVE:
             return jsonify(ok=False, error='Tipo de clave no válido'), 400
         nuevo, clave = crear_cuenta(conn, nombre, usuario_id, tipo, data.get('permisos') or {},
-                                    str(data.get('webhook_url') or '').strip()[:300])
+                                    str(data.get('webhook_url') or '').strip()[:300], banco=data.get('banco'))
         conn.commit()
         return jsonify(ok=True, clave=clave, cuenta=_cuenta_json(_cargar_cuenta(conn, nuevo)))
     except Exception as e:

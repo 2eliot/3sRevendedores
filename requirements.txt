@@ -24,3 +24,6 @@ gunicorn==21.2.0
 psycopg[binary]==3.3.3
 
 # Nota: sqlite3 fue reemplazado por psycopg. secrets, hashlib y os son módulos integrados de Python
+
+# Para cifrar los datos de acceso del BDV (bdv.py, llave BDV_LLAVE_CIFRADO)
+cryptography>=42
