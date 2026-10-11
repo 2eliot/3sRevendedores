@@ -399,6 +399,26 @@ app.register_blueprint(_recuperar.bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
+def contadores_barra():
+    """Números de la barra de arriba (campana y billetera) del usuario conectado; 0 para el admin o sin sesión.
+    Se calcula una vez por petición y lo usan todas las páginas que tienen la barra."""
+    from flask import g
+    if 'contadores_barra' not in g:
+        datos = {'notificaciones': 0, 'billetera': 0}
+        uid = session.get('user_db_id')
+        if uid and 'usuario' in session and not session.get('is_admin'):
+            try:
+                datos['notificaciones'] = get_unread_news_count(uid) + get_unread_personal_notifications_count(uid)
+                datos['billetera'] = get_unread_wallet_credits_count(uid)
+            except Exception as e:
+                logger.warning(f'[Barra] No se pudieron contar los avisos: {e}')
+        g.contadores_barra = datos
+    return g.contadores_barra
+
+
+app.jinja_env.globals['contadores_barra'] = contadores_barra
+
+
 def ahora_local(fmt='%d/%m/%Y %H:%M'):
     """Fecha/hora actual en la zona horaria de la tienda (DEFAULT_TZ), para plantillas."""
     try:

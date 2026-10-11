@@ -1139,13 +1139,11 @@
         </svg>
       </div>
       
-      <!-- Botón de Noticias (siempre visible para usuarios normales; solo el badge depende del contador) -->
+      <!-- Noticias y notificaciones (solo usuarios normales) -->
       {% if not session.get('is_admin') %}
-      <div class="news-icon-container" onclick="window.location.href='/noticias'">
+      <div class="news-icon-container" onclick="window.location.href='/notificaciones'" title="Noticias" role="link" aria-label="Noticias">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-        {% if news_notification_count > 0 %}
-        <div class="news-notification-badge">{{ news_notification_count }}</div>
-        {% endif %}
+        {% if contadores_barra().notificaciones > 0 %}<div class="news-notification-badge">{{ contadores_barra().notificaciones }}</div>{% endif %}
       </div>
       {% endif %}
       

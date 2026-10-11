@@ -124,6 +124,14 @@
           <rect x="14" y="14" width="7" height="7" rx="1.5"/>
         </svg>
       </div>
+
+      <!-- Noticias y notificaciones (solo usuarios normales) -->
+      {% if not session.get('is_admin') %}
+      <div class="news-icon-container" onclick="window.location.href='/notificaciones'" title="Noticias" role="link" aria-label="Noticias">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        {% if contadores_barra().notificaciones > 0 %}<div class="news-notification-badge">{{ contadores_barra().notificaciones }}</div>{% endif %}
+      </div>
+      {% endif %}
       <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
 
       <!-- Referencias: pagos del banco y verificación de referencias del usuario -->

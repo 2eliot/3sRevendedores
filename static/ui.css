@@ -1827,3 +1827,10 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 /* Icono «Referencias» de la barra del usuario: activo sin relleno, para que se vea la marca de verificación */
 .ref-icon-container .icon, .api-icon-container .icon { fill: none !important; }
 .ref-icon-container .icon.active, .api-icon-container .icon.active { stroke-width: 2.3; color: var(--rc-text); }
+
+/* Icono del apartado en el que estás (lo marca ui-common.js con .nav-actual) */
+.header .icon-container > .nav-actual { background: rgba(var(--rc-ink), 0.13) !important; box-shadow: inset 0 0 0 1px rgba(var(--rc-ink), 0.10); }
+.header .icon-container > .nav-actual .icon, .header .icon-container > svg.nav-actual { color: var(--rc-text) !important; }
+/* La campana y la billetera con su número, también en las páginas que no cargan styles.css */
+.news-icon-container, .wallet-icon-container { position: relative; cursor: pointer; }
+.news-notification-badge, .wallet-notification-badge { position: absolute; display: flex; align-items: center; justify-content: center; font-weight: 700; box-sizing: border-box; line-height: 1; }

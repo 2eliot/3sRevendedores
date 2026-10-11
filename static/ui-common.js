@@ -88,3 +88,28 @@
   document.addEventListener('site-theme-change', refreshLabels);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshLabels); else refreshLabels();
 })();
+
+/* Barra de arriba: el icono del apartado en el que estás queda sombreado (.nav-actual).
+   El destino de cada icono se lee de su onclick (window.location.href='/…'); en un juego se marca Inicio. */
+(function () {
+  'use strict';
+  var actual = location.pathname.replace(/\/+$/, '') || '/';
+  function destino(el) {
+    var src = el.getAttribute('onclick') || '';
+    var m = src.match(/location\.href\s*=\s*'([^']+)'/);
+    if (m) return m[1];
+    return el.tagName === 'A' ? el.getAttribute('href') : null;
+  }
+  function coincide(d) {
+    if (d === '/') return actual === '/' || actual.indexOf('/juego/') === 0;
+    if (d === '/noticias' || d === '/notificaciones') return actual === '/noticias' || actual === '/notificaciones';
+    return actual === d || actual.indexOf(d + '/') === 0;
+  }
+  function marcar() {
+    document.querySelectorAll('.header .icon-container > *').forEach(function (el) {
+      var d = destino(el);
+      if (d && coincide(d)) { el.classList.add('nav-actual'); el.setAttribute('aria-current', 'page'); }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', marcar); else marcar();
+})();
