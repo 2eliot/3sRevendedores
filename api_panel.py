@@ -74,6 +74,23 @@ def cuenta_puede(account, permiso):
     return default if val is None else bool(val)
 
 
+LIMITES = {'lectura': 120, 'escritura': 60}  # peticiones por clave y por minuto (Referencias)
+_limites, _limites_lock = {}, threading.Lock()
+
+
+def limite_ok(cuenta_id, tipo='lectura'):
+    """Límite de peticiones por clave en ventanas de 60 s (en memoria de cada proceso)."""
+    ahora = time.time()
+    clave = (cuenta_id, tipo)
+    with _limites_lock:
+        hits = [t for t in _limites.get(clave, []) if ahora - t < 60]
+        ok = len(hits) < LIMITES.get(tipo, 60)
+        if ok:
+            hits.append(ahora)
+        _limites[clave] = hits
+        return ok
+
+
 def cuenta_por_clave(api_key):
     from api_whitelabel import _get_account_by_key
     init_permisos()

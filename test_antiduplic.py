@@ -12,6 +12,7 @@ _tmp = tempfile.TemporaryDirectory()
 os.environ['DATABASE_PATH'] = os.path.join(_tmp.name, 'antiduplic_test.db')
 os.environ.pop('DATABASE_URL', None)
 os.environ['PAGOS_BANCO_TOKEN'] = 'token-de-prueba'
+os.environ['ANTIDUPLIC_USUARIO_DUENO'] = '1'
 
 from flask import Flask  # noqa: E402
 
