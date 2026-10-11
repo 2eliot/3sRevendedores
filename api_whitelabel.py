@@ -19,6 +19,7 @@ Admin (sesión):
 """
 
 import functools
+import hashlib
 import json
 import logging
 import os
@@ -98,12 +99,17 @@ def init_whitelabel_tables(cursor):
 # Auth decorator
 # ---------------------------------------------------------------------------
 
+def hash_api_key(api_key):
+    """Lo que se guarda en webservice_accounts.api_key: solo la huella, nunca la clave (se muestra una sola vez)."""
+    return 'sha256:' + hashlib.sha256((api_key or '').encode('utf-8')).hexdigest()
+
+
 def _get_account_by_key(api_key):
     """Busca una WebServiceAccount activa por su api_key."""
     conn = _get_conn()
     row = conn.execute(
         'SELECT * FROM webservice_accounts WHERE api_key = ? AND activo = TRUE',
-        (api_key,)
+        (hash_api_key(api_key),)
     ).fetchone()
     conn.close()
     return dict(row) if row else None
@@ -570,7 +576,7 @@ def admin_list_ws_accounts():
         accounts.append({
             'id': r['id'],
             'nombre': r['nombre'],
-            'api_key': r['api_key'],
+            'api_key': (dict(r).get('prefijo') or 'wsk_') + '…',  # la clave completa no se guarda
             'usuario_id': r['usuario_id'],
             'usuario_nombre': f"{r['usuario_nombre']} {r['usuario_apellido']}",
             'usuario_correo': r['usuario_correo'],
@@ -617,9 +623,9 @@ def admin_create_ws_account():
 
     try:
         conn.execute('''
-            INSERT INTO webservice_accounts (nombre, api_key, usuario_id, webhook_url)
-            VALUES (?, ?, ?, ?)
-        ''', (nombre, api_key, usuario_id, webhook_url))
+            INSERT INTO webservice_accounts (nombre, api_key, usuario_id, webhook_url, prefijo)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (nombre, hash_api_key(api_key), usuario_id, webhook_url, api_key[:12]))
         conn.commit()
         flash(f'Cuenta API "{nombre}" creada. Key: {api_key}', 'success')
     except Exception as e:
@@ -669,8 +675,8 @@ def admin_regenerate_ws_key(account_id):
         return redirect('/admin')
 
     new_key = _generate_api_key()
-    conn.execute('UPDATE webservice_accounts SET api_key = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?',
-                 (new_key, account_id))
+    conn.execute('UPDATE webservice_accounts SET api_key = ?, prefijo = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?',
+                 (hash_api_key(new_key), new_key[:12], account_id))
     conn.commit()
     conn.close()
 

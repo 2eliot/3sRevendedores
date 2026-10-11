@@ -18,6 +18,10 @@ Endpoints:
     POST /admin/api/cuentas/<id>                 → actualizar nombre/usuario/webhook/permisos/activo (JSON)
     POST /admin/api/cuentas/<id>/regenerar       → nueva clave (JSON)
     POST /admin/api/cuentas/<id>/eliminar        → eliminar (JSON)
+    GET  /mi-api, /mi-api/docs                   → apartado «API» del usuario: sus claves de Recargas y la documentación
+    GET/POST /mi-api/claves, POST /mi-api/claves/<id>/<accion>  → sus claves (JSON; los POST exigen JSON)
+
+Las claves se guardan solo como huella (sha256) y se muestran una vez, al crearlas o renovarlas.
 """
 import logging
 import re
@@ -67,6 +71,7 @@ def init_permisos():
             return
         columnas = [f"{v[0]} BOOLEAN DEFAULT {'TRUE' if v[1] else 'FALSE'}" for v in PERMISOS.values()]
         columnas.append("tipo TEXT DEFAULT 'recargas'")
+        columnas.append("prefijo TEXT DEFAULT ''")
         for col in columnas:
             conn = get_db_connection()
             try:
@@ -77,7 +82,34 @@ def init_permisos():
             finally:
                 conn.close()
         _reiniciar_claves_anteriores()
+        _cifrar_claves()
         _cols_listas = True
+
+
+def nueva_clave():
+    """(clave para mostrar UNA vez, huella que se guarda, prefijo visible)."""
+    from api_whitelabel import _generate_api_key, hash_api_key
+    clave = _generate_api_key()
+    return clave, hash_api_key(clave), clave[:12]
+
+
+def _cifrar_claves():
+    """Las claves guardadas en claro (versiones anteriores) pasan a guardarse solo como huella."""
+    from api_whitelabel import hash_api_key
+    conn = get_db_connection()
+    try:
+        filas = conn.execute("SELECT id, api_key FROM webservice_accounts WHERE api_key NOT LIKE 'sha256:%'").fetchall()
+        for f in filas:
+            conn.execute('UPDATE webservice_accounts SET api_key = ?, prefijo = ? WHERE id = ?',
+                         (hash_api_key(f['api_key']), (f['api_key'] or '')[:12], f['id']))
+        conn.commit()
+        if filas:
+            logger.info(f'[API] {len(filas)} clave(s) de API ahora se guardan cifradas (solo la huella)')
+    except Exception as e:
+        conn.rollback()
+        logger.error(f'[API] No se pudieron cifrar las claves guardadas: {e}')
+    finally:
+        conn.close()
 
 
 def _reiniciar_claves_anteriores():
@@ -286,17 +318,163 @@ def admin_api_docs():
     if not session.get('is_admin'):
         flash('Acceso denegado. Solo administradores.', 'error')
         return redirect('/auth')
+    return _docs(admin=True)
+
+
+def _docs(admin):
     try:
         juegos = catalogo()
     except Exception as e:
         logger.error(f'[API] Error armando el catálogo para la documentación: {e}')
         juegos = []
-    return render_template('admin_api_docs.html', juegos=juegos, api_url=request.host_url.rstrip('/'))
+    return render_template('api_docs.html', juegos=juegos, api_url=request.host_url.rstrip('/'), admin=admin,
+                           volver='/admin/api' if admin else '/mi-api',
+                           docs_referencias='/admin/antiduplic/docs' if admin else '/referencias/docs')
+
+
+# ---------------------------------------------------------------------------
+# Claves que gestiona el propio usuario: Recargas en /mi-api y Referencias en /referencias.
+# Cada clave se muestra una sola vez (al crearla o renovarla); si se pierde, se crea una nueva.
+# ---------------------------------------------------------------------------
+
+MAX_CLAVES_USUARIO = 5  # claves activas por usuario y por tipo
+_ACCIONES_USUARIO = ('permisos', 'activar', 'desactivar', 'regenerar', 'eliminar')
+
+
+def _activas(conn, uid, tipo):
+    return conn.execute('SELECT COUNT(*) AS n FROM webservice_accounts WHERE usuario_id = ? AND tipo = ? AND activo = TRUE',
+                        (uid, tipo)).fetchone()['n']
+
+
+def claves_de_usuario(conn, uid, tipo):
+    init_permisos()
+    filas = conn.execute('SELECT * FROM webservice_accounts WHERE usuario_id = ? AND tipo = ? ORDER BY id', (uid, tipo)).fetchall()
+    return {
+        'api': [{'id': r['id'], 'nombre': r['nombre'], 'prefijo': r['prefijo'] or 'wsk_', 'activo': bool(r['activo']),
+                 'permisos': {k: cuenta_puede(dict(r), k) for k in permisos_de(tipo)}} for r in filas],
+        'permisos': [(k, PERMISOS[k][2]) for k in permisos_de(tipo)],
+    }
+
+
+def crear_clave_usuario(conn, uid, tipo, nombre, permisos):
+    """(status HTTP, datos). La clave va en datos['clave'] y no se vuelve a mostrar."""
+    init_permisos()
+    if _activas(conn, uid, tipo) >= MAX_CLAVES_USUARIO:
+        return 409, {'error': f'Máximo {MAX_CLAVES_USUARIO} claves activas'}
+    _, clave = crear_cuenta(conn, nombre, uid, tipo, permisos or {})
+    conn.commit()
+    return 200, {'clave': clave, 'mensaje': 'Copia la clave ahora: no se volverá a mostrar'}
+
+
+def accion_clave_usuario(conn, uid, tipo, cuenta_id, accion, permisos=None):
+    """permisos / activar / desactivar / regenerar / eliminar, solo sobre claves del usuario y de ese tipo."""
+    init_permisos()
+    if accion not in _ACCIONES_USUARIO:
+        return 404, {'error': 'Acción no encontrada'}
+    if not conn.execute('SELECT 1 FROM webservice_accounts WHERE id = ? AND usuario_id = ? AND tipo = ?',
+                        (cuenta_id, uid, tipo)).fetchone():
+        return 404, {'error': 'Clave no encontrada'}
+    datos = {}
+    if accion == 'permisos':
+        for k, v in (permisos or {}).items():
+            if k in permisos_de(tipo):
+                conn.execute(f'UPDATE webservice_accounts SET {PERMISOS[k][0]} = ? WHERE id = ? AND usuario_id = ?',
+                             (bool(v), cuenta_id, uid))
+        datos['mensaje'] = 'Permisos guardados'
+    elif accion in ('activar', 'desactivar'):
+        if accion == 'activar' and _activas(conn, uid, tipo) >= MAX_CLAVES_USUARIO:
+            return 409, {'error': f'Máximo {MAX_CLAVES_USUARIO} claves activas'}
+        conn.execute('UPDATE webservice_accounts SET activo = ? WHERE id = ? AND usuario_id = ?', (accion == 'activar', cuenta_id, uid))
+        datos['mensaje'] = 'Clave activada' if accion == 'activar' else 'Clave desactivada'
+    elif accion == 'regenerar':
+        datos['clave'] = regenerar_clave(conn, cuenta_id, uid)
+        datos['mensaje'] = 'Copia la clave nueva ahora: la anterior ya no sirve'
+    elif conn.execute('SELECT 1 FROM api_orders WHERE account_id = ? LIMIT 1', (cuenta_id,)).fetchone():
+        # Si ya hizo recargas se conserva el historial: solo se desactiva
+        conn.execute('UPDATE webservice_accounts SET activo = FALSE WHERE id = ? AND usuario_id = ?', (cuenta_id, uid))
+        datos['mensaje'] = 'La clave tiene recargas en su historial: se desactivó en lugar de borrarse'
+    else:
+        conn.execute('DELETE FROM webservice_accounts WHERE id = ? AND usuario_id = ?', (cuenta_id, uid))
+        datos['mensaje'] = 'Clave eliminada'
+    conn.commit()
+    return 200, datos
+
+
+def _uid_sesion():
+    if 'usuario' not in session or not session.get('user_db_id'):
+        return None
+    return int(session['user_db_id'])
+
+
+def _sesion_json(post=False):
+    uid = _uid_sesion()
+    if uid is None:
+        return None, (jsonify(ok=False, error='Tu sesión expiró. Vuelve a iniciar sesión.'), 401)
+    if post and not request.is_json:
+        return None, (jsonify(ok=False, error='Se espera JSON'), 415)
+    return uid, None
+
+
+@bp.route('/mi-api')
+def mi_api():
+    uid = _uid_sesion()
+    if uid is None:
+        return redirect('/auth')
+    init_permisos()
+    conn = get_db_connection()
+    try:
+        fila = conn.execute('SELECT saldo FROM usuarios WHERE id = ?', (uid,)).fetchone()
+    finally:
+        conn.close()
+    return render_template('mi_api.html', api_url=request.host_url.rstrip('/'), saldo=float(fila['saldo'] or 0) if fila else 0.0,
+                           user_id=session.get('id'), max_claves=MAX_CLAVES_USUARIO)
+
+
+@bp.route('/mi-api/docs')
+def mi_api_docs():
+    if _uid_sesion() is None:
+        return redirect('/auth')
+    return _docs(admin=False)
+
+
+@bp.route('/mi-api/claves', methods=['GET', 'POST'])
+def mi_api_claves():
+    uid, err = _sesion_json(post=request.method == 'POST')
+    if err:
+        return err
+    conn = get_db_connection()
+    try:
+        datos = {}
+        if request.method == 'POST':
+            data = request.get_json(silent=True) or {}
+            nombre = str(data.get('nombre') or '').strip()[:60] or 'Mi sistema'
+            status, datos = crear_clave_usuario(conn, uid, 'recargas', nombre, data.get('permisos') or {})
+            if status != 200:
+                return jsonify(ok=False, **datos), status
+        return jsonify(ok=True, **datos, **claves_de_usuario(conn, uid, 'recargas'))
+    finally:
+        conn.close()
+
+
+@bp.route('/mi-api/claves/<int:cuenta_id>/<accion>', methods=['POST'])
+def mi_api_clave_accion(cuenta_id, accion):
+    uid, err = _sesion_json(post=True)
+    if err:
+        return err
+    conn = get_db_connection()
+    try:
+        status, datos = accion_clave_usuario(conn, uid, 'recargas', cuenta_id, accion,
+                                             (request.get_json(silent=True) or {}).get('permisos'))
+        if status != 200:
+            return jsonify(ok=False, **datos), status
+        return jsonify(ok=True, **datos, **claves_de_usuario(conn, uid, 'recargas'))
+    finally:
+        conn.close()
 
 
 def _cuenta_json(r):
     d = {
-        'id': r['id'], 'nombre': r['nombre'], 'api_key': r['api_key'], 'usuario_id': r['usuario_id'],
+        'id': r['id'], 'nombre': r['nombre'], 'prefijo': r['prefijo'] or 'wsk_', 'usuario_id': r['usuario_id'],
         'usuario': ' '.join(x for x in (r['u_nombre'], r['u_apellido']) if x) or None,
         'usuario_correo': r['u_correo'], 'usuario_saldo': float(r['u_saldo'] or 0),
         'webhook_url': r['webhook_url'] or '', 'activo': bool(r['activo']),
@@ -307,15 +485,27 @@ def _cuenta_json(r):
 
 
 def crear_cuenta(conn, nombre, usuario_id, tipo, permisos, webhook_url=''):
-    """Crea una clave del tipo indicado; los permisos de otro tipo quedan siempre apagados. Devuelve el id."""
-    from api_whitelabel import _generate_api_key
+    """Crea una clave del tipo indicado; los permisos de otro tipo quedan siempre apagados.
+    Devuelve (id, clave): la clave solo existe en esta respuesta, en la base queda su huella."""
+    clave, huella, prefijo = nueva_clave()
     cols = [v[0] for v in PERMISOS.values()]
     vals = [bool(permisos.get(k, v[1])) if v[3] == tipo else False for k, v in PERMISOS.items()]
     cur = conn.execute(
-        f"INSERT INTO webservice_accounts (nombre, api_key, usuario_id, webhook_url, activo, tipo, {', '.join(cols)}) "
-        f"VALUES (?, ?, ?, ?, TRUE, ?, {', '.join('?' for _ in cols)}) RETURNING id",
-        (nombre, _generate_api_key(), usuario_id, webhook_url, tipo, *vals))
-    return cur.fetchone()[0]
+        f"INSERT INTO webservice_accounts (nombre, api_key, prefijo, usuario_id, webhook_url, activo, tipo, {', '.join(cols)}) "
+        f"VALUES (?, ?, ?, ?, ?, TRUE, ?, {', '.join('?' for _ in cols)}) RETURNING id",
+        (nombre, huella, prefijo, usuario_id, webhook_url, tipo, *vals))
+    return cur.fetchone()[0], clave
+
+
+def regenerar_clave(conn, cuenta_id, usuario_id=None):
+    """Nueva clave para una cuenta (la anterior deja de servir). Devuelve la clave o None si no existe/no es suya."""
+    clave, huella, prefijo = nueva_clave()
+    sql = 'UPDATE webservice_accounts SET api_key = ?, prefijo = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?'
+    params = [huella, prefijo, cuenta_id]
+    if usuario_id is not None:
+        sql += ' AND usuario_id = ?'
+        params.append(usuario_id)
+    return clave if conn.execute(sql, params).rowcount == 1 else None
 
 
 def _cargar_cuenta(conn, account_id):
@@ -339,7 +529,6 @@ def admin_api_cuentas():
                 'FROM webservice_accounts ws LEFT JOIN usuarios u ON u.id = ws.usuario_id ORDER BY ws.id').fetchall()
             return jsonify(ok=True, cuentas=[_cuenta_json(r) for r in rows])
 
-        from api_whitelabel import _generate_api_key
         data = request.get_json(silent=True) or {}
         nombre = str(data.get('nombre') or '').strip()[:60]
         try:
@@ -353,10 +542,10 @@ def admin_api_cuentas():
         tipo = data.get('tipo') or 'recargas'
         if tipo not in TIPOS_CLAVE:
             return jsonify(ok=False, error='Tipo de clave no válido'), 400
-        nuevo = crear_cuenta(conn, nombre, usuario_id, tipo, data.get('permisos') or {},
-                             str(data.get('webhook_url') or '').strip()[:300])
+        nuevo, clave = crear_cuenta(conn, nombre, usuario_id, tipo, data.get('permisos') or {},
+                                    str(data.get('webhook_url') or '').strip()[:300])
         conn.commit()
-        return jsonify(ok=True, cuenta=_cuenta_json(_cargar_cuenta(conn, nuevo)))
+        return jsonify(ok=True, clave=clave, cuenta=_cuenta_json(_cargar_cuenta(conn, nuevo)))
     except Exception as e:
         conn.rollback()
         logger.error(f'[API] Error en cuentas: {e}')
@@ -424,16 +613,16 @@ def admin_api_cuenta_regenerar(account_id):
     err = _solo_admin_json()
     if err:
         return err
-    from api_whitelabel import _generate_api_key
     conn = get_db_connection()
     try:
-        cur = conn.execute('UPDATE webservice_accounts SET api_key = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?',
-                           (_generate_api_key(), account_id))
-        if cur.rowcount != 1:
-            conn.rollback()
+        actual = _cargar_cuenta(conn, account_id)
+        if not actual:
             return jsonify(ok=False, error='Cuenta no encontrada'), 404
+        if (actual['tipo'] or 'recargas') == 'antigua':
+            return jsonify(ok=False, error='Las claves anteriores no se pueden renovar: crea una nueva'), 409
+        clave = regenerar_clave(conn, account_id)
         conn.commit()
-        return jsonify(ok=True, cuenta=_cuenta_json(_cargar_cuenta(conn, account_id)))
+        return jsonify(ok=True, clave=clave, cuenta=_cuenta_json(_cargar_cuenta(conn, account_id)))
     finally:
         conn.close()
 

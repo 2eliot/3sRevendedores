@@ -17,6 +17,7 @@ os.environ['ANTIDUPLIC_USUARIO_DUENO'] = '1'
 from flask import Flask  # noqa: E402
 
 import antiduplic as ad  # noqa: E402
+from api_whitelabel import hash_api_key  # noqa: E402
 from pg_compat import get_db_connection  # noqa: E402
 
 AUTH = {'Authorization': 'Bearer token-de-prueba'}
@@ -47,9 +48,9 @@ def base_inicial():
     conn = get_db_connection()
     conn.execute('DELETE FROM webservice_accounts')
     conn.execute("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, tipo, perm_verificar_pago) "
-                 "VALUES ('CRM', 'wsk_crm_con_permiso', 1, TRUE, 'referencias', TRUE)")
+                 "VALUES ('CRM', ?, 1, TRUE, 'referencias', TRUE)", (hash_api_key('wsk_crm_con_permiso'),))
     conn.execute("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, tipo, perm_verificar_pago) "
-                 "VALUES ('Otra', 'wsk_crm_sin_permiso', 1, TRUE, 'referencias', FALSE)")
+                 "VALUES ('Otra', ?, 1, TRUE, 'referencias', FALSE)", (hash_api_key('wsk_crm_sin_permiso'),))
     conn.commit()
     conn.close()
 

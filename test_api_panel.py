@@ -45,11 +45,19 @@ def crear_cuenta(clave, **perms):
     cols = ['perm_recargas', 'perm_verificar_id', 'perm_verificar_pago']
     vals = [perms.get(c[5:], False) for c in cols]
     cur = conn.execute(f"INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, {', '.join(cols)}) "
-                       "VALUES ('CRM', ?, 1, TRUE, ?, ?, ?) RETURNING id", (clave, *vals))
+                       "VALUES ('CRM', ?, 1, TRUE, ?, ?, ?) RETURNING id", (api_whitelabel.hash_api_key(clave), *vals))
     aid = cur.fetchone()[0]
     conn.commit()
     conn.close()
     return aid
+
+
+def q1(sql, params=()):
+    conn = get_db_connection()
+    try:
+        return conn.execute(sql, params).fetchone()[0]
+    finally:
+        conn.close()
 
 
 def saldo():
@@ -143,16 +151,27 @@ class ApiPanelTest(unittest.TestCase):
         d = self.c.post('/admin/api/cuentas', json={'nombre': 'CRM', 'usuario_id': 1,
                                                      'permisos': {'recargas': True, 'verificar_pago': True}}).get_json()
         self.assertTrue(d['ok'], d)
-        cta = d['cuenta']
-        self.assertTrue(cta['api_key'].startswith('wsk_'))
+        cta, primera = d['cuenta'], d['clave']
+        self.assertTrue(primera.startswith('wsk_'))
+        self.assertEqual(cta['prefijo'], d['clave'][:12])
+        self.assertNotIn('api_key', cta)  # la clave completa solo viene una vez, fuera de la cuenta
+        guardada = q1("SELECT api_key FROM webservice_accounts WHERE id = ?", (cta['id'],))
+        self.assertEqual(guardada, api_whitelabel.hash_api_key(d['clave']))  # en la base solo la huella
+        self.assertEqual(self.c.get('/api/v1/balance', headers={'X-API-Key': d['clave']}).status_code, 200)
+        self.assertNotIn(d['clave'], self.c.get('/admin/api/cuentas').get_data(as_text=True))
         self.assertEqual(cta['tipo'], 'recargas')
         self.assertEqual(cta['permisos'], {'recargas': True, 'verificar_id': False})  # verificar_pago no es de Recargas
 
         d = self.c.post(f"/admin/api/cuentas/{cta['id']}", json={'permisos': {'verificar_id': True, 'recargas': False}}).get_json()
         self.assertEqual(d['cuenta']['permisos'], {'recargas': False, 'verificar_id': True})
 
-        d = self.c.post(f"/admin/api/cuentas/{cta['id']}/regenerar", json={}).get_json()
-        self.assertNotEqual(d['cuenta']['api_key'], cta['api_key'])
+        vieja = self.c.get('/admin/api/cuentas').get_json()['cuentas'][0]
+        d2 = self.c.post(f"/admin/api/cuentas/{cta['id']}/regenerar", json={}).get_json()
+        self.assertTrue(d2['clave'].startswith('wsk_'))
+        self.assertNotEqual(d2['clave'], primera)
+        self.assertNotEqual(vieja['prefijo'], d2['cuenta']['prefijo'])
+        self.assertEqual(self.c.get('/api/v1/balance', headers={'X-API-Key': primera}).status_code, 401)  # la anterior ya no sirve
+        self.assertEqual(self.c.get('/api/v1/balance', headers={'X-API-Key': d2['clave']}).status_code, 200)
 
         d = self.c.post(f"/admin/api/cuentas/{cta['id']}/eliminar", json={}).get_json()
         self.assertTrue(d['ok'])

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <style>
+    .rf-wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 64px; }
+    .rf-top { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+    .rf-wrap h1 { margin: 8px 0 4px; font-size: 26px; font-weight: 600; }
+    .rf-lead { margin: 0 0 14px; color: var(--rc-ash); font-size: 14px; line-height: 1.5; }
+    .rf-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .rf-card h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+    .rf-card > p { margin: 0 0 10px; }
+    .rf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+    .rf-kpi { background: var(--rc-recess); border: 1px solid var(--rc-border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+    .rf-kpi span { display: block; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; }
+    .rf-kpi strong { display: block; margin-top: 4px; font-size: 19px; font-family: var(--rc-mono); font-weight: 500; overflow-wrap: anywhere; }
+    .rf-kpi strong.mi-url { font-size: 14px; }
+    .rf-kpi strong .money { font-size: inherit !important; color: inherit !important; font-family: inherit; }
+    .rf-kpi small { display: block; margin-top: 2px; color: var(--rc-ash); font-size: 12px; }
+    .rf-ok { color: var(--rc-green); } .rf-warn { color: var(--rc-yellow); } .rf-bad { color: var(--rc-coral); }
+    .rf-muted { color: var(--rc-ash); } .rf-small { font-size: 12.5px; } .rf-mono { font-family: var(--rc-mono); }
+    .rf-muted a { color: var(--rc-hl); }
+    .rf-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    .rf-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--rc-ash); flex: 1 1 150px; }
+    .rf-form input { min-height: 40px; padding: 0 10px; border-radius: 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
+    .rf-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .rf-btn:hover { background: var(--rc-slate); }
+    .rf-main, .rf-form .rf-main { background: var(--rc-mist) !important; color: var(--rc-card) !important; border: 0; opacity: 1 !important; }
+    .rf-danger { color: var(--rc-coral); }
+    .rf-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .rf-badge.disponible { background: var(--rc-green-bg); color: var(--rc-green); }
+    .rf-badge.usado { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
+    .rf-empty { padding: 16px; text-align: center; color: var(--rc-ash); font-size: 13px; }
+    .rf-clave { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-top: 10px; background: var(--rc-recess); display: flex; flex-direction: column; gap: 8px; }
+    .rf-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .rf-perms { display: flex; flex-wrap: wrap; gap: 6px 16px; flex-basis: 100%; }
+    .rf-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; font-size: 13.5px !important; color: var(--rc-text) !important; flex: 0 0 auto !important; }
+    .rf-check input { width: 18px !important; height: 18px; min-height: 0 !important; }
+    .rf-nueva-clave { border: 1px solid var(--rc-green); border-radius: 14px; padding: 14px; margin-bottom: 14px; background: var(--rc-green-bg); display: flex; flex-direction: column; gap: 8px; }
+    .rf-nueva-clave[hidden] { display: none; }
+    .rf-nueva-clave code { font-family: var(--rc-mono); font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--rc-card); overflow-wrap: anywhere; }
+    .rf-msg { min-height: 18px; font-size: 13px; margin: 8px 0 0; }
+    @media (max-width: 640px) { .rf-wrap h1 { font-size: 22px; } .rf-kpi strong { font-size: 16px; } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="hamburger" onclick="window.location.href='/'">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M19 12H5m7-7l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="icon-container">
+      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="Mi Dashboard">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+      </div>
+      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+
+      <!-- Referencias: pagos del banco y verificación de referencias del usuario -->
+      <div class="dashboard-icon-container ref-icon-container" onclick="window.location.href='/referencias'" title="Referencias" role="link" aria-label="Referencias">
+        <svg class="icon{% if request.path.startswith('/referencias') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 11.5l2 2 4-4"/></svg>
+      </div>
+
+      <!-- API: claves de Recargas del usuario y documentación -->
+      <div class="dashboard-icon-container api-icon-container" onclick="window.location.href='/mi-api'" title="API" role="link" aria-label="API">
+        <svg class="icon{% if request.path.startswith('/mi-api') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M13.5 4.5l-3 15"/></svg>
+      </div>
+
+      <div class="user-icon" onclick="toggleUserBox()">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <div id="user-box" class="user-box">
+          <div class="ub-head">
+            <span class="ub-avatar" aria-hidden="true">{{ (session.get('usuario') or '?')[:1]|upper }}</span>
+            <span class="ub-who"><span class="ub-label">Sesión iniciada</span><span class="ub-mail">{{ session.get('usuario', '---') }}</span></span>
+          </div>
+          <label class="price-toggle" onclick="event.stopPropagation()">
+            <span class="price-toggle-text">Ocultar precios<small>Para capturas a tus clientes</small></span>
+            <input type="checkbox" class="price-toggle-input" role="switch" aria-checked="false">
+            <span class="price-toggle-switch" aria-hidden="true"></span>
+          </label>
+          <button type="button" class="ub-theme" data-open-theme>
+            <span class="ub-theme-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></span>
+            <span class="ub-theme-text">Tema<small class="ub-theme-now">Oscuro · Predeterminado</small></span>
+            <svg class="ub-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          {% if session.get('is_admin') %}
+          <a href="/admin" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Panel Admin</a>
+          {% endif %}
+          {% if not session.get('is_admin') %}
+          <a href="https://wa.me/17868522128?text=Hola%2C%20quiero%20recargar%20saldo.%20Mi%20ID%20es%20{{ user_id }}" target="_blank" rel="noopener noreferrer" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg>Contactar al admin</a>
+          {% endif %}
+          <a href="/logout" class="logout-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="rf-wrap">
+    <div class="rf-top">
+      <h1>API</h1>
+      <a class="rf-btn" href="/mi-api/docs">📄 Documentación</a>
+    </div>
+    <p class="rf-lead">Conecta tu sistema (por ejemplo tu CRM) para hacer recargas automáticas de los juegos de la web. Cada recarga se cobra de tu saldo, igual que si la hicieras aquí.</p>
+
+    <div class="rf-nueva-clave" id="rf-nueva-clave" hidden>
+      <strong>Tu clave nueva</strong>
+      <code id="rf-nueva-clave-txt"></code>
+      <div class="rf-row"><button type="button" class="rf-btn rf-main" id="rf-copiar-nueva">Copiar</button>
+        <span class="rf-small">Cópiala ahora y ponla en tu sistema: <b>no se volverá a mostrar</b>. Si la pierdes, crea una nueva.</span></div>
+    </div>
+
+    <div class="rf-card">
+      <div class="rf-kpis">
+        <div class="rf-kpi"><span>Tu saldo</span><strong>${{ "%.2f"|format(saldo) }}</strong><small>Se descuenta en cada recarga</small></div>
+        <div class="rf-kpi"><span>Dirección de la API</span><strong class="mi-url">{{ api_url }}</strong><small>La clave va en la cabecera <span class="rf-mono">X-API-Key</span></small></div>
+        <div class="rf-kpi"><span>Claves activas</span><strong id="k-activas">—</strong><small>Máximo {{ max_claves }}</small></div>
+      </div>
+    </div>
+
+    <div class="rf-card">
+      <h2>Claves de Recargas <span class="rf-muted rf-small">(para que tu sistema haga recargas y verifique IDs de jugador)</span></h2>
+      <form id="mi-nueva" class="rf-form">
+        <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: Mi CRM"></label>
+        <div class="rf-perms" id="mi-perms"></div>
+        <button type="submit" class="rf-btn rf-main">Crear clave</button>
+      </form>
+      <p class="rf-muted rf-small" style="margin-top:10px;">Cada clave se muestra <b>una sola vez</b>. Si la pierdes o crees que alguien la vio, pulsa «Nueva clave»: la anterior deja de funcionar al instante. La clave para verificar pagos del banco va aparte, en <a href="/referencias#claves">Referencias → Claves</a>.</p>
+      <p class="rf-msg" id="mi-msg"></p>
+      <div id="mi-claves"><div class="rf-empty">Cargando…</div></div>
+    </div>
+
+    <div class="rf-card">
+      <h2>Documentación</h2>
+      <p class="rf-muted rf-small">Cómo hacer recargas, verificar IDs, consultar el estado de una orden y tu saldo, con el catálogo de juegos y paquetes en vivo.</p>
+      <div class="rf-row">
+        <a class="rf-btn rf-main" href="/mi-api/docs">Ver documentación</a>
+        <a class="rf-btn" href="/mi-api/docs#descargar">⬇ Descargar PDF</a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function toggleUserBox() { document.getElementById('user-box').classList.toggle('visible'); }
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
+    function msg(ok, t) { var e = document.getElementById('mi-msg'); e.className = 'rf-msg ' + (ok ? 'rf-ok' : 'rf-bad'); e.textContent = t; }
+    async function pedir(url, body) {
+      var r = await fetch(url, body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+      var d = {}; try { d = await r.json(); } catch (e) {}
+      if (r.status === 401) { location.href = '/auth'; }
+      return d;
+    }
+    function mostrarNueva(clave) {
+      var box = document.getElementById('rf-nueva-clave');
+      box.hidden = !clave; document.getElementById('rf-nueva-clave-txt').textContent = clave || '';
+      document.getElementById('rf-copiar-nueva').textContent = 'Copiar';
+      if (clave) box.scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
+
+    var permisos = [];
+    function pintar(d) {
+      permisos = d.permisos || permisos;
+      var form = document.getElementById('mi-perms');
+      if (!form.children.length) {
+        form.innerHTML = permisos.map(function (p) {
+          return '<label class="rf-check"><input type="checkbox" name="perm_' + p[0] + '"' + (p[0] === 'recargas' ? ' checked' : '') + '> ' + esc(p[1]) + '</label>';
+        }).join('');
+      }
+      var claves = d.api || [];
+      document.getElementById('k-activas').textContent = claves.filter(function (a) { return a.activo; }).length;
+      document.getElementById('mi-claves').innerHTML = claves.length ? claves.map(function (a) {
+        return '<div class="rf-clave"><div class="rf-row"><b>' + esc(a.nombre) + '</b><span class="rf-badge ' + (a.activo ? 'disponible">Activa' : 'usado">Desactivada') + '</span></div>' +
+          '<div class="rf-muted rf-small">Clave: <span class="rf-mono">' + esc(a.prefijo) + '…</span> · se mostró una sola vez; si la perdiste, pulsa «Nueva clave»</div>' +
+          '<div class="rf-perms">' + permisos.map(function (p) {
+            return '<label class="rf-check"><input type="checkbox" data-perm="' + p[0] + '" data-id="' + a.id + '"' + (a.permisos[p[0]] ? ' checked' : '') + '> ' + esc(p[1]) + '</label>';
+          }).join('') + '</div>' +
+          '<div class="rf-row"><button class="rf-btn" data-id="' + a.id + '" data-accion="' + (a.activo ? 'desactivar' : 'activar') + '">' + (a.activo ? 'Desactivar' : 'Activar') + '</button>' +
+          '<button class="rf-btn" data-id="' + a.id + '" data-accion="regenerar">Nueva clave</button>' +
+          '<button class="rf-btn rf-danger" data-id="' + a.id + '" data-accion="eliminar">Eliminar</button></div></div>';
+      }).join('') : '<div class="rf-empty">Todavía no tienes claves. Crea una para conectar tu sistema.</div>';
+    }
+    async function cargar() { pintar(await pedir('/mi-api/claves')); }
+
+    document.getElementById('mi-nueva').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target, perms = {};
+      permisos.forEach(function (p) { perms[p[0]] = f.querySelector('[name="perm_' + p[0] + '"]').checked; });
+      var d = await pedir('/mi-api/claves', {nombre: f.nombre.value, permisos: perms});
+      msg(!!d.ok, d.mensaje || d.error || 'Error');
+      if (d.ok) { f.nombre.value = ''; mostrarNueva(d.clave); pintar(d); }
+    });
+    document.getElementById('rf-copiar-nueva').addEventListener('click', async function () {
+      try { await navigator.clipboard.writeText(document.getElementById('rf-nueva-clave-txt').textContent); this.textContent = 'Copiada ✓'; }
+      catch (x) { this.textContent = 'Cópiala a mano'; }
+    });
+    document.addEventListener('change', async function (e) {
+      var c = e.target.closest('[data-perm][data-id]');
+      if (!c) return;
+      var body = {permisos: {}}; body.permisos[c.dataset.perm] = c.checked;
+      var d = await pedir('/mi-api/claves/' + c.dataset.id + '/permisos', body);
+      msg(!!d.ok, d.ok ? 'Permiso guardado' : (d.error || 'Error'));
+      if (!d.ok) c.checked = !c.checked;
+    });
+    document.addEventListener('click', async function (e) {
+      var b = e.target.closest('button[data-accion]');
+      if (!b) return;
+      var txt = {regenerar: '¿Crear una clave nueva? La actual deja de funcionar al instante y tendrás que cambiarla en tu sistema.',
+                 eliminar: '¿Eliminar esta clave? Dejará de funcionar.'}[b.dataset.accion];
+      if (txt && !confirm(txt)) return;
+      var d = await pedir('/mi-api/claves/' + b.dataset.id + '/' + b.dataset.accion, {});
+      msg(!!d.ok, d.mensaje || d.error || 'Error');
+      if (d.ok) { if (d.clave) mostrarNueva(d.clave); pintar(d); }
+    });
+    cargar();
+  </script>
+</body>
+</html>

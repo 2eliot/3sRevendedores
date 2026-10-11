@@ -114,6 +114,11 @@
         <svg class="icon{% if request.path.startswith('/referencias') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 11.5l2 2 4-4"/></svg>
       </div>
 
+      <!-- API: claves de Recargas del usuario y documentación -->
+      <div class="dashboard-icon-container api-icon-container" onclick="window.location.href='/mi-api'" title="API" role="link" aria-label="API">
+        <svg class="icon{% if request.path.startswith('/mi-api') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M13.5 4.5l-3 15"/></svg>
+      </div>
+
       <div class="user-icon" onclick="toggleUserBox()">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">
@@ -244,7 +249,7 @@
         <strong>Tu clave nueva</strong>
         <code id="rf-nueva-clave-txt"></code>
         <div class="rf-row"><button type="button" class="rf-btn rf-main" id="rf-copiar-nueva">Copiar</button>
-          <span class="rf-small">Cópiala ahora y guárdala en tu bot: <b>no se volverá a mostrar</b>.</span></div>
+          <span class="rf-small">Cópiala ahora y guárdala donde la vayas a usar: <b>no se volverá a mostrar</b>. Si la pierdes, crea una nueva.</span></div>
       </div>
 
       <div class="rf-card">
@@ -254,7 +259,7 @@
           <div class="rf-perms" id="rf-api-perms"></div>
           <button type="submit" class="rf-btn rf-main">Crear clave de API</button>
         </form>
-        <p class="rf-muted rf-small">Estas claves solo sirven para Referencias. Las claves para hacer recargas las da el administrador por separado.</p>
+        <p class="rf-muted rf-small">Estas claves solo sirven para Referencias. Las claves para hacer recargas están en el apartado <a href="/mi-api" style="color:var(--rc-hl);">API</a> (icono de arriba).</p>
         <p class="rf-msg" id="rf-api-msg"></p>
         <div id="rf-apis"></div>
       </div>
@@ -451,6 +456,7 @@
     function mostrarNueva(clave) {
       var box = document.getElementById('rf-nueva-clave');
       box.hidden = !clave; document.getElementById('rf-nueva-clave-txt').textContent = clave || '';
+      document.getElementById('rf-copiar-nueva').textContent = 'Copiar';
       if (clave) box.scrollIntoView({behavior: 'smooth', block: 'center'});
     }
     async function cargarClaves() {
@@ -476,9 +482,7 @@
       document.getElementById('rf-lector-n').textContent = nl ? '· ' + nl + (nl === 1 ? ' clave' : ' claves') : '';
       document.getElementById('rf-apis').innerHTML = (d.api || []).length ? d.api.map(function (a) {
         return '<div class="rf-clave"><div class="rf-row"><b>' + esc(a.nombre) + '</b><span class="rf-badge ' + (a.activo ? 'disponible">Activa' : 'usado">Desactivada') + '</span></div>' +
-          '<div class="rf-row"><code class="rf-key" data-key="' + a.id + '">' + '•'.repeat(24) + '</code>' +
-          '<button class="rf-btn" data-ver="' + a.id + '" data-k="' + esc(a.api_key) + '">Mostrar</button>' +
-          '<button class="rf-btn" data-copiar="' + esc(a.api_key) + '">Copiar</button></div>' +
+          '<div class="rf-muted rf-small">Clave: <span class="rf-mono">' + esc(a.prefijo) + '…</span> · se mostró una sola vez; si la perdiste, pulsa «Nueva clave»</div>' +
           '<div class="rf-perms">' + permisos.map(function (p) {
             return '<label class="rf-check"><input type="checkbox" data-perm="' + p[0] + '" data-api="' + a.id + '"' + (a.permisos[p[0]] ? ' checked' : '') + '> ' + esc(p[1]) + '</label>';
           }).join('') + '</div>' +
@@ -501,7 +505,7 @@
       permisos.forEach(function (p) { perms[p[0]] = f.querySelector('[name="perm_' + p[0] + '"]').checked; });
       var d = await post('/referencias/claves-api', {nombre: f.nombre.value, permisos: perms});
       msg('rf-api-msg', !!d.ok, d.mensaje || 'Error');
-      if (d.ok) { f.nombre.value = ''; pintarClaves(d); }
+      if (d.ok) { f.nombre.value = ''; mostrarNueva(d.clave); pintarClaves(d); }
     });
     document.getElementById('rf-copiar-nueva').addEventListener('click', async function () {
       try { await navigator.clipboard.writeText(document.getElementById('rf-nueva-clave-txt').textContent); this.textContent = 'Copiada ✓'; }
@@ -542,14 +546,7 @@
         if (txt && !confirm(txt)) return;
         var d5 = await post('/referencias/claves-api/' + b.dataset.api + '/' + b.dataset.accion);
         msg('rf-api-msg', !!d5.ok, d5.mensaje || 'Error');
-        if (d5.ok) pintarClaves(d5);
-      } else if (b.dataset.ver) {
-        var code = document.querySelector('[data-key="' + b.dataset.ver + '"]');
-        var visible = code.textContent === b.dataset.k;
-        code.textContent = visible ? '•'.repeat(24) : b.dataset.k; b.textContent = visible ? 'Mostrar' : 'Ocultar';
-      } else if (b.dataset.copiar) {
-        try { await navigator.clipboard.writeText(b.dataset.copiar); b.textContent = 'Copiada ✓'; } catch (x) { b.textContent = 'No se pudo'; }
-        setTimeout(function () { b.textContent = 'Copiar'; }, 1500);
+        if (d5.ok) { if (d5.clave) mostrarNueva(d5.clave); pintarClaves(d5); }
       }
     });
 

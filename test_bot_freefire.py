@@ -18,6 +18,7 @@ os.environ['REVENDEDORES_BASE_URL'] = 'http://proveedor.test'
 os.environ['REVENDEDORES_API_KEY'] = 'clave-proveedor'
 
 import app as webapp  # noqa: E402
+from api_whitelabel import hash_api_key  # noqa: E402
 import bot_freefire  # noqa: E402
 import dynamic_games  # noqa: E402
 from pg_compat import get_db_connection  # noqa: E402
@@ -79,7 +80,7 @@ class BotFreeFireTest(unittest.TestCase):
         import api_panel
         api_panel.init_permisos()
         q("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, perm_recargas, perm_verificar_id) "
-          "VALUES ('CRM', 'wsk_test', ?, TRUE, TRUE, TRUE)", (cls.uid,))
+          "VALUES ('CRM', ?, ?, TRUE, TRUE, TRUE)", (hash_api_key('wsk_test'), cls.uid))
 
     def setUp(self):
         self.prov, self.vps = Proveedor(), VPS()

@@ -178,8 +178,7 @@ def api_descartar(revision_id):
 # Pantalla del usuario: /referencias (sesión; solo sus datos)
 # ---------------------------------------------------------------------------
 
-MAX_CLAVES_API = 5
-MAX_CLAVES_LECTOR = 10
+MAX_CLAVES_LECTOR = 10  # las claves de API tienen su límite en api_panel.MAX_CLAVES_USUARIO
 
 
 def _uid():
@@ -327,19 +326,13 @@ def referencias_cuenta_editar(cuenta_id):
 # ---------- Claves (lector y API) ----------
 
 def _claves(conn, uid):
-    from api_panel import PERMISOS, cuenta_puede, init_permisos, permisos_de
-    init_permisos()
+    from api_panel import claves_de_usuario
     lector = [{'id': r['id'], 'nombre': r['nombre'], 'cuenta_id': r['cuenta_banco_id'], 'cuenta': r['alias'],
                'prefijo': r['prefijo_visible'], 'activo': bool(r['activo']), 'ultimo_uso': r['ultimo_uso'],
                'creado_en': r['creado_en']}
               for r in conn.execute('SELECT k.*, c.alias FROM claves_lector k LEFT JOIN cuentas_banco c ON c.id = k.cuenta_banco_id '
                                     'WHERE k.usuario_id = ? ORDER BY k.id', (uid,)).fetchall()]
-    api = [{'id': r['id'], 'nombre': r['nombre'], 'api_key': r['api_key'], 'activo': bool(r['activo']),
-            'permisos': {k: cuenta_puede(dict(r), k) for k in permisos_de('referencias')}}
-           for r in conn.execute("SELECT * FROM webservice_accounts WHERE usuario_id = ? AND tipo = 'referencias' ORDER BY id",
-                                 (uid,)).fetchall()]
-    etiquetas = [(k, PERMISOS[k][2]) for k in permisos_de('referencias')]
-    return {'lector': lector, 'api': api, 'permisos': etiquetas}
+    return {'lector': lector, **claves_de_usuario(conn, uid, 'referencias')}
 
 
 @bp.route('/referencias/claves')
@@ -408,23 +401,19 @@ def referencias_lector_accion(clave_id, accion):
 
 @bp.route('/referencias/claves-api', methods=['POST'])
 def referencias_api_crear():
-    """El usuario crea sus claves de API de Referencias (nunca de Recargas)."""
+    """El usuario crea sus claves de API de Referencias (las de Recargas están en /mi-api). Se muestra una sola vez."""
     uid, err = _sesion_json(post=True)
     if err:
         return err
-    from api_panel import crear_cuenta, init_permisos
-    init_permisos()
+    from api_panel import crear_clave_usuario
     data = request.get_json(silent=True) or {}
     nombre = str(data.get('nombre') or '').strip()[:60] or 'Mi sistema'
     conn = get_db_connection()
     try:
-        n = conn.execute("SELECT COUNT(*) AS n FROM webservice_accounts WHERE usuario_id = ? AND tipo = 'referencias' AND activo = TRUE",
-                         (uid,)).fetchone()['n']
-        if n >= MAX_CLAVES_API:
-            return _err(409, f'Máximo {MAX_CLAVES_API} claves de API activas')
-        crear_cuenta(conn, nombre, uid, 'referencias', data.get('permisos') or {})
-        conn.commit()
-        return jsonify(ok=True, mensaje='Clave creada', **_claves(conn, uid))
+        status, datos = crear_clave_usuario(conn, uid, 'referencias', nombre, data.get('permisos') or {})
+        if status != 200:
+            return _err(status, datos['error'])
+        return jsonify(ok=True, **datos, **_claves(conn, uid))
     finally:
         conn.close()
 
@@ -434,27 +423,13 @@ def referencias_api_accion(cuenta_id, accion):
     uid, err = _sesion_json(post=True)
     if err:
         return err
-    from api_panel import PERMISOS, permisos_de
-    from api_whitelabel import _generate_api_key
-    if accion not in ('permisos', 'activar', 'desactivar', 'regenerar', 'eliminar'):
-        return _err(404, 'Acción no encontrada')
+    from api_panel import accion_clave_usuario
     conn = get_db_connection()
     try:
-        if not conn.execute("SELECT 1 FROM webservice_accounts WHERE id = ? AND usuario_id = ? AND tipo = 'referencias'",
-                            (cuenta_id, uid)).fetchone():
-            return _err(404, 'Clave no encontrada')
-        if accion == 'permisos':
-            for k, v in ((request.get_json(silent=True) or {}).get('permisos') or {}).items():
-                if k in permisos_de('referencias'):
-                    conn.execute(f'UPDATE webservice_accounts SET {PERMISOS[k][0]} = ? WHERE id = ? AND usuario_id = ?',
-                                 (bool(v), cuenta_id, uid))
-        elif accion in ('activar', 'desactivar'):
-            conn.execute('UPDATE webservice_accounts SET activo = ? WHERE id = ? AND usuario_id = ?', (accion == 'activar', cuenta_id, uid))
-        elif accion == 'regenerar':
-            conn.execute('UPDATE webservice_accounts SET api_key = ? WHERE id = ? AND usuario_id = ?', (_generate_api_key(), cuenta_id, uid))
-        else:
-            conn.execute('DELETE FROM webservice_accounts WHERE id = ? AND usuario_id = ?', (cuenta_id, uid))
-        conn.commit()
-        return jsonify(ok=True, mensaje='Guardado', **_claves(conn, uid))
+        status, datos = accion_clave_usuario(conn, uid, 'referencias', cuenta_id, accion,
+                                             (request.get_json(silent=True) or {}).get('permisos'))
+        if status != 200:
+            return _err(status, datos['error'])
+        return jsonify(ok=True, **datos, **_claves(conn, uid))
     finally:
         conn.close()

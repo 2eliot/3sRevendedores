@@ -17,6 +17,7 @@ os.environ['PAGOS_BANCO_TOKEN'] = 'token-antiguo'
 import app as webapp  # noqa: E402
 import antiduplic as ad  # noqa: E402
 import api_panel  # noqa: E402
+import api_whitelabel  # noqa: E402
 from pg_compat import get_db_connection  # noqa: E402
 
 
@@ -48,7 +49,7 @@ class ReferenciasTest(unittest.TestCase):
         ad.init_tablas()
 
     def setUp(self):
-        for t in ('usos_referencia', 'revisiones_pago', 'pagos_banco', 'claves_lector', 'cuentas_banco', 'webservice_accounts'):
+        for t in ('usos_referencia', 'revisiones_pago', 'pagos_banco', 'claves_lector', 'cuentas_banco', 'api_orders', 'webservice_accounts'):
             q(f'DELETE FROM {t}')
         api_panel._limites.clear()
         self.c = self.app.test_client()
@@ -69,9 +70,9 @@ class ReferenciasTest(unittest.TestCase):
     def clave_api(self, uid, tipo='referencias', **perms):
         conn = get_db_connection()
         try:
-            aid = api_panel.crear_cuenta(conn, f'Clave {uid}', uid, tipo, perms)
+            _, clave = api_panel.crear_cuenta(conn, f'Clave {uid}', uid, tipo, perms)
             conn.commit()
-            return conn.execute('SELECT api_key FROM webservice_accounts WHERE id = ?', (aid,)).fetchone()['api_key']
+            return clave
         finally:
             conn.close()
 
@@ -81,6 +82,10 @@ class ReferenciasTest(unittest.TestCase):
     def verificar(self, clave, ref, monto, orden):
         return self.c.post('/api/verificar-pago', headers={'X-API-Key': clave},
                            json={'referencia': ref, 'monto': monto, 'orden_id': orden}).get_json()
+
+    def verificar_http(self, clave, ref, monto, orden):
+        return self.c.post('/api/verificar-pago', headers={'X-API-Key': clave},
+                           json={'referencia': ref, 'monto': monto, 'orden_id': orden}).status_code
 
     # ---------- envío de movimientos ----------
     def test_token_antiguo_deja_los_pagos_al_dueno(self):
@@ -214,7 +219,76 @@ class ReferenciasTest(unittest.TestCase):
         d = self.c.post('/referencias/claves-api', json={'nombre': 'CRM', 'permisos': {'verificar_pago': True, 'recargas': True}}).get_json()
         fila = q("SELECT tipo, perm_recargas, perm_verificar_pago FROM webservice_accounts WHERE usuario_id = ?", (self.B,))[0]
         self.assertEqual((fila['tipo'], bool(fila['perm_recargas']), bool(fila['perm_verificar_pago'])), ('referencias', False, True))
+        # la clave de API también se muestra una sola vez y funciona
+        self.assertTrue(d['clave'].startswith('wsk_'))
+        self.assertNotIn(d['clave'], self.c.get('/referencias/claves').get_data(as_text=True))
+        self.assertEqual(self.verificar(d['clave'], '1212121212', 9, 'ORD-UNA-VEZ')['codigo'], 'aprobado')
+        d2 = self.c.post(f"/referencias/claves-api/{d['api'][0]['id']}/regenerar", json={}).get_json()
+        self.assertNotEqual(d2['clave'], d['clave'])
+        self.assertEqual(self.verificar_http(d['clave'], '1212121212', 9, 'ORD-UNA-VEZ'), 401)  # la anterior ya no sirve
         self.assertEqual(self.c.post('/referencias/cuentas', data='alias=x').status_code, 415)  # solo JSON
+
+    # ---------- apartado API del usuario (claves de Recargas) ----------
+    def test_mi_api_claves_de_recargas(self):
+        self.assertEqual(self.c.get('/mi-api').status_code, 302)  # sin sesión
+        self.assertEqual(self.c.get('/mi-api/claves').status_code, 401)
+        self.entrar(self.B, 'beto@test.local')
+        self.assertIn('api-icon-container', self.c.get('/referencias').get_data(as_text=True))
+        self.assertIn('Claves de Recargas', self.c.get('/mi-api').get_data(as_text=True))
+        self.assertEqual(self.c.post('/mi-api/claves', data='nombre=x').status_code, 415)  # solo JSON
+
+        d = self.c.post('/mi-api/claves', json={'nombre': 'Mi CRM', 'permisos': {'recargas': True, 'verificar_id': True,
+                                                                                  'verificar_pago': True}}).get_json()
+        self.assertTrue(d['ok'], d)
+        clave = d['clave']
+        self.assertTrue(clave.startswith('wsk_'))
+        self.assertEqual(d['api'][0]['prefijo'], clave[:12])
+        self.assertNotIn(clave, self.c.get('/mi-api/claves').get_data(as_text=True))  # no se vuelve a mostrar
+        fila = q('SELECT api_key, tipo, perm_recargas, perm_verificar_id, perm_verificar_pago, usuario_id FROM webservice_accounts WHERE id = ?',
+                 (d['api'][0]['id'],))[0]
+        self.assertTrue(fila['api_key'].startswith('sha256:'))
+        self.assertEqual((fila['tipo'], fila['usuario_id'], bool(fila['perm_recargas']), bool(fila['perm_verificar_id']),
+                          bool(fila['perm_verificar_pago'])), ('recargas', self.B, True, True, False))
+
+        # sirve para Recargas, con el saldo de B, y no para Referencias
+        r = self.c.get('/api/v1/balance', headers={'X-API-Key': clave}).get_json()
+        self.assertEqual(r['user']['user_id'], self.B)
+        self.assertNotEqual(self.verificar_http(clave, '1212121212', 9, 'ORD-R'), 200)
+
+        # nueva clave: la anterior deja de servir
+        cid = d['api'][0]['id']
+        d2 = self.c.post(f'/mi-api/claves/{cid}/regenerar', json={}).get_json()
+        self.assertEqual(self.c.get('/api/v1/balance', headers={'X-API-Key': clave}).status_code, 401)
+        self.assertEqual(self.c.get('/api/v1/balance', headers={'X-API-Key': d2['clave']}).status_code, 200)
+
+        # otro usuario no la ve ni la toca
+        self.entrar(self.A, 'ana@test.local')
+        self.assertEqual(self.c.get('/mi-api/claves').get_json()['api'], [])
+        self.assertEqual(self.c.post(f'/mi-api/claves/{cid}/desactivar', json={}).status_code, 404)
+        self.entrar(self.B, 'beto@test.local')
+
+        # con recargas en su historial no se borra: se desactiva
+        q("INSERT INTO api_orders (account_id, usuario_id, game_type, package_id, player_id, precio, estado) "
+          "VALUES (?, ?, 'dynamic', 1, '1', 1, 'completada')", (cid, self.B))
+        d3 = self.c.post(f'/mi-api/claves/{cid}/eliminar', json={}).get_json()
+        self.assertIn('se desactivó', d3['mensaje'])
+        self.assertFalse(d3['api'][0]['activo'])
+
+        # máximo de claves activas
+        for i in range(api_panel.MAX_CLAVES_USUARIO):
+            self.assertTrue(self.c.post('/mi-api/claves', json={'nombre': f'K{i}'}).get_json()['ok'])
+        self.assertEqual(self.c.post('/mi-api/claves', json={'nombre': 'Una más'}).status_code, 409)
+
+    def test_documentacion_de_la_api_para_el_usuario(self):
+        self.entrar(self.B, 'beto@test.local')
+        html = self.c.get('/mi-api/docs').get_data(as_text=True)
+        self.assertIn('Descargar PDF', html)
+        self.assertIn('/referencias/docs', html)
+        self.assertIn('una sola vez', html)
+        self.assertNotIn('Admin → Mapeo', html)
+        with self.c.session_transaction() as s:
+            s['is_admin'] = True
+        self.assertIn('Admin → Mapeo', self.c.get('/admin/api/docs').get_data(as_text=True))
 
     # ---------- vista general del admin ----------
     def test_admin_ve_todos_filtra_y_resuelve(self):
@@ -267,13 +341,17 @@ class ReferenciasTest(unittest.TestCase):
         q("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, perm_recargas, perm_verificar_pago) "
           "VALUES ('CRM viejo', 'wsk_viejo', ?, TRUE, TRUE, TRUE)", (self.A,))
         api_panel._reiniciar_claves_anteriores()
-        fila = q("SELECT activo, tipo FROM webservice_accounts WHERE api_key = 'wsk_viejo'")[0]
+        api_panel._cifrar_claves()
+        self.assertEqual(q("SELECT COUNT(*) AS n FROM webservice_accounts WHERE api_key = 'wsk_viejo'")[0]['n'], 0)  # ya no en claro
+        huella = api_whitelabel.hash_api_key('wsk_viejo')
+        fila = q("SELECT activo, tipo, prefijo FROM webservice_accounts WHERE api_key = ?", (huella,))[0]
+        self.assertEqual(fila['prefijo'], 'wsk_viejo')
         self.assertEqual((bool(fila['activo']), fila['tipo']), (False, 'antigua'))
         self.assertEqual(self.c.post('/api/verificar-pago', headers={'X-API-Key': 'wsk_viejo'}, json={}).status_code, 401)
         self.assertEqual(self.c.get('/api/v1/products', headers={'X-API-Key': 'wsk_viejo'}).status_code, 401)
         with self.c.session_transaction() as s:
             s['is_admin'] = True
-        aid = q("SELECT id FROM webservice_accounts WHERE api_key = 'wsk_viejo'")[0]['id']
+        aid = q("SELECT id FROM webservice_accounts WHERE api_key = ?", (huella,))[0]['id']
         self.assertEqual(self.c.post(f'/admin/api/cuentas/{aid}', json={'activo': True}).status_code, 409)
 
     def test_documentacion_del_usuario_y_del_admin(self):

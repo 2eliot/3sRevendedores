@@ -139,6 +139,11 @@
         <svg class="icon{% if request.path.startswith('/referencias') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 11.5l2 2 4-4"/></svg>
       </div>
 
+      <!-- API: claves de Recargas del usuario y documentación -->
+      <div class="dashboard-icon-container api-icon-container" onclick="window.location.href='/mi-api'" title="API" role="link" aria-label="API">
+        <svg class="icon{% if request.path.startswith('/mi-api') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M13.5 4.5l-3 15"/></svg>
+      </div>
+
       <div class="user-icon" onclick="toggleUserBox()">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
         <div id="user-box" class="user-box">

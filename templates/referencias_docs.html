@@ -74,9 +74,9 @@
     <tr><th>Clave</th><th>Para qué</th><th>Dónde se crea</th><th>Cómo se envía</th></tr>
     <tr><td><b>Clave de lector</b> <code>lec_…</code></td><td>Que tu bot del banco envíe movimientos de UNA cuenta bancaria.</td><td>Referencias → Claves</td><td><code>Authorization: Bearer lec_…</code></td></tr>
     <tr><td><b>Clave de API de Referencias</b> <code>wsk_…</code></td><td>Que otro sistema (tu CRM) verifique pagos y gestione tus referencias.</td><td>Referencias → Claves</td><td><code>X-API-Key: wsk_…</code></td></tr>
-    <tr><td><b>Clave de API de Recargas</b> <code>wsk_…</code></td><td>Hacer recargas y verificar IDs de jugador. Va <b>aparte</b>: no sirve para Referencias.</td><td>La da el administrador</td><td><code>X-API-Key: wsk_…</code></td></tr>
+    <tr><td><b>Clave de API de Recargas</b> <code>wsk_…</code></td><td>Hacer recargas y verificar IDs de jugador. Va <b>aparte</b>: no sirve para Referencias.</td><td>Apartado <b>API</b> (icono de arriba)</td><td><code>X-API-Key: wsk_…</code></td></tr>
   </table></div>
-  <p>La clave de lector se muestra <b>una sola vez</b> al crearla o regenerarla: cópiala en ese momento. Si la pierdes, regenera una nueva (la anterior deja de funcionar al instante).</p>
+  <p><b>Todas las claves se muestran una sola vez</b>, al crearlas o renovarlas: cópialas en ese momento. La web solo guarda una huella cifrada, así que nadie puede volver a verlas. Si pierdes una, pulsa «Nueva clave» (la anterior deja de funcionar al instante).</p>
   <p>Permisos de la clave de API de Referencias (se eligen al crearla):</p>
   <div class="dc-tw"><table class="dc-t">
     <tr><th>Permiso</th><th>Qué deja hacer</th></tr>
@@ -212,7 +212,7 @@
   <h2 id="admin">8. Administración</h2>
   <ul>
     <li><b>Referencias (todos)</b> (<code>/admin/antiduplic</code>): los pagos y revisiones de todos los usuarios, con filtro y columna de usuario. El admin puede asignar y resolver revisiones de cualquiera.</li>
-    <li><b>Claves de API:</b> en Admin → API se crean por separado las de <b>Recargas</b> (recargar y verificar IDs, cobradas del saldo del usuario) y las de <b>Referencias</b> (de un usuario dueño de los pagos). Una clave nunca mezcla ambos tipos.</li>
+    <li><b>Claves de API:</b> hay dos tipos separados, <b>Recargas</b> (recargar y verificar IDs, cobradas del saldo del usuario) y <b>Referencias</b> (de un usuario dueño de los pagos). Cada usuario crea las suyas (Recargas en su apartado API, Referencias en Referencias → Claves) y el admin puede crear o desactivar cualquiera en Admin → API. Una clave nunca mezcla ambos tipos, se guarda cifrada y se muestra una sola vez.</li>
     <li><b>Claves anteriores:</b> al activar este cambio, todas las claves de API que existían quedan <b>desconectadas</b> («Antigua»). Hay que crear las dos claves nuevas y ponerlas en cada sistema (por ejemplo el CRM).</li>
     <li><b>Usuario dueño:</b> los pagos, usos y revisiones que existían antes pasan al usuario de <code>ANTIDUPLIC_USUARIO_DUENO</code> (o al admin principal si no está), en una cuenta «Bancamiga principal».</li>
     <li><b>PAGOS_BANCO_TOKEN</b> sigue valiendo para el bot antiguo y deja los pagos a nombre del usuario dueño ({% if token_banco %}configurado en este servidor{% else %}no configurado en este servidor{% endif %}). Se puede reemplazar por una clave de lector propia.</li>

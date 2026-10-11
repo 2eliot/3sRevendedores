@@ -687,6 +687,12 @@ tbody tr:last-child td { border-bottom: 0 !important; }
 }
 @media (max-width: 420px) {
   .header::before { content: '3sR'; }
+  /* Con los iconos de Referencias y API son 7: un poco más juntos para que el logo no desaparezca */
+  .header { padding: 0 8px !important; gap: 4px; }
+  .hamburger, .icon-container > div, .icon-container > a, .icon-container > svg { min-width: 38px; }
+}
+@media (max-width: 370px) {
+  .hamburger, .icon-container > div, .icon-container > a, .icon-container > svg { min-width: 35px; }
 }
 
 /* ---------- Historial: comprobante compacto (filas etiqueta · valor) ---------- */
@@ -1819,5 +1825,5 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 }
 
 /* Icono «Referencias» de la barra del usuario: activo sin relleno, para que se vea la marca de verificación */
-.ref-icon-container .icon { fill: none !important; }
-.ref-icon-container .icon.active { stroke-width: 2.3; color: var(--rc-text); }
+.ref-icon-container .icon, .api-icon-container .icon { fill: none !important; }
+.ref-icon-container .icon.active, .api-icon-container .icon.active { stroke-width: 2.3; color: var(--rc-text); }

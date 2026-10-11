@@ -48,6 +48,10 @@
     .ap-tipo-antigua { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
     .ap-ok { color: var(--rc-green); } .ap-bad { color: var(--rc-coral); }
     .ap-empty { padding: 18px; text-align: center; color: var(--rc-ash); font-size: 13px; }
+    .ap-nueva { border: 1px solid var(--rc-green); border-radius: 14px; padding: 14px; margin-bottom: 14px; background: var(--rc-green-bg); display: flex; flex-direction: column; gap: 8px; }
+    .ap-nueva[hidden] { display: none; }
+    .ap-nueva code { font-family: var(--rc-mono); font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--rc-card); overflow-wrap: anywhere; }
+    .ap-pref { font-family: var(--rc-mono); color: var(--rc-text); }
     @media (max-width: 560px) { .ap-form { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -59,6 +63,13 @@
       <a class="ap-btn ap-btn-main" href="/admin/api/docs">📄 Documentación</a>
     </div>
     <p class="ap-lead">Cuentas para conectar sistemas externos, como tu CRM. Cada cuenta tiene su propia clave y solo puede hacer lo que le permitas. Las recargas se cobran del saldo del usuario vinculado a la cuenta.</p>
+
+    <div class="ap-nueva" id="ap-nueva" hidden>
+      <strong id="ap-nueva-titulo">Clave nueva</strong>
+      <code id="ap-nueva-txt"></code>
+      <div class="ap-actions" style="margin-top:0;align-items:center;"><button type="button" class="ap-btn ap-btn-main" id="ap-copiar-nueva">Copiar</button>
+        <span style="font-size:13px;">Cópiala ahora y ponla en el sistema que la va a usar: <b>no se volverá a mostrar</b>. Si se pierde, pulsa «Nueva clave».</span></div>
+    </div>
 
     <section class="ap-card">
       <h2>Nueva clave</h2>
@@ -109,6 +120,14 @@
       return d;
     }
     function msg(el, ok, text) { el.className = 'ap-msg ' + (ok ? 'ap-ok' : 'ap-bad'); el.textContent = text; }
+    function mostrarNueva(clave, nombre) {
+      var box = document.getElementById('ap-nueva');
+      box.hidden = !clave;
+      document.getElementById('ap-nueva-txt').textContent = clave || '';
+      document.getElementById('ap-nueva-titulo').textContent = 'Clave nueva' + (nombre ? ' de «' + nombre + '»' : '');
+      document.getElementById('ap-copiar-nueva').textContent = 'Copiar';
+      if (clave) box.scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
 
     function pintar(cuentas) {
       var box = document.getElementById('ap-list');
@@ -125,9 +144,7 @@
           '<div class="ap-meta"><span>' + (tipo === 'referencias' ? 'Pagos de' : (tipo === 'recargas' ? 'Paga' : 'Usuario')) + ': <b>' + esc(a.usuario || '—') + '</b> (ID ' + esc(a.usuario_id) + ')</span>' +
           (tipo === 'recargas' ? '<span>Saldo: <b>$' + Number(a.usuario_saldo).toFixed(2) + '</b></span>' : '') +
           (a.webhook_url ? '<span>Webhook: <b>' + esc(a.webhook_url) + '</b></span>' : '') + '</div>' +
-          '<div class="ap-key"><code data-key="' + a.id + '">' + '•'.repeat(24) + '</code>' +
-          '<button type="button" class="ap-btn" data-show="' + a.id + '" data-k="' + esc(a.api_key) + '">Mostrar</button>' +
-          '<button type="button" class="ap-btn" data-copy="' + esc(a.api_key) + '">Copiar</button></div>' +
+          '<div class="ap-meta"><span>Clave: <span class="ap-pref">' + esc(a.prefijo) + '…</span> (se muestra una sola vez)</span></div>' +
           '<div class="ap-perms">' + perms + '</div>' +
           '<div class="ap-actions">' +
           (tipo === 'antigua' ? '' : '<button type="button" class="ap-btn" data-toggle="' + a.id + '" data-activo="' + (a.activo ? 1 : 0) + '">' + (a.activo ? 'Desactivar' : 'Activar') + '</button>') +
@@ -148,7 +165,7 @@
       PERMISOS.filter(function (p) { return p[2] === tipo; }).forEach(function (p) { permisos[p[0]] = document.querySelector('[name="perm_' + p[0] + '"]').checked; });
       var d = await post('/admin/api/cuentas', {nombre: f.nombre.value, usuario_id: f.usuario_id.value, tipo: tipo, permisos: permisos});
       var m = document.getElementById('ap-new-msg');
-      if (d.ok) { msg(m, true, 'Clave creada. Cópiala abajo.'); f.reset(); document.querySelectorAll('[name^="perm_"]').forEach(function (x) { x.checked = false; }); cargar(); }
+      if (d.ok) { msg(m, true, 'Clave creada. Cópiala arriba: no se volverá a mostrar.'); mostrarNueva(d.clave, f.nombre.value); f.reset(); document.querySelectorAll('[name^="perm_"]').forEach(function (x) { x.checked = false; }); cargar(); }
       else msg(m, false, d.error || 'No se pudo crear');
     });
 
@@ -164,20 +181,15 @@
     document.addEventListener('click', async function (e) {
       var b = e.target.closest('button');
       if (!b) return;
-      if (b.dataset.show) {
-        var code = document.querySelector('[data-key="' + b.dataset.show + '"]');
-        var visible = code.textContent === b.dataset.k;
-        code.textContent = visible ? '•'.repeat(24) : b.dataset.k;
-        b.textContent = visible ? 'Mostrar' : 'Ocultar';
-      } else if (b.dataset.copy) {
-        try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copiada ✓'; } catch (x) { b.textContent = 'No se pudo copiar'; }
-        setTimeout(function () { b.textContent = 'Copiar'; }, 1500);
+      if (b.id === 'ap-copiar-nueva') {
+        try { await navigator.clipboard.writeText(document.getElementById('ap-nueva-txt').textContent); b.textContent = 'Copiada ✓'; } catch (x) { b.textContent = 'Cópiala a mano'; }
       } else if (b.dataset.toggle) {
         await post('/admin/api/cuentas/' + b.dataset.toggle, {activo: b.dataset.activo !== '1'}); cargar();
       } else if (b.dataset.regen) {
         if (!confirm('¿Crear una clave nueva? La actual deja de funcionar al instante y tendrás que cambiarla en tu CRM.')) return;
         var d = await post('/admin/api/cuentas/' + b.dataset.regen + '/regenerar'); await cargar();
-        if (d.ok) msg(document.getElementById('msg-' + b.dataset.regen), true, 'Clave nueva creada: cópiala y cámbiala en tu CRM.');
+        if (d.ok) mostrarNueva(d.clave, d.cuenta && d.cuenta.nombre);
+        else msg(document.getElementById('msg-' + b.dataset.regen), false, d.error || 'No se pudo crear la clave nueva');
       } else if (b.dataset.del) {
         if (!confirm('¿Eliminar esta cuenta? Su clave dejará de funcionar.')) return;
         var d2 = await post('/admin/api/cuentas/' + b.dataset.del + '/eliminar');

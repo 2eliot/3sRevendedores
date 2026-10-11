@@ -19,6 +19,7 @@ os.environ['REVENDEDORES_API_KEY'] = 'clave-inefable'
 os.environ['CENTRALONE_API_KEY'] = 'co_live_test'
 
 import app as webapp  # noqa: E402
+from api_whitelabel import hash_api_key  # noqa: E402
 import central_one  # noqa: E402
 import dynamic_games  # noqa: E402
 from pg_compat import get_db_connection  # noqa: E402
@@ -121,7 +122,7 @@ class CentralOneTest(unittest.TestCase):
                     "VALUES ('Cli', 'Ente', '0', 'cli@test.local', 'x', 100) RETURNING id")[0][0]
         import api_panel
         api_panel.init_permisos()
-        q("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, perm_recargas) VALUES ('CRM', 'wsk_co', ?, TRUE, TRUE)", (cls.uid,))
+        q("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, perm_recargas) VALUES ('CRM', ?, ?, TRUE, TRUE)", (hash_api_key('wsk_co'), cls.uid))
 
     def setUp(self):
         self.co = FakeCentralOne()
