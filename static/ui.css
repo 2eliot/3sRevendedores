@@ -1818,4 +1818,5 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 }
 
 /* Icono «Referencias» de la barra del usuario: activo sin relleno, para que se vea la marca de verificación */
-.ref-icon-container .icon.active { fill: none !important; stroke-width: 2.3; color: var(--rc-text); }
+.ref-icon-container .icon { fill: none !important; }
+.ref-icon-container .icon.active { stroke-width: 2.3; color: var(--rc-text); }
