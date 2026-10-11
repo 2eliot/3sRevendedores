@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Antiduplic (Referencias) — Admin</title>
+  <title>Referencias (todos) — Admin</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -79,10 +79,10 @@
   <div class="ad-wrap">
     <a href="/admin" class="back-button">← Volver al Panel Admin</a>
     <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;">
-      <h1>Antiduplic (Referencias)</h1>
+      <h1>Referencias (todos)</h1>
       <a class="ad-btn ad-btn-main" href="/admin/antiduplic/docs" style="display:inline-flex;align-items:center;text-decoration:none;">📄 Documentación</a>
     </div>
-    <p class="ad-lead">Pagos recibidos en Bancamiga y qué orden del CRM usó cada referencia. Cada pago solo puede usarse una vez: una referencia repetida se rechaza.</p>
+    <p class="ad-lead">Vista general de las referencias de <strong>todos los usuarios</strong>. Cada usuario ve y gestiona solo las suyas en su apartado «Referencias»; aquí puedes filtrar por usuario y resolver revisiones de cualquiera.</p>
 
     <section class="ad-card">
       <h2>Hoy <span class="ad-mono" id="ad-hoy" style="color:var(--rc-ash);font-weight:400;">{{ hoy }}</span></h2>
@@ -104,6 +104,12 @@
     <section class="ad-card">
       <h2>Pagos del banco</h2>
       <form class="ad-filters" id="ad-filtros">
+        <label>Usuario
+          <select name="usuario_id">
+            <option value="">Todos</option>
+            {% for u in usuarios %}<option value="{{ u.id }}">{{ u.nombre }} (ID {{ u.id }}){% if u.id == dueno %} · dueño{% endif %}</option>{% endfor %}
+          </select>
+        </label>
         <label>Fecha <input type="date" name="fecha" value="{{ hoy }}"></label>
         <label>Estado
           <select name="estado">
@@ -119,8 +125,8 @@
       </form>
       <div class="ad-table-wrap" style="margin-top:12px;">
         <table class="ad-table">
-          <thead><tr><th>Referencia</th><th>Fecha</th><th>Hora</th><th>Monto</th><th>Tipo</th><th>Estado</th><th>Uso</th><th></th></tr></thead>
-          <tbody id="ad-tbody"><tr><td colspan="8" class="ad-empty">Cargando…</td></tr></tbody>
+          <thead><tr><th>Usuario</th><th>Referencia</th><th>Fecha</th><th>Hora</th><th>Monto</th><th>Cuenta</th><th>Estado</th><th>Uso</th><th></th></tr></thead>
+          <tbody id="ad-tbody"><tr><td colspan="9" class="ad-empty">Cargando…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -128,10 +134,11 @@
     <section class="ad-card">
       <h2>Conexión</h2>
       <p class="ad-api">
-        Bot del banco: <code>POST {{ api_url }}/api/pagos-banco</code> · clave <code>PAGOS_BANCO_TOKEN</code>:
-        {% if token_banco %}<span class="ad-ok">configurada en el servidor</span>{% else %}<span class="ad-bad">no configurada (se rechaza todo)</span>{% endif %}<br>
-        CRM: <code>POST {{ api_url }}/api/verificar-pago</code> · con la clave de una cuenta del apartado
-        <a href="/admin/api" style="color:var(--rc-hl);">API</a> que tenga el permiso "Verificar pagos de Bancamiga".
+        Bots del banco: <code>POST {{ api_url }}/api/pagos-banco</code> con la <strong>clave de lector</strong> (<code>lec_…</code>) que cada usuario crea en su apartado Referencias.
+        La clave antigua <code>PAGOS_BANCO_TOKEN</code> sigue valiendo y deja los pagos al usuario dueño (ID {{ dueno }}):
+        {% if token_banco %}<span class="ad-ok">configurada en el servidor</span>{% else %}<span class="ad-bad">no configurada</span>{% endif %}.<br>
+        Verificar pagos: <code>POST {{ api_url }}/api/verificar-pago</code> con una <strong>clave de API de Referencias</strong> del usuario (la crea él en Referencias o tú en
+        <a href="/admin/api" style="color:var(--rc-hl);">API</a>). Verifica solo contra los pagos de ese usuario.
       </p>
     </section>
   </div>
@@ -181,7 +188,7 @@
         pintarRevisiones(d.revisiones || []);
         pintarPagos(d.pagos || []);
       } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="8" class="ad-empty">No se pudieron cargar los pagos.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="ad-empty">No se pudieron cargar los pagos.</td></tr>';
       }
     }
 
@@ -203,7 +210,7 @@
 
     function pintarPagos(pagos) {
       var tbody = document.getElementById('ad-tbody');
-      if (!pagos.length) { tbody.innerHTML = '<tr><td colspan="8" class="ad-empty">No hay pagos con estos filtros.</td></tr>'; return; }
+      if (!pagos.length) { tbody.innerHTML = '<tr><td colspan="9" class="ad-empty">No hay pagos con estos filtros.</td></tr>'; return; }
       tbody.innerHTML = pagos.map(function (p) {
         var uso = '';
         if (p.uso) {
@@ -211,12 +218,14 @@
           uso = '<div class="ad-uso"><b>' + quien + '</b> · ' + esc(ORIGEN[p.uso.origen] || p.uso.origen) +
                 '<br>' + esc(p.uso.usado_en) +
                 (p.uso.referencia_reportada ? '<br>Escribió: <span class="ad-mono">' + esc(p.uso.referencia_reportada) + '</span>' +
-                  (p.uso.monto_reportado != null ? ' · ' + bs(p.uso.monto_reportado) : '') : '') + '</div>';
+                  (p.uso.monto_reportado != null ? ' · ' + bs(p.uso.monto_reportado) : '') : '') +
+                (p.uso.hecho_por ? '<br>Por: ' + esc(p.uso.hecho_por) : '') + '</div>';
         }
         var accion = p.estado === 'disponible'
           ? '<button type="button" class="ad-btn" data-asignar="' + p.id + '" data-desc="' + esc(p.referencia + ' · ' + bs(p.monto)) + '">Asignar</button>' : '';
-        return '<tr><td class="ad-mono">' + esc(p.referencia) + '</td><td class="ad-mono">' + esc(p.fecha) + '</td><td class="ad-mono">' + esc(p.hora) +
-               '</td><td class="ad-mono ad-hl">' + bs(p.monto) + '</td><td>' + esc(p.tipo) + '</td><td><span class="ad-badge ' + esc(p.estado) + '">' +
+        return '<tr><td>' + esc(p.usuario || '—') + '<br><span class="ad-mono" style="color:var(--rc-ash);font-size:11px;">ID ' + esc(p.usuario_id) + '</span></td>' +
+               '<td class="ad-mono">' + esc(p.referencia) + '</td><td class="ad-mono">' + esc(p.fecha) + '</td><td class="ad-mono">' + esc(p.hora) +
+               '</td><td class="ad-mono ad-hl">' + bs(p.monto) + '</td><td>' + esc(p.cuenta || '') + '</td><td><span class="ad-badge ' + esc(p.estado) + '">' +
                esc(ESTADOS[p.estado] || p.estado) + '</span></td><td>' + uso + '</td><td>' + accion + '</td></tr>';
       }).join('');
     }
@@ -227,7 +236,7 @@
       document.getElementById('ad-rev-count').textContent = revs.length;
       document.getElementById('ad-rev-list').innerHTML = revs.map(function (v) {
         var quien = v.revendedor ? esc(v.revendedor) + ' (ID ' + esc(v.revendedor_id) + ')' : (v.orden_id ? 'Orden ' + esc(v.orden_id) : esc(ORIGEN[v.origen] || v.origen));
-        return '<div class="ad-rev"><div class="ad-rev-head"><span><b>' + quien + '</b></span>' +
+        return '<div class="ad-rev"><div class="ad-rev-head"><span class="ad-badge usado">' + esc(v.usuario || ('Usuario ' + v.usuario_id)) + '</span><span><b>' + quien + '</b></span>' +
                '<span>Escribió <span class="ad-mono">' + esc(v.referencia_reportada) + '</span> · ' + bs(v.monto_reportado) + '</span>' +
                (v.fecha_reportada ? '<span>Fecha ' + esc(v.fecha_reportada) + '</span>' : '') +
                (v.hora_reportada ? '<span>Hora ' + esc(v.hora_reportada) + '</span>' : '') +

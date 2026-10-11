@@ -216,6 +216,31 @@ class ReferenciasTest(unittest.TestCase):
         self.assertEqual((fila['tipo'], bool(fila['perm_recargas']), bool(fila['perm_verificar_pago'])), ('referencias', False, True))
         self.assertEqual(self.c.post('/referencias/cuentas', data='alias=x').status_code, 415)  # solo JSON
 
+    # ---------- vista general del admin ----------
+    def test_admin_ve_todos_filtra_y_resuelve(self):
+        self.enviar([pago('7000123456', 50, hora='08:00:00'), pago('8000123456', 50, hora='08:00:00')], self.lector_b)
+        self.enviar([pago('1111222233', 10)], 'token-antiguo')
+        ad.verificar_y_usar_pago('123456', 50, hora='08:00', origen='crm', orden_id='O-B', usuario_id=self.B)
+        with self.c.session_transaction() as s:
+            s.update(usuario='admin@test.local', user_db_id=self.A, is_admin=True)
+        todos = self.c.get('/admin/antiduplic/datos').get_json()
+        self.assertEqual({p['usuario_id'] for p in todos['pagos']}, {self.A, self.B})
+        solo_b = self.c.get(f'/admin/antiduplic/datos?usuario_id={self.B}').get_json()
+        self.assertEqual({p['usuario_id'] for p in solo_b['pagos']}, {self.B})
+        rev = todos['revisiones'][0]
+        self.assertEqual(rev['usuario_id'], self.B)
+        r = self.c.post('/admin/antiduplic/asignar', json={'pago_id': rev['candidatos'][1]['id'], 'revision_id': rev['id']}).get_json()
+        self.assertTrue(r['ok'], r)
+        uso = q('SELECT usuario_id, orden_id, hecho_por FROM usos_referencia')[0]
+        self.assertEqual((uso['usuario_id'], uso['orden_id']), (self.B, 'O-B'))
+        self.assertTrue(uso['hecho_por'].startswith('admin:'))
+        self.assertEqual(self.c.get('/admin/antiduplic').status_code, 200)
+        d = self.c.post('/admin/api/cuentas', json={'nombre': 'CRM', 'usuario_id': self.B, 'tipo': 'referencias',
+                                                     'permisos': {'verificar_pago': True, 'recargas': True}}).get_json()
+        self.assertEqual((d['cuenta']['tipo'], d['cuenta']['permisos']),
+                         ('referencias', {'verificar_pago': True, 'ver_pagos': False, 'gestionar_pagos': False}))
+        self.assertEqual(self.c.post('/admin/api/cuentas', json={'nombre': 'X', 'usuario_id': self.B, 'tipo': 'otro'}).status_code, 400)
+
     # ---------- permisos y tipos de clave ----------
     def test_permisos(self):
         solo_verificar = {'X-API-Key': self.clave_api(self.B, verificar_pago=True)}

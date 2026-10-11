@@ -41,6 +41,11 @@
     .ap-key code { flex: 1 1 260px; font-family: var(--rc-mono); font-size: 13px; padding: 9px 12px; border-radius: 10px; background: var(--rc-card); border: 1px solid var(--rc-border); overflow-wrap: anywhere; }
     .ap-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .ap-msg { min-height: 18px; font-size: 13px; margin-top: 8px; }
+    .ap-tipos { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 12px; }
+    .ap-perms [hidden] { display: none !important; }
+    .ap-tipo-recargas { background: var(--rc-blue-bg); color: var(--rc-blue); }
+    .ap-tipo-referencias { background: var(--rc-yellow-bg); color: var(--rc-yellow); }
+    .ap-tipo-antigua { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
     .ap-ok { color: var(--rc-green); } .ap-bad { color: var(--rc-coral); }
     .ap-empty { padding: 18px; text-align: center; color: var(--rc-ash); font-size: 13px; }
     @media (max-width: 560px) { .ap-form { grid-template-columns: 1fr; } }
@@ -56,28 +61,43 @@
     <p class="ap-lead">Cuentas para conectar sistemas externos, como tu CRM. Cada cuenta tiene su propia clave y solo puede hacer lo que le permitas. Las recargas se cobran del saldo del usuario vinculado a la cuenta.</p>
 
     <section class="ap-card">
-      <h2>Nueva cuenta</h2>
-      <form id="ap-new" class="ap-form" autocomplete="off">
-        <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: CRM 3S-Ticket" required></label>
-        <label>ID del usuario que paga <input name="usuario_id" type="number" min="1" placeholder="Ej: 12" required></label>
-      </form>
-      <div class="ap-perms">
-        {% for k, label in permisos %}
-        <label class="ap-perm"><input type="checkbox" form="ap-new" name="perm_{{ k }}"> {{ label }}</label>
+      <h2>Nueva clave</h2>
+      <p class="ap-lead" style="margin-bottom:10px;">Hay dos tipos de clave, siempre por separado: <strong>Recargas</strong> (hacer recargas y verificar IDs, cobradas del saldo del usuario) y <strong>Referencias</strong> (verificar pagos del banco y gestionar las referencias de un usuario). Un sistema como tu CRM usa una de cada tipo.</p>
+      <div class="ap-tipos" role="radiogroup">
+        {% for k, label in tipos.items() %}
+        <label class="ap-perm"><input type="radio" name="ap-tipo" value="{{ k }}" {% if loop.first %}checked{% endif %}> {{ label }}</label>
         {% endfor %}
       </div>
-      <button type="submit" form="ap-new" class="ap-btn ap-btn-main">Crear cuenta</button>
+      <form id="ap-new" class="ap-form" autocomplete="off">
+        <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: CRM 3S-Ticket" required></label>
+        <label><span id="ap-usuario-label">ID del usuario que paga las recargas</span> <input name="usuario_id" type="number" min="1" placeholder="Ej: 12" required></label>
+      </form>
+      <div class="ap-perms">
+        {% for k, label, tipo in permisos %}
+        <label class="ap-perm" data-tipo="{{ tipo }}"><input type="checkbox" form="ap-new" name="perm_{{ k }}"> {{ label }}</label>
+        {% endfor %}
+      </div>
+      <button type="submit" form="ap-new" class="ap-btn ap-btn-main">Crear clave</button>
       <p class="ap-msg" id="ap-new-msg"></p>
     </section>
 
     <section class="ap-card">
-      <h2>Cuentas</h2>
+      <h2>Claves</h2>
       <div id="ap-list"><div class="ap-empty">Cargando…</div></div>
     </section>
   </div>
 
   <script>
     var PERMISOS = {{ permisos|tojson }};
+    var TIPOS = {{ tipos|tojson }};
+    function tipoElegido() { return (document.querySelector('[name="ap-tipo"]:checked') || {}).value || 'recargas'; }
+    function pintarTipo() {
+      var t = tipoElegido();
+      document.querySelectorAll('.ap-perms [data-tipo]').forEach(function (l) { l.hidden = l.dataset.tipo !== t; });
+      document.getElementById('ap-usuario-label').textContent = t === 'referencias' ? 'ID del usuario dueño de los pagos' : 'ID del usuario que paga las recargas';
+    }
+    document.querySelectorAll('[name="ap-tipo"]').forEach(function (r) { r.addEventListener('change', pintarTipo); });
+    document.addEventListener('DOMContentLoaded', pintarTipo);
     function esc(v) {
       return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
         return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
@@ -94,22 +114,24 @@
       var box = document.getElementById('ap-list');
       if (!cuentas.length) { box.innerHTML = '<div class="ap-empty">Todavía no hay cuentas. Crea una para tu CRM.</div>'; return; }
       box.innerHTML = cuentas.map(function (a) {
-        var perms = PERMISOS.map(function (p) {
+        var tipo = a.tipo || 'recargas';
+        var perms = PERMISOS.filter(function (p) { return p[2] === tipo; }).map(function (p) {
           return '<label class="ap-perm"><input type="checkbox" data-perm="' + p[0] + '" data-id="' + a.id + '"' + (a.permisos[p[0]] ? ' checked' : '') + '> ' + esc(p[1]) + '</label>';
         }).join('');
         return '<div class="ap-acc" id="acc-' + a.id + '">' +
           '<div class="ap-acc-head"><span class="ap-acc-name">' + esc(a.nombre) + '</span>' +
+          '<span class="ap-badge ap-tipo-' + esc(tipo) + '">' + esc(TIPOS[tipo] || 'Antigua (desconectada)') + '</span>' +
           '<span class="ap-badge ' + (a.activo ? 'ap-on">Activa' : 'ap-off">Desactivada') + '</span></div>' +
-          '<div class="ap-meta"><span>Paga: <b>' + esc(a.usuario || '—') + '</b> (ID ' + esc(a.usuario_id) + ')</span>' +
-          '<span>Saldo: <b>$' + Number(a.usuario_saldo).toFixed(2) + '</b></span>' +
+          '<div class="ap-meta"><span>' + (tipo === 'referencias' ? 'Pagos de' : (tipo === 'recargas' ? 'Paga' : 'Usuario')) + ': <b>' + esc(a.usuario || '—') + '</b> (ID ' + esc(a.usuario_id) + ')</span>' +
+          (tipo === 'recargas' ? '<span>Saldo: <b>$' + Number(a.usuario_saldo).toFixed(2) + '</b></span>' : '') +
           (a.webhook_url ? '<span>Webhook: <b>' + esc(a.webhook_url) + '</b></span>' : '') + '</div>' +
           '<div class="ap-key"><code data-key="' + a.id + '">' + '•'.repeat(24) + '</code>' +
           '<button type="button" class="ap-btn" data-show="' + a.id + '" data-k="' + esc(a.api_key) + '">Mostrar</button>' +
           '<button type="button" class="ap-btn" data-copy="' + esc(a.api_key) + '">Copiar</button></div>' +
           '<div class="ap-perms">' + perms + '</div>' +
           '<div class="ap-actions">' +
-          '<button type="button" class="ap-btn" data-toggle="' + a.id + '" data-activo="' + (a.activo ? 1 : 0) + '">' + (a.activo ? 'Desactivar' : 'Activar') + '</button>' +
-          '<button type="button" class="ap-btn" data-regen="' + a.id + '">Nueva clave</button>' +
+          (tipo === 'antigua' ? '' : '<button type="button" class="ap-btn" data-toggle="' + a.id + '" data-activo="' + (a.activo ? 1 : 0) + '">' + (a.activo ? 'Desactivar' : 'Activar') + '</button>') +
+          (tipo === 'antigua' ? '' : '<button type="button" class="ap-btn" data-regen="' + a.id + '">Nueva clave</button>') +
           '<button type="button" class="ap-btn ap-btn-danger" data-del="' + a.id + '">Eliminar</button></div>' +
           '<p class="ap-msg" id="msg-' + a.id + '"></p></div>';
       }).join('');
@@ -122,11 +144,11 @@
 
     document.getElementById('ap-new').addEventListener('submit', async function (e) {
       e.preventDefault();
-      var f = e.target, permisos = {};
-      PERMISOS.forEach(function (p) { permisos[p[0]] = document.querySelector('[name="perm_' + p[0] + '"]').checked; });
-      var d = await post('/admin/api/cuentas', {nombre: f.nombre.value, usuario_id: f.usuario_id.value, permisos: permisos});
+      var f = e.target, permisos = {}, tipo = tipoElegido();
+      PERMISOS.filter(function (p) { return p[2] === tipo; }).forEach(function (p) { permisos[p[0]] = document.querySelector('[name="perm_' + p[0] + '"]').checked; });
+      var d = await post('/admin/api/cuentas', {nombre: f.nombre.value, usuario_id: f.usuario_id.value, tipo: tipo, permisos: permisos});
       var m = document.getElementById('ap-new-msg');
-      if (d.ok) { msg(m, true, 'Cuenta creada. Copia su clave abajo.'); f.reset(); document.querySelectorAll('[name^="perm_"]').forEach(function (x) { x.checked = false; }); cargar(); }
+      if (d.ok) { msg(m, true, 'Clave creada. Cópiala abajo.'); f.reset(); document.querySelectorAll('[name^="perm_"]').forEach(function (x) { x.checked = false; }); cargar(); }
       else msg(m, false, d.error || 'No se pudo crear');
     });
 
