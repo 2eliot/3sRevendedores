@@ -558,6 +558,7 @@ tbody tr:last-child td { border-bottom: 0 !important; }
    ============================================================ */
 .auth-panel {
   width: min(420px, calc(100vw - 32px)) !important;
+  box-sizing: border-box !important;
   padding: 32px !important;
   border-radius: var(--ui-radius-xl) !important;
   background: var(--rc-card) !important;

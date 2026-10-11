@@ -394,6 +394,8 @@ from proveedores import bp as proveedores_bp
 app.register_blueprint(proveedores_bp)
 from referencias import bp as referencias_bp
 app.register_blueprint(referencias_bp)
+import recuperar as _recuperar
+app.register_blueprint(_recuperar.bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
@@ -1370,6 +1372,9 @@ def registrar_login_fallido(correo):
 def limpiar_login_fallidos(correo):
     with _login_fallos_lock:
         _login_fallos.pop('u:' + (correo or '').strip().lower(), None)
+
+
+_recuperar.limpiar_fallos = limpiar_login_fallidos  # al cambiar la contraseña por correo se desbloquea el inicio de sesión
 
 
 def hash_password(password):
@@ -2952,7 +2957,7 @@ def _get_aviso_config():
 @app.route('/auth')
 def auth():
     aviso = _get_aviso_config()
-    return render_template('auth.html', aviso=aviso)
+    return render_template('auth.html', aviso=aviso, recuperar_activo=_recuperar.disponible())
 
 
 @app.route('/control-aviso')

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>Recuperar contraseña - 3SRevendedores</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <style>
+    .rc-txt { color: var(--rc-mist); font-size: 14px; line-height: 1.6; margin: 0 0 18px; text-align: center; }
+    .rc-txt b { color: var(--rc-text); }
+    .rc-aviso { padding: 12px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; margin: 0 0 16px; }
+    .rc-error { background: var(--rc-coral-bg, rgba(255, 99, 99, .12)); color: var(--rc-coral); }
+    .rc-ok { background: var(--rc-green-bg); color: var(--rc-green); }
+    .rc-links { margin-top: 18px; text-align: center; font-size: 14px; }
+    .rc-links a { color: var(--rc-hl); text-decoration: none; font-weight: 500; }
+    .rc-links a:hover { text-decoration: underline; }
+    .rc-ojo { position: absolute; right: 10px; top: 38px; background: none; border: none; cursor: pointer; padding: 5px; color: var(--rc-ash); font-size: 18px; }
+    .submit-btn.rc-full { width: 100%; }
+    a.submit-btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <main class="auth-panel">
+    <div class="auth-header">
+      <h1>3SRevendedores</h1>
+      <p>{% if modo in ('nueva', 'listo') %}Contraseña nueva{% else %}Recuperar contraseña{% endif %}</p>
+    </div>
+
+    <div class="tab-content">
+    {% if error %}<div class="rc-aviso rc-error" role="alert">{{ error }}</div>{% endif %}
+
+    {% if modo == 'pedir' %}
+      <p class="rc-txt">Escribe el correo de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva.</p>
+      <form method="POST" action="/recuperar">
+        <div class="input-group">
+          <label for="rc-correo">Correo electrónico</label>
+          <input type="email" id="rc-correo" name="correo" placeholder="tu@email.com" value="{{ correo or '' }}" maxlength="120" required autofocus>
+        </div>
+        <button type="submit" class="submit-btn rc-full">Enviar enlace</button>
+      </form>
+
+    {% elif modo == 'enviado' %}
+      <div class="rc-aviso rc-ok">Si <b>{{ correo }}</b> está registrado, te enviamos un enlace para cambiar tu contraseña.</div>
+      <p class="rc-txt">El enlace vale <b>30 minutos</b> y sirve una sola vez. Si no lo ves en unos minutos, revisa la carpeta de <b>spam</b>.</p>
+
+    {% elif modo == 'nueva' %}
+      <p class="rc-txt">Elige tu contraseña nueva (mínimo {{ clave_min }} caracteres).</p>
+      <form method="POST" action="/restablecer/{{ token }}">
+        <div class="input-group" style="position: relative;">
+          <label for="rc-clave">Contraseña nueva</label>
+          <input type="password" id="rc-clave" name="clave" placeholder="••••••••" minlength="{{ clave_min }}" maxlength="128" autocomplete="new-password" required autofocus>
+          <button type="button" class="rc-ojo" onclick="verClave('rc-clave', this)" aria-label="Mostrar contraseña">👁️</button>
+        </div>
+        <div class="input-group" style="position: relative;">
+          <label for="rc-repetir">Repite la contraseña</label>
+          <input type="password" id="rc-repetir" name="repetir" placeholder="••••••••" minlength="{{ clave_min }}" maxlength="128" autocomplete="new-password" required>
+          <button type="button" class="rc-ojo" onclick="verClave('rc-repetir', this)" aria-label="Mostrar contraseña">👁️</button>
+        </div>
+        <button type="submit" class="submit-btn rc-full">Guardar contraseña</button>
+      </form>
+
+    {% elif modo == 'listo' %}
+      <div class="rc-aviso rc-ok">Tu contraseña se cambió. Ya puedes iniciar sesión con la nueva.</div>
+      <a href="/auth" class="submit-btn rc-full">Iniciar sesión</a>
+
+    {% elif modo == 'invalido' %}
+      <div class="rc-aviso rc-error">Este enlace no es válido, ya se usó o venció.</div>
+      <a href="/recuperar" class="submit-btn rc-full">Pedir un enlace nuevo</a>
+
+    {% else %}
+      <div class="rc-aviso rc-error">La recuperación por correo no está disponible en este momento.</div>
+      <p class="rc-txt">Escríbenos por soporte y te ayudamos a recuperar tu cuenta.</p>
+    {% endif %}
+    </div>
+
+    {% if modo != 'listo' %}
+    <div class="rc-links"><a href="/auth">← Volver a iniciar sesión</a></div>
+    {% endif %}
+  </main>
+
+  <script>
+    function verClave(id, boton) {
+      var input = document.getElementById(id);
+      var ver = input.type === 'password';
+      input.type = ver ? 'text' : 'password';
+      boton.textContent = ver ? '🙈' : '👁️';
+    }
+  </script>
+</body>
+</html>

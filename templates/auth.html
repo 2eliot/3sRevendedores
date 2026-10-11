@@ -67,6 +67,11 @@
             👁️
           </button>
         </div>
+        {% if recuperar_activo %}
+        <div style="text-align: right; margin: -4px 0 14px;">
+          <a href="/recuperar" style="color: var(--rc-hl); font-size: 13.5px; font-weight: 500; text-decoration: none;">¿Olvidaste tu contraseña?</a>
+        </div>
+        {% endif %}
         <button type="submit" class="submit-btn">Iniciar Sesión</button>
       </form>
 
