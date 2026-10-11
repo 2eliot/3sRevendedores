@@ -107,8 +107,9 @@
 
   <script>
     function showTab(tab) {
-      document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
-      document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+      // '' devuelve el diseño de la hoja de estilos (columna con el botón a todo el ancho); 'block' lo descolocaba
+      document.getElementById('login-form').style.display = tab === 'login' ? '' : 'none';
+      document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
       document.getElementById('login-tab').classList.toggle('active-tab', tab === 'login');
       document.getElementById('register-tab').classList.toggle('active-tab', tab === 'register');
     }
