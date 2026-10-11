@@ -145,10 +145,11 @@ class ApiPanelTest(unittest.TestCase):
         self.assertTrue(d['ok'], d)
         cta = d['cuenta']
         self.assertTrue(cta['api_key'].startswith('wsk_'))
-        self.assertEqual(cta['permisos'], {'recargas': True, 'verificar_id': False, 'verificar_pago': True})
+        self.assertEqual(cta['tipo'], 'recargas')
+        self.assertEqual(cta['permisos'], {'recargas': True, 'verificar_id': False})  # verificar_pago no es de Recargas
 
         d = self.c.post(f"/admin/api/cuentas/{cta['id']}", json={'permisos': {'verificar_id': True, 'recargas': False}}).get_json()
-        self.assertEqual(d['cuenta']['permisos'], {'recargas': False, 'verificar_id': True, 'verificar_pago': True})
+        self.assertEqual(d['cuenta']['permisos'], {'recargas': False, 'verificar_id': True})
 
         d = self.c.post(f"/admin/api/cuentas/{cta['id']}/regenerar", json={}).get_json()
         self.assertNotEqual(d['cuenta']['api_key'], cta['api_key'])

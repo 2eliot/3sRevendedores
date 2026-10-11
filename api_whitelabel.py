@@ -124,6 +124,8 @@ def require_api_key(f):
         account = _get_account_by_key(api_key)
         if not account:
             return jsonify({'ok': False, 'error': 'API key inválida o cuenta desactivada'}), 401
+        if (account.get('tipo') or 'recargas') != 'recargas':
+            return jsonify({'ok': False, 'error': 'Esta clave es de Referencias: usa tu clave de Recargas'}), 403
         # Inyectar la cuenta en el request context
         request._ws_account = account
         return f(*args, **kwargs)

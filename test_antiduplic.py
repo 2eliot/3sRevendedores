@@ -46,10 +46,10 @@ def base_inicial():
     api_panel.init_permisos()
     conn = get_db_connection()
     conn.execute('DELETE FROM webservice_accounts')
-    conn.execute("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, perm_verificar_pago) "
-                 "VALUES ('CRM', 'wsk_crm_con_permiso', 1, TRUE, TRUE)")
-    conn.execute("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, perm_verificar_pago) "
-                 "VALUES ('Otra', 'wsk_crm_sin_permiso', 1, TRUE, FALSE)")
+    conn.execute("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, tipo, perm_verificar_pago) "
+                 "VALUES ('CRM', 'wsk_crm_con_permiso', 1, TRUE, 'referencias', TRUE)")
+    conn.execute("INSERT INTO webservice_accounts (nombre, api_key, usuario_id, activo, tipo, perm_verificar_pago) "
+                 "VALUES ('Otra', 'wsk_crm_sin_permiso', 1, TRUE, 'referencias', FALSE)")
     conn.commit()
     conn.close()
 

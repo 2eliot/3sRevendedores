@@ -392,6 +392,8 @@ from bot_freefire import bp as bot_freefire_bp
 app.register_blueprint(bot_freefire_bp)
 from proveedores import bp as proveedores_bp
 app.register_blueprint(proveedores_bp)
+from referencias import bp as referencias_bp
+app.register_blueprint(referencias_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
@@ -2797,6 +2799,13 @@ def _retirar_juegos_de_ejemplo():
 
 
 _retirar_juegos_de_ejemplo()
+
+# Claves de API separadas (Recargas / Referencias): columnas y reinicio único de las claves anteriores
+try:
+    import api_panel as _api_panel
+    _api_panel.init_permisos()
+except Exception as _e:
+    logger.error(f'[API] No se pudieron preparar los permisos de las claves: {_e}')
 
 # Páginas antiguas que ya no son para clientes: "Free Fire" de Códigos (vendía los PINs del bot),
 # la página del bot (/juego/freefire_id) y Blood Strike de ejemplo. El bot se gestiona en Admin → Bot de Free Fire.

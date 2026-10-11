@@ -31,11 +31,21 @@ from pg_compat import get_db_connection
 logger = logging.getLogger(__name__)
 bp = Blueprint('api_panel', __name__)
 
+# permiso: (columna, valor por defecto, etiqueta, tipo de clave al que pertenece)
+# Hay dos tipos de clave separados: 'recargas' (recargas y verificar IDs) y 'referencias'
+# (verificar pagos y gestionar las referencias del banco del usuario). Una clave nunca mezcla ambos.
 PERMISOS = {
-    'recargas': ('perm_recargas', True, 'Hacer recargas'),
-    'verificar_id': ('perm_verificar_id', False, 'Verificar IDs de jugador'),
-    'verificar_pago': ('perm_verificar_pago', False, 'Verificar pagos de Bancamiga'),
+    'recargas': ('perm_recargas', True, 'Hacer recargas', 'recargas'),
+    'verificar_id': ('perm_verificar_id', False, 'Verificar IDs de jugador', 'recargas'),
+    'verificar_pago': ('perm_verificar_pago', False, 'Verificar pagos', 'referencias'),
+    'ver_pagos': ('perm_ver_pagos', False, 'Ver pagos, resumen, revisiones y cuentas', 'referencias'),
+    'gestionar_pagos': ('perm_gestionar_pagos', False, 'Asignar pagos y resolver revisiones', 'referencias'),
 }
+TIPOS_CLAVE = {'recargas': 'Recargas', 'referencias': 'Referencias (verificar pagos)'}
+
+
+def permisos_de(tipo):
+    return [k for k, v in PERMISOS.items() if v[3] == tipo]
 VERIFY_MAX, VERIFY_VENTANA = 30, 60  # verificaciones de ID por cuenta por minuto (límite del proveedor)
 
 
@@ -55,22 +65,47 @@ def init_permisos():
     with _cols_lock:
         if _cols_listas:
             return
-        for _, (col, default, _) in PERMISOS.items():
+        columnas = [f"{v[0]} BOOLEAN DEFAULT {'TRUE' if v[1] else 'FALSE'}" for v in PERMISOS.values()]
+        columnas.append("tipo TEXT DEFAULT 'recargas'")
+        for col in columnas:
             conn = get_db_connection()
             try:
-                conn.execute(f"ALTER TABLE webservice_accounts ADD COLUMN {col} BOOLEAN DEFAULT {'TRUE' if default else 'FALSE'}")
+                conn.execute(f'ALTER TABLE webservice_accounts ADD COLUMN {col}')
                 conn.commit()
             except Exception:
                 conn.rollback()  # ya existe
             finally:
                 conn.close()
+        _reiniciar_claves_anteriores()
         _cols_listas = True
+
+
+def _reiniciar_claves_anteriores():
+    """Una sola vez, al separar las claves de Recargas y de Referencias: todas las claves que existían se
+    desactivan (tipo 'antigua'), para configurar cada sistema desde cero con sus dos claves nuevas."""
+    conn = get_db_connection()
+    try:
+        if conn.execute("SELECT 1 FROM configuracion_redeemer WHERE clave = 'migr_claves_separadas'").fetchone():
+            return
+        n = conn.execute("UPDATE webservice_accounts SET activo = FALSE, tipo = 'antigua'").rowcount
+        conn.execute("INSERT INTO configuracion_redeemer (clave, valor) VALUES ('migr_claves_separadas', '1')")
+        conn.commit()
+        if n:
+            logger.warning(f'[API] {n} clave(s) de API anteriores desactivadas: crea de nuevo las claves de Recargas y de Referencias')
+    except Exception as e:
+        conn.rollback()
+        logger.error(f'[API] No se pudieron reiniciar las claves anteriores: {e}')
+    finally:
+        conn.close()
 
 
 def cuenta_puede(account, permiso):
     """¿La cuenta (dict de webservice_accounts) tiene ese permiso?"""
-    col, default, _ = PERMISOS[permiso]
-    val = (account or {}).get(col)
+    col, default, _, grupo = PERMISOS[permiso]
+    account = account or {}
+    if (account.get('tipo') or 'recargas') != grupo:
+        return False  # una clave de Recargas no sirve para Referencias y al revés (las 'antigua' para nada)
+    val = account.get(col)
     return default if val is None else bool(val)
 
 
@@ -241,7 +276,8 @@ def admin_api():
         flash('Acceso denegado. Solo administradores.', 'error')
         return redirect('/auth')
     init_permisos()
-    return render_template('admin_api.html', permisos=[(k, v[2]) for k, v in PERMISOS.items()],
+    return render_template('admin_api.html', permisos=[(k, v[2], v[3]) for k, v in PERMISOS.items()],
+                           tipos=TIPOS_CLAVE,
                            api_url=request.host_url.rstrip('/'))
 
 
@@ -264,9 +300,22 @@ def _cuenta_json(r):
         'usuario': ' '.join(x for x in (r['u_nombre'], r['u_apellido']) if x) or None,
         'usuario_correo': r['u_correo'], 'usuario_saldo': float(r['u_saldo'] or 0),
         'webhook_url': r['webhook_url'] or '', 'activo': bool(r['activo']),
-        'permisos': {k: cuenta_puede(dict(r), k) for k in PERMISOS},
+        'tipo': r['tipo'] or 'recargas',
+        'permisos': {k: cuenta_puede(dict(r), k) for k in permisos_de(r['tipo'] or 'recargas')},
     }
     return d
+
+
+def crear_cuenta(conn, nombre, usuario_id, tipo, permisos, webhook_url=''):
+    """Crea una clave del tipo indicado; los permisos de otro tipo quedan siempre apagados. Devuelve el id."""
+    from api_whitelabel import _generate_api_key
+    cols = [v[0] for v in PERMISOS.values()]
+    vals = [bool(permisos.get(k, v[1])) if v[3] == tipo else False for k, v in PERMISOS.items()]
+    cur = conn.execute(
+        f"INSERT INTO webservice_accounts (nombre, api_key, usuario_id, webhook_url, activo, tipo, {', '.join(cols)}) "
+        f"VALUES (?, ?, ?, ?, TRUE, ?, {', '.join('?' for _ in cols)}) RETURNING id",
+        (nombre, _generate_api_key(), usuario_id, webhook_url, tipo, *vals))
+    return cur.fetchone()[0]
 
 
 def _cargar_cuenta(conn, account_id):
@@ -301,14 +350,11 @@ def admin_api_cuentas():
             return jsonify(ok=False, error='Ponle un nombre a la cuenta (ej: CRM)'), 400
         if not conn.execute('SELECT 1 FROM usuarios WHERE id = ?', (usuario_id,)).fetchone():
             return jsonify(ok=False, error='No existe un usuario con ese ID'), 404
-        permisos = data.get('permisos') or {}
-        cols = [PERMISOS[k][0] for k in PERMISOS]
-        vals = [bool(permisos.get(k, PERMISOS[k][1])) for k in PERMISOS]
-        cur = conn.execute(
-            f"INSERT INTO webservice_accounts (nombre, api_key, usuario_id, webhook_url, activo, {', '.join(cols)}) "
-            f"VALUES (?, ?, ?, ?, TRUE, {', '.join('?' for _ in cols)}) RETURNING id",
-            (nombre, _generate_api_key(), usuario_id, str(data.get('webhook_url') or '').strip()[:300], *vals))
-        nuevo = cur.fetchone()[0]
+        tipo = data.get('tipo') or 'recargas'
+        if tipo not in TIPOS_CLAVE:
+            return jsonify(ok=False, error='Tipo de clave no válido'), 400
+        nuevo = crear_cuenta(conn, nombre, usuario_id, tipo, data.get('permisos') or {},
+                             str(data.get('webhook_url') or '').strip()[:300])
         conn.commit()
         return jsonify(ok=True, cuenta=_cuenta_json(_cargar_cuenta(conn, nuevo)))
     except Exception as e:
@@ -336,15 +382,21 @@ def admin_api_cuenta_update(account_id):
     if 'webhook_url' in data:
         sets.append('webhook_url = ?')
         params.append(str(data.get('webhook_url') or '').strip()[:300])
-    if 'activo' in data:
-        sets.append('activo = ?')
-        params.append(bool(data['activo']))
-    for k, v in (data.get('permisos') or {}).items():
-        if k in PERMISOS:
-            sets.append(f'{PERMISOS[k][0]} = ?')
-            params.append(bool(v))
     conn = get_db_connection()
     try:
+        actual = _cargar_cuenta(conn, account_id)
+        if not actual:
+            return jsonify(ok=False, error='Cuenta no encontrada'), 404
+        tipo = actual['tipo'] or 'recargas'
+        if 'activo' in data:
+            if data['activo'] and tipo == 'antigua':
+                return jsonify(ok=False, error='Las claves anteriores no se pueden reactivar: crea una nueva'), 409
+            sets.append('activo = ?')
+            params.append(bool(data['activo']))
+        for k, v in (data.get('permisos') or {}).items():
+            if k in PERMISOS and PERMISOS[k][3] == tipo:
+                sets.append(f'{PERMISOS[k][0]} = ?')
+                params.append(bool(v))
         if 'usuario_id' in data:
             try:
                 uid = int(data['usuario_id'])
