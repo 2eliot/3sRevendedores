@@ -66,7 +66,14 @@
     .rf-nueva-clave { border: 1px solid var(--rc-green); border-radius: 14px; padding: 14px; margin-bottom: 14px; background: var(--rc-green-bg); display: flex; flex-direction: column; gap: 8px; }
     .rf-nueva-clave code { font-family: var(--rc-mono); font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--rc-card); overflow-wrap: anywhere; }
     .rf-msg { min-height: 18px; font-size: 13px; margin: 8px 0 0; }
-    .rf-count[hidden] { display: none; }
+    .rf-count[hidden], .rf-nueva-clave[hidden] { display: none; }
+    .rf-plegable > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding-right: 26px; position: relative; }
+    .rf-plegable > summary::-webkit-details-marker { display: none; }
+    .rf-plegable > summary::after { content: ''; position: absolute; right: 4px; top: 6px; width: 8px; height: 8px; border-right: 2px solid var(--rc-ash); border-bottom: 2px solid var(--rc-ash); transform: rotate(45deg); transition: transform .2s; }
+    .rf-plegable[open] > summary::after { transform: rotate(-135deg); top: 10px; }
+    .rf-plegable[open] > summary { margin-bottom: 14px; }
+    .rf-sum-t { font-size: 15px; font-weight: 600; }
+    .rf-sum-nota { flex-basis: 100%; font-size: 12.5px; color: var(--rc-ash); line-height: 1.5; }
     .rf-filtros .rf-main, .rf-form .rf-main { opacity: 1 !important; background: var(--rc-mist) !important; color: var(--rc-card) !important; }
     @media (max-width: 640px) {
       .rf-wrap h1 { font-size: 22px; } .rf-kpi strong { font-size: 16px; }
@@ -241,17 +248,6 @@
       </div>
 
       <div class="rf-card">
-        <h2>Claves de lector <span class="rf-muted rf-small">(para el bot que envía los movimientos del banco)</span></h2>
-        <form id="rf-lector-nueva" class="rf-form">
-          <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: PC de la oficina"></label>
-          <label>Cuenta bancaria <select name="cuenta_id" id="rf-lector-cuenta" required></select></label>
-          <button type="submit" class="rf-btn rf-main">Crear clave de lector</button>
-        </form>
-        <p class="rf-msg" id="rf-lector-msg"></p>
-        <div id="rf-lectores"></div>
-      </div>
-
-      <div class="rf-card">
         <h2>Claves de API <span class="rf-muted rf-small">(para que otro sistema, como tu CRM, verifique pagos)</span></h2>
         <form id="rf-api-nueva" class="rf-form">
           <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: Mi CRM"></label>
@@ -262,6 +258,20 @@
         <p class="rf-msg" id="rf-api-msg"></p>
         <div id="rf-apis"></div>
       </div>
+
+      <details class="rf-card rf-plegable" id="rf-lector-box">
+        <summary>
+          <span class="rf-sum-t">Claves de lector <span class="rf-muted rf-small" id="rf-lector-n"></span></span>
+          <span class="rf-sum-nota">Solo si verificas pagos de Bancamiga con el bot local (el programa de tu PC que envía los movimientos del banco). Para el CRM no hace falta.</span>
+        </summary>
+        <form id="rf-lector-nueva" class="rf-form">
+          <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: PC de la oficina"></label>
+          <label>Cuenta bancaria <select name="cuenta_id" id="rf-lector-cuenta" required></select></label>
+          <button type="submit" class="rf-btn rf-main">Crear clave de lector</button>
+        </form>
+        <p class="rf-msg" id="rf-lector-msg"></p>
+        <div id="rf-lectores"></div>
+      </details>
     </section>
   </main>
 
@@ -462,6 +472,8 @@
           '<div class="rf-row"><button class="rf-btn" data-lector="' + k.id + '" data-accion="regenerar">Nueva clave</button>' +
           '<button class="rf-btn" data-lector="' + k.id + '" data-accion="' + (k.activo ? 'desactivar' : 'activar') + '">' + (k.activo ? 'Desactivar' : 'Activar') + '</button></div></div>';
       }).join('') : '<div class="rf-empty">Todavía no tienes claves de lector.</div>';
+      var nl = (d.lector || []).length;
+      document.getElementById('rf-lector-n').textContent = nl ? '· ' + nl + (nl === 1 ? ' clave' : ' claves') : '';
       document.getElementById('rf-apis').innerHTML = (d.api || []).length ? d.api.map(function (a) {
         return '<div class="rf-clave"><div class="rf-row"><b>' + esc(a.nombre) + '</b><span class="rf-badge ' + (a.activo ? 'disponible">Activa' : 'usado">Desactivada') + '</span></div>' +
           '<div class="rf-row"><code class="rf-key" data-key="' + a.id + '">' + '•'.repeat(24) + '</code>' +
