@@ -18,6 +18,7 @@
     .dc-wrap h2 { margin: 36px 0 10px; font-size: 20px; font-weight: 600; padding-top: 8px; border-top: 1px solid var(--rc-border); }
     .dc-wrap h3 { margin: 22px 0 8px; font-size: 16px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .dc-wrap p, .dc-wrap li { font-size: 14px; line-height: 1.6; color: var(--rc-mist); }
+    .dc-wrap ol, .dc-wrap ul { padding-left: 24px; }
     .dc-lead { color: var(--rc-ash) !important; margin: 0 0 16px; }
     .dc-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
     .dc-toc a { font-size: 13px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--rc-border); color: var(--rc-text); text-decoration: none; }
@@ -40,13 +41,15 @@
     .dc-btn { min-height: 38px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
     @media print { .back-button, .dc-actions, .dc-toc { display: none !important; } body { background: #fff !important; } }
   </style>
+  <script src="{{ url_for('static', filename='descargar-pdf.js') }}" defer></script>
+  <style>.pdf-modo .back-button, .pdf-modo .dc-actions, .pdf-modo .dc-toc { display: none !important; } .dc-wrap { background: var(--rc-canvas); }</style>
 </head>
 <body>
-<div class="dc-wrap">
+<div class="dc-wrap" id="dc-doc">
   <a href="/admin/api" class="back-button">← Volver a API</a>
   <h1>Documentación de la API</h1>
   <p class="dc-lead">Para conectar tu CRM: recargas, verificación de IDs de jugador y verificación de pagos de Bancamiga. El catálogo de juegos y paquetes de abajo se genera en vivo con los datos actuales de la web.</p>
-  <div class="dc-actions"><button class="dc-btn" onclick="window.print()">Imprimir / guardar PDF</button></div>
+  <div class="dc-actions"><button class="dc-btn" style="background:var(--rc-mist);color:var(--rc-card);border:0;" onclick="descargarPDF('#dc-doc', 'api-documentacion.pdf', this)">⬇ Descargar PDF</button><button class="dc-btn" onclick="window.print()">Imprimir</button></div>
   <nav class="dc-toc">
     <a href="#inicio">Inicio rápido</a><a href="#flujo">Flujo del CRM</a><a href="#productos">Catálogo</a><a href="#verify-id">Verificar ID</a>
     <a href="#verificar-pago">Verificar pago</a><a href="#recarga">Recargar</a><a href="#estado">Estado de órdenes</a><a href="#saldo">Saldo</a>
@@ -56,16 +59,16 @@
   <h2 id="inicio">Inicio rápido</h2>
   <ul>
     <li><strong>Dirección base:</strong> <code>{{ api_url }}</code></li>
-    <li><strong>Clave:</strong> en cada petición manda la cabecera <code>X-API-Key: wsk_...</code> con la clave de tu cuenta (Admin → API).</li>
+    <li><strong>Dos claves, siempre por separado:</strong> una de <strong>Recargas</strong> (recargas y verificar IDs, la crea el admin en Admin → API) y una de <strong>Referencias</strong> (verificar pagos del banco; la crea el usuario dueño de los pagos en su apartado Referencias o el admin). Ambas van en la cabecera <code>X-API-Key: wsk_...</code>. Una clave de un tipo no sirve para el otro (responde <code>403</code>).</li>
     <li><strong>Formato:</strong> los datos se envían y se reciben en JSON (<code>Content-Type: application/json</code>).</li>
-    <li><strong>Permisos:</strong> cada cuenta solo puede usar lo que tenga marcado en Admin → API: <em>Hacer recargas</em>, <em>Verificar IDs de jugador</em> y <em>Verificar pagos de Bancamiga</em>.</li>
+    <li><strong>Permisos:</strong> la clave de Recargas tiene <em>Hacer recargas</em> y <em>Verificar IDs de jugador</em>; la de Referencias, <em>Verificar pagos</em>, <em>Ver pagos</em> y <em>Gestionar pagos</em>.</li>
     <li><strong>Saldo:</strong> cada recarga se cobra del saldo del usuario vinculado a la cuenta. Si falla, el saldo se devuelve solo.</li>
   </ul>
 
   <h2 id="flujo">Flujo recomendado para recargas automáticas</h2>
   <ol>
     <li>El cliente paga por Bancamiga y manda la referencia y el monto por WhatsApp.</li>
-    <li><strong>Verificar pago</strong> (<code>POST /api/verificar-pago</code>) con la referencia, el monto y el ID de la orden del CRM. Solo sigue si responde <code>"codigo": "aprobado"</code> o <code>"ya_aprobado"</code>.</li>
+    <li><strong>Verificar pago</strong> (<code>POST /api/verificar-pago</code>, con la <strong>clave de Referencias</strong>) con la referencia, el monto y el ID de la orden del CRM. Solo sigue si responde <code>"codigo": "aprobado"</code> o <code>"ya_aprobado"</code>.</li>
     <li><strong>Verificar ID</strong> del jugador (<code>POST /api/v1/verify-id</code>), opcional, para confirmar el nombre antes de recargar.</li>
     <li><strong>Recargar</strong> (<code>POST /api/v1/recharge</code>) usando el <strong>mismo ID de orden</strong> en <code>external_order_id</code>. Si por un fallo de red el CRM repite la petición, no se recarga dos veces.</li>
     <li>Si la respuesta tarda o se pierde, consulta el <strong>estado</strong> con <code>GET /api/v1/order-status?external_order_id=...</code>.</li>
@@ -100,9 +103,9 @@
 {"ok": false, "error": "ID de jugador no encontrado"}</pre>
   <p>Máximo 30 verificaciones por minuto por cuenta.</p>
 
-  <h2 id="verificar-pago">Verificar pago de Bancamiga</h2>
-  <h3><span class="dc-m dc-post">POST</span> <code>/api/verificar-pago</code> <span class="dc-perm">permiso: Verificar pagos de Bancamiga</span></h3>
-  <p>Detalle completo (reglas de búsqueda, estados y cómo llegan los pagos del banco) en la <a href="/admin/antiduplic/docs" style="color:var(--rc-hl);">documentación de Antiduplic</a>.</p>
+  <h2 id="verificar-pago">Verificar pago del banco</h2>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/verificar-pago</code> <span class="dc-perm">clave de Referencias · Verificar pagos</span></h3>
+  <p>Verifica contra los pagos <strong>del usuario dueño de la clave</strong>. La documentación completa de Referencias (bot del banco, consultas, revisiones y asignaciones por API) está en la <a href="/admin/antiduplic/docs" style="color:var(--rc-hl);">documentación de Referencias</a>.</p>
   <div class="dc-tw"><table class="dc-t">
     <tr><th>Campo</th><th>Tipo</th><th>Obligatorio</th><th>Descripción</th></tr>
     <tr><td><code>referencia</code></td><td>texto</td><td>sí</td><td>Solo números. Con 6 dígitos o más basta con los últimos dígitos.</td></tr>

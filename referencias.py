@@ -213,6 +213,14 @@ def pagina_referencias():
                            user_id=session.get('id'), aviso_min=ad.AVISO_BOT_MIN)
 
 
+@bp.route('/referencias/docs')
+def referencias_docs():
+    if _uid() is None:
+        return redirect('/auth')
+    return render_template('referencias_docs.html', api_url=request.host_url.rstrip('/'), admin=False,
+                           token_banco=False, volver='/referencias')
+
+
 @bp.route('/referencias/datos')
 def referencias_datos():
     uid, err = _sesion_json()

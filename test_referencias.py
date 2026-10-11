@@ -276,6 +276,20 @@ class ReferenciasTest(unittest.TestCase):
         aid = q("SELECT id FROM webservice_accounts WHERE api_key = 'wsk_viejo'")[0]['id']
         self.assertEqual(self.c.post(f'/admin/api/cuentas/{aid}', json={'activo': True}).status_code, 409)
 
+    def test_documentacion_del_usuario_y_del_admin(self):
+        self.assertEqual(self.c.get('/referencias/docs').status_code, 302)  # sin sesión
+        self.entrar(self.B, 'b@test.local')
+        html = self.c.get('/referencias/docs').get_data(as_text=True)
+        self.assertIn('Descargar PDF', html)
+        self.assertIn('/api/v1/referencias/pagos', html)
+        self.assertNotIn('id="admin"', html)
+        self.assertEqual(self.c.get('/admin/antiduplic/docs').status_code, 302)  # no es admin
+        with self.c.session_transaction() as s:
+            s['is_admin'] = True
+        html = self.c.get('/admin/antiduplic/docs').get_data(as_text=True)
+        self.assertIn('id="admin"', html)
+        self.assertIn('Descargar PDF', self.c.get('/admin/api/docs').get_data(as_text=True))
+
 
 if __name__ == '__main__':
     unittest.main()

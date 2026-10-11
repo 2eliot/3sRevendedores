@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentación de Referencias</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='descargar-pdf.js') }}" defer></script>
+  <style>
+    .dc-wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; background: var(--rc-canvas); }
+    .dc-wrap h1 { margin: 16px 0 4px; font-size: 28px; font-weight: 600; }
+    .dc-wrap h2 { margin: 34px 0 10px; font-size: 20px; font-weight: 600; padding-top: 8px; border-top: 1px solid var(--rc-border); }
+    .dc-wrap h3 { margin: 22px 0 8px; font-size: 16px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .dc-wrap p, .dc-wrap li { font-size: 14px; line-height: 1.6; color: var(--rc-mist); }
+    .dc-wrap ol, .dc-wrap ul { padding-left: 24px; }
+    .dc-lead { color: var(--rc-ash) !important; margin: 0 0 16px; }
+    .dc-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+    .dc-toc a { font-size: 13px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--rc-border); color: var(--rc-text); text-decoration: none; }
+    code, pre { font-family: var(--rc-mono); }
+    .dc-wrap p code, .dc-wrap li code, td code { font-size: 12.5px; padding: 1px 6px; border-radius: 6px; background: var(--rc-recess); border: 1px solid var(--rc-border); color: var(--rc-text); }
+    pre { margin: 8px 0 14px; padding: 12px 14px; border-radius: 12px; background: var(--rc-recess); border: 1px solid var(--rc-border); font-size: 12.5px; line-height: 1.55; overflow-x: auto; color: var(--rc-text); white-space: pre-wrap; word-break: break-word; }
+    .dc-m { font-family: var(--rc-mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+    .dc-get { background: var(--rc-blue-bg); color: var(--rc-blue); } .dc-post { background: var(--rc-green-bg); color: var(--rc-green); }
+    .dc-perm { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--rc-yellow-bg); color: var(--rc-yellow); }
+    table.dc-t { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 14px; }
+    .dc-t th { text-align: left; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; padding: 7px 10px; border-bottom: 1px solid var(--rc-border); }
+    .dc-t td { padding: 8px 10px; border-bottom: 1px solid var(--rc-border); vertical-align: top; }
+    .dc-tw { overflow-x: auto; }
+    .dc-note { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--rc-border); background: var(--rc-recess); font-size: 13.5px; line-height: 1.55; margin: 10px 0; }
+    .dc-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
+    .dc-step { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; background: var(--rc-card); font-size: 13px; line-height: 1.5; color: var(--rc-mist); }
+    .dc-step b { display: block; color: var(--rc-text); margin-bottom: 4px; }
+    .dc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .dc-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
+    .dc-main { background: var(--rc-mist); color: var(--rc-card); border: 0; }
+    .pdf-modo .back-button, .pdf-modo .dc-actions, .pdf-modo .dc-toc { display: none !important; }
+    .pdf-modo .dc-wrap { padding-top: 0; }
+    @media print { .back-button, .dc-actions, .dc-toc { display: none !important; } body { background: #fff !important; } }
+  </style>
+</head>
+<body>
+<div class="dc-wrap" id="dc-doc">
+  <a href="{{ volver }}" class="back-button">← Volver</a>
+  <h1>Documentación de Referencias</h1>
+  <p class="dc-lead">Cómo llegan los pagos de tu banco, cómo se verifica que una referencia es real y no se usó antes, y cómo hacerlo todo desde otro sistema. Referencias solo verifica pagos: no suma ni resta saldo a nadie.</p>
+  <div class="dc-actions">
+    <button class="dc-btn dc-main" onclick="descargarPDF('#dc-doc', 'referencias-documentacion.pdf', this)">⬇ Descargar PDF</button>
+    <button class="dc-btn" onclick="window.print()">Imprimir</button>
+  </div>
+  <nav class="dc-toc">
+    <a href="#como">Cómo funciona</a><a href="#claves">Claves</a><a href="#bot">Conectar el bot</a><a href="#api">Desde otro sistema</a>
+    <a href="#verificar">Verificar pago</a><a href="#consultas">Consultas</a><a href="#gestion">Gestión</a><a href="#codigos">Códigos</a>
+    <a href="#reglas">Reglas</a><a href="#errores">Errores y límites</a>{% if admin %}<a href="#admin">Administración</a>{% endif %}
+  </nav>
+
+  <h2 id="como">1. Cómo funciona</h2>
+  <div class="dc-flow">
+    <div class="dc-step"><b>1. El bot del banco</b>Descarga los movimientos de tu cuenta y los envía a la web con tu <em>clave de lector</em>.</div>
+    <div class="dc-step"><b>2. Se guardan</b>Cada pago queda en tu lista, separado de los demás usuarios. Los repetidos se ignoran.</div>
+    <div class="dc-step"><b>3. Se verifica</b>Tu sistema pregunta por una referencia y un monto con tu <em>clave de API de Referencias</em>.</div>
+    <div class="dc-step"><b>4. Queda usado</b>Si es válido, el pago queda <b style="display:inline;">usado</b> por esa orden y no sirve otra vez.</div>
+  </div>
+  <p>Todo lo tuyo es solo tuyo: nadie más ve tus pagos, cuentas, revisiones ni claves, y tus claves nunca ven los de otros.</p>
+
+  <h2 id="claves">2. Tus claves</h2>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Clave</th><th>Para qué</th><th>Dónde se crea</th><th>Cómo se envía</th></tr>
+    <tr><td><b>Clave de lector</b> <code>lec_…</code></td><td>Que tu bot del banco envíe movimientos de UNA cuenta bancaria.</td><td>Referencias → Claves</td><td><code>Authorization: Bearer lec_…</code></td></tr>
+    <tr><td><b>Clave de API de Referencias</b> <code>wsk_…</code></td><td>Que otro sistema (tu CRM) verifique pagos y gestione tus referencias.</td><td>Referencias → Claves</td><td><code>X-API-Key: wsk_…</code></td></tr>
+    <tr><td><b>Clave de API de Recargas</b> <code>wsk_…</code></td><td>Hacer recargas y verificar IDs de jugador. Va <b>aparte</b>: no sirve para Referencias.</td><td>La da el administrador</td><td><code>X-API-Key: wsk_…</code></td></tr>
+  </table></div>
+  <p>La clave de lector se muestra <b>una sola vez</b> al crearla o regenerarla: cópiala en ese momento. Si la pierdes, regenera una nueva (la anterior deja de funcionar al instante).</p>
+  <p>Permisos de la clave de API de Referencias (se eligen al crearla):</p>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Permiso</th><th>Qué deja hacer</th></tr>
+    <tr><td><b>Verificar pagos</b></td><td><code>POST /api/verificar-pago</code></td></tr>
+    <tr><td><b>Ver pagos</b></td><td>Resumen, lista y detalle de pagos, revisiones y cuentas.</td></tr>
+    <tr><td><b>Gestionar pagos</b></td><td>Asignar un pago a una orden, resolver y descartar revisiones.</td></tr>
+  </table></div>
+
+  <h2 id="bot">3. Conectar el bot del banco</h2>
+  <ol>
+    <li>En <b>Referencias → Cuentas bancarias</b>, crea tu cuenta (banco, un nombre y solo los últimos 4 dígitos).</li>
+    <li>En <b>Referencias → Claves</b>, crea una <b>clave de lector</b> para esa cuenta y cópiala.</li>
+    <li>Configura tu bot para enviar los movimientos a la dirección de abajo con esa clave.</li>
+  </ol>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/pagos-banco</code> <span class="dc-perm">clave de lector</span></h3>
+  <p>Envía una lista de pagos recibidos (o <code>{"pagos": [...]}</code>). Puedes mandar todos los movimientos del día en cada envío: los repetidos se ignoran sin error. Máximo 2.000 pagos y 2 MB por envío.</p>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Campo</th><th>Formato</th><th>Notas</th></tr>
+    <tr><td><code>referencia</code></td><td>solo números</td><td>Se guarda con los ceros a la izquierda.</td></tr>
+    <tr><td><code>fecha</code></td><td><code>AAAA-MM-DD</code> (o <code>DD/MM/AAAA</code>)</td><td></td></tr>
+    <tr><td><code>hora</code></td><td><code>HH:MM:SS</code></td><td></td></tr>
+    <tr><td><code>monto</code></td><td>número, ej. <code>7350.00</code></td><td>Mayor que 0.</td></tr>
+    <tr><td><code>tipo</code></td><td>texto</td><td>Descripción del banco (opcional).</td></tr>
+  </table></div>
+<pre>curl -X POST {{ api_url }}/api/pagos-banco \
+  -H "Authorization: Bearer lec_••••••••••••" -H "Content-Type: application/json" \
+  -d '[{"referencia":"7568126123","fecha":"2026-10-05","hora":"08:14:52","monto":7350.00,"tipo":"NC Credito Inmediato"}]'</pre>
+<pre>{"recibidos": 1, "insertados": 1}                 ← nuevo
+{"recibidos": 1, "insertados": 0}                 ← ya existía (no es un error)
+{"recibidos": 3, "insertados": 2, "rechazados": 1, "errores": ["#2: datos inválidos"]}</pre>
+  <p>Si usas el script <code>sacar-referencias.ps1</code>, pon esto en su <code>config.json</code>:</p>
+<pre>{ "apiUrl": "{{ api_url }}/api/pagos-banco", "token": "lec_••••••••••••" }</pre>
+
+  <h2 id="api">4. Verificar pagos y gestionar referencias desde otro sistema</h2>
+  <p>Crea en <b>Referencias → Claves</b> una <b>clave de API</b> con los permisos que necesites y envíala en cada petición con la cabecera <code>X-API-Key</code>. Todas las respuestas son JSON; las escrituras traen <code>ok</code> y <code>mensaje</code>. Montos con 2 decimales, fechas <code>AAAA-MM-DD</code> y horas <code>HH:MM:SS</code>.</p>
+
+  <h3 id="verificar"><span class="dc-m dc-post">POST</span> <code>/api/verificar-pago</code> <span class="dc-perm">Verificar pagos</span></h3>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Campo</th><th>Obligatorio</th><th>Descripción</th></tr>
+    <tr><td><code>referencia</code></td><td>sí</td><td>Solo números. Con 6 dígitos o más bastan los últimos.</td></tr>
+    <tr><td><code>monto</code></td><td>sí</td><td>Acepta <code>7350</code>, <code>7350.00</code> o <code>"7.350,00"</code>.</td></tr>
+    <tr><td><code>orden_id</code></td><td>sí</td><td>ID de la orden en tu sistema. Una orden nunca consume dos pagos.</td></tr>
+    <tr><td><code>fecha</code></td><td>con 4 o 5 dígitos</td><td><code>AAAA-MM-DD</code>.</td></tr>
+    <tr><td><code>hora</code></td><td>si hay empate</td><td><code>HH:MM</code> o <code>HH:MM:SS</code>.</td></tr>
+  </table></div>
+<pre>curl -X POST {{ api_url }}/api/verificar-pago -H "X-API-Key: wsk_••••••••••••" -H "Content-Type: application/json" \
+  -d '{"referencia": "126123", "monto": "7.350,00", "orden_id": "ORD-1001"}'</pre>
+<pre>{"ok": true, "codigo": "aprobado", "mensaje": "Pago verificado",
+ "pago": {"id": 31, "referencia": "7568126123", "fecha": "2026-10-05", "hora": "08:14:52", "monto": 7350.0, "tipo": "NC", "estado": "usado"}}</pre>
+
+  <h3 id="consultas"><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/resumen</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Resumen de hoy (o de <code>?fecha=AAAA-MM-DD</code>) y el último envío del bot por cuenta.</p>
+<pre>{"ok": true, "resumen": {"hoy": "2026-10-05", "pagos_hoy": 12, "total_hoy": 84250.0, "disponibles_hoy": 3, "usados_hoy": 9,
+  "revision_hoy": 0, "ultimo_envio_bot": "2026-10-05 18:20:01", "ultimo_movimiento": "2026-10-05 18:19:44",
+  "cuentas": [{"id": 4, "alias": "Bancamiga principal", "banco": "Bancamiga", "ultimos_digitos": "4021", "activo": true, "ultimo_envio": "2026-10-05 18:20:01"}]}}</pre>
+
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/pagos</code> <span class="dc-perm">Ver pagos</span></h3>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Parámetro</th><th>Descripción</th></tr>
+    <tr><td><code>fecha</code>, <code>desde</code>, <code>hasta</code></td><td>Un día o un rango (<code>AAAA-MM-DD</code>).</td></tr>
+    <tr><td><code>estado</code></td><td><code>disponible</code>, <code>usado</code> o <code>revision</code>.</td></tr>
+    <tr><td><code>q</code></td><td>Referencia (termina en) o monto.</td></tr>
+    <tr><td><code>cuenta_id</code></td><td>Solo los de una de tus cuentas.</td></tr>
+    <tr><td><code>pagina</code>, <code>por_pagina</code></td><td>Paginación; <code>por_pagina</code> máximo 200 (por defecto 50).</td></tr>
+  </table></div>
+<pre>curl "{{ api_url }}/api/v1/referencias/pagos?fecha=2026-10-05&estado=usado&por_pagina=50" -H "X-API-Key: wsk_••••••••••••"</pre>
+<pre>{"ok": true, "total": 9, "pagina": 1, "por_pagina": 50, "pagos": [
+  {"id": 31, "referencia": "7568126123", "fecha": "2026-10-05", "hora": "08:14:52", "monto": 7350.0, "estado": "usado",
+   "cuenta_id": 4, "cuenta": "Bancamiga principal",
+   "uso": {"orden_id": "ORD-1001", "origen": "crm", "usado_en": "2026-10-05 08:15:10",
+           "referencia_reportada": "126123", "monto_reportado": 7350.0, "hecho_por": "api:Mi CRM (#3)"}}]}</pre>
+
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/pagos/&lt;id&gt;</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Un pago con su uso. Si no existe o no es tuyo: <code>404</code>.</p>
+
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/revisiones</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Por defecto las pendientes; <code>?estado=resuelta</code> o <code>descartada</code> para el historial. Cada revisión trae sus pagos candidatos.</p>
+<pre>{"ok": true, "revisiones": [{"id": 7, "estado": "pendiente", "orden_id": "ORD-2002", "referencia_reportada": "555111",
+  "monto_reportado": 50.0, "hora_reportada": "10:00", "creado_en": "2026-10-05 10:01:00",
+  "candidatos": [{"id": 40, "referencia": "1000555111", "fecha": "2026-10-05", "hora": "10:00:00", "monto": 50.0, "estado": "revision"},
+                 {"id": 41, "referencia": "2000555111", "fecha": "2026-10-05", "hora": "10:00:00", "monto": 50.0, "estado": "revision"}]}]}</pre>
+
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/cuentas</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Tus cuentas bancarias (solo los últimos 4 dígitos, nunca el número completo).</p>
+
+  <h3 id="gestion"><span class="dc-m dc-post">POST</span> <code>/api/v1/referencias/asignar</code> <span class="dc-perm">Gestionar pagos</span></h3>
+  <p>Marca a mano un pago disponible como usado por una orden. Body: <code>{"pago_id": 31, "orden_id": "ORD-1001"}</code>. Si la orden ya tiene un pago, o el pago ya está usado: <code>409</code>.</p>
+<pre>{"ok": true, "mensaje": "Pago asignado"}
+{"ok": false, "mensaje": "Esa orden ya tiene un pago asignado"}   ← 409</pre>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/v1/referencias/revisiones/&lt;id&gt;/resolver</code> <span class="dc-perm">Gestionar pagos</span></h3>
+  <p>Body: <code>{"pago_id": 40}</code>. Asigna ese candidato a la orden de la revisión; los demás vuelven a estar disponibles.</p>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/v1/referencias/revisiones/&lt;id&gt;/descartar</code> <span class="dc-perm">Gestionar pagos</span></h3>
+  <p>Cierra la revisión sin asignar; los candidatos vuelven a estar disponibles.</p>
+  <div class="dc-note">Cada asignación, resolución o descarte queda registrado con quién lo hizo (tu usuario, tu clave de API o el administrador) y se ve en el detalle del pago (<code>hecho_por</code>).</div>
+
+  <h2 id="codigos">5. Códigos de verificación</h2>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th><code>codigo</code></th><th><code>ok</code></th><th>Qué significa</th><th>Qué hacer</th></tr>
+    <tr><td><code>aprobado</code></td><td>true</td><td>Pago válido; queda usado por esta orden.</td><td>Seguir (por ejemplo, recargar).</td></tr>
+    <tr><td><code>ya_aprobado</code></td><td>true</td><td>Esta orden ya tenía su pago aprobado.</td><td>Seguir sin cobrar otro pago.</td></tr>
+    <tr><td><code>usado</code></td><td>false</td><td>Referencia duplicada: ya la usó otra orden.</td><td>Rechazar y avisar al cliente.</td></tr>
+    <tr><td><code>no_encontrado</code></td><td>false</td><td>Todavía no está en tus movimientos.</td><td>Reintentar en 1 minuto.</td></tr>
+    <tr><td><code>monto_no_coincide</code></td><td>false</td><td>La referencia existe con otro monto (o el monto es inválido).</td><td>Pedir que revise el monto.</td></tr>
+    <tr><td><code>falta_fecha</code></td><td>false</td><td>Referencia de 4 o 5 dígitos sin fecha.</td><td>Pedir la fecha.</td></tr>
+    <tr><td><code>revision</code></td><td>false</td><td>Con <code>pedir_hora: true</code> falta la hora; sin él quedó para revisión manual.</td><td>Pedir la hora o revisar a mano.</td></tr>
+    <tr><td><code>ref_corta</code></td><td>false</td><td>Menos de 4 dígitos o con letras.</td><td>Pedir la referencia completa.</td></tr>
+  </table></div>
+
+  <h2 id="reglas">6. Reglas de búsqueda</h2>
+  <ul>
+    <li>Se quitan los espacios y los ceros a la izquierda antes de comparar.</li>
+    <li><b>6 dígitos o más:</b> se buscan tus pagos disponibles con el mismo monto cuyos <b>últimos 6 dígitos</b> coinciden.</li>
+    <li><b>4 o 5 dígitos:</b> también hace falta la <b>fecha</b>, y se compara con el mismo monto y esa fecha.</li>
+    <li><b>Menos de 4 dígitos o con letras:</b> se rechaza.</li>
+    <li><b>Empates:</b> se usan la fecha y la hora para desempatar. Sin hora se pide la hora; si con la hora sigue empatado, queda en <b>revisión manual</b> y no se aprueba ninguno.</li>
+    <li>Marcar un pago como usado es atómico: si dos órdenes lo piden a la vez, solo una lo consigue.</li>
+  </ul>
+
+  <h2 id="errores">7. Errores y límites</h2>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>HTTP</th><th>Cuándo</th></tr>
+    <tr><td><code>400</code></td><td>Datos inválidos.</td></tr>
+    <tr><td><code>401</code></td><td>Falta la clave o no es válida (o está desactivada).</td></tr>
+    <tr><td><code>403</code></td><td>La clave no tiene el permiso, o es de otro tipo (una clave de Recargas no sirve aquí).</td></tr>
+    <tr><td><code>404</code></td><td>No existe o no es tuyo.</td></tr>
+    <tr><td><code>409</code></td><td>Conflicto: pago ya usado, orden con pago, revisión ya resuelta.</td></tr>
+    <tr><td><code>413</code></td><td>Envío del bot demasiado grande (más de 2.000 pagos o 2 MB).</td></tr>
+    <tr><td><code>429</code></td><td>Demasiadas peticiones: hasta 120 lecturas y 60 escrituras por minuto por clave.</td></tr>
+  </table></div>
+  <p>Todas las respuestas de error traen <code>{"ok": false, "mensaje": "..."}</code>.</p>
+
+  {% if admin %}
+  <h2 id="admin">8. Administración</h2>
+  <ul>
+    <li><b>Referencias (todos)</b> (<code>/admin/antiduplic</code>): los pagos y revisiones de todos los usuarios, con filtro y columna de usuario. El admin puede asignar y resolver revisiones de cualquiera.</li>
+    <li><b>Claves de API:</b> en Admin → API se crean por separado las de <b>Recargas</b> (recargar y verificar IDs, cobradas del saldo del usuario) y las de <b>Referencias</b> (de un usuario dueño de los pagos). Una clave nunca mezcla ambos tipos.</li>
+    <li><b>Claves anteriores:</b> al activar este cambio, todas las claves de API que existían quedan <b>desconectadas</b> («Antigua»). Hay que crear las dos claves nuevas y ponerlas en cada sistema (por ejemplo el CRM).</li>
+    <li><b>Usuario dueño:</b> los pagos, usos y revisiones que existían antes pasan al usuario de <code>ANTIDUPLIC_USUARIO_DUENO</code> (o al admin principal si no está), en una cuenta «Bancamiga principal».</li>
+    <li><b>PAGOS_BANCO_TOKEN</b> sigue valiendo para el bot antiguo y deja los pagos a nombre del usuario dueño ({% if token_banco %}configurado en este servidor{% else %}no configurado en este servidor{% endif %}). Se puede reemplazar por una clave de lector propia.</li>
+    <li>La migración funciona igual en SQLite y PostgreSQL y no borra datos: solo añade columnas, cambia los índices únicos a «por usuario» y asigna el dueño.</li>
+  </ul>
+  {% endif %}
+</div>
+</body>
+</html>
