@@ -1,20 +1,23 @@
 """
 BDV (Banco de Venezuela) dentro de Referencias: la conexión de cada usuario con su banco.
 
-El usuario guarda en su panel su usuario, su contraseña y su número de cuenta del BDV; la web (lector_bdv.py, un
-proceso aparte) entra con ellos, lee sus movimientos y guarda los pagos recibidos en pagos_banco, en su cuenta BDV.
+El usuario guarda en su panel su usuario, su contraseña y su número de cuenta del BDV. Un LECTOR EXTERNO
+(lector_externo/, en otro servidor) los pide por /api/lector-bdv/*, entra al banco, lee sus movimientos y manda a la
+web los pagos recibidos, que se guardan en pagos_banco, en su cuenta BDV. La web no abre ningún navegador.
 
-Seguridad:
-  - Usuario, contraseña y número completo se guardan cifrados (Fernet) con la llave BDV_LLAVE_CIFRADO, que solo
-    vive en el servidor. Sin esa llave no se puede guardar nada y el lector no arranca.
-  - Nadie los puede volver a ver: ni el usuario, ni el admin, ni la API. Solo se cambian o se borran.
-  - Solo se descifran dentro del lector, en memoria, al entrar al banco. Nunca van a registros ni a mensajes.
+Seguridad (cifrado de llave pública, PyNaCl SealedBox):
+  - La web solo tiene la llave PÚBLICA del lector: con ella cierra usuario, contraseña y número completo, pero no
+    puede abrirlos. Aunque se filtre la base de datos o el servidor de la web, las claves del banco siguen ilegibles.
+  - La llave PRIVADA solo existe en el servidor del lector, que descifra en memoria al momento de entrar al banco.
+  - La pública sale de BDV_CLAVE_PUBLICA (si está en el .env) o del lector aprobado por el admin en el panel.
+    Sin llave pública la pestaña BDV no deja guardar datos.
+  - Nadie puede volver a ver los datos: ni el usuario, ni el admin, ni la API. Solo se cambian o se borran.
 
 Interruptor «Leer movimientos» (lector_encendido): apagado, el lector cierra la sesión en el banco con «Salir» para
 que el dueño pueda entrar desde su teléfono; encendido, vuelve a entrar.
-
-Generar una llave:  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 """
+import base64
+import hashlib
 import logging
 import os
 import re
@@ -38,49 +41,71 @@ MAX_CUENTAS_POR_USUARIO = 3
 MSG_DETENIDO = 'El banco rechazó tus datos: revísalos y guárdalos de nuevo'
 MSG_PAUSADO = 'En pausa — la sesión del banco está cerrada ✅. Ya puedes entrar al BDV desde tu teléfono o tu computadora'
 MSG_PAUSA_SIN_CONFIRMAR = 'No se pudo confirmar el cierre de sesión en el banco. Si no te deja entrar, espera unos minutos'
+CONFIG_PUBLICA = 'bdv_lector_publica'   # llave pública del lector aprobado en el panel (no es secreta)
 
 _aviso_llave = False
 
 
 class SinLlave(Exception):
-    """Falta BDV_LLAVE_CIFRADO (o no es válida): no se puede cifrar ni descifrar."""
+    """No hay llave pública válida del lector: no se puede cifrar."""
 
 
-def _fernet():
-    global _aviso_llave
-    llave = os.environ.get('BDV_LLAVE_CIFRADO', '').strip()
-    if not llave:
-        return None
+def publica_valida(texto):
+    """La llave pública en bytes (32) si el texto es una llave válida en base64; None si no."""
     try:
-        from cryptography.fernet import Fernet
-        return Fernet(llave.encode())
+        crudo = base64.b64decode(str(texto or '').strip(), validate=True)
+        return crudo if len(crudo) == 32 else None
     except Exception:
-        if not _aviso_llave:  # nunca se registra la llave
-            logger.error('[BDV] BDV_LLAVE_CIFRADO no es una llave válida (debe ser una llave Fernet)')
+        return None
+
+
+def huella(publica_b64):
+    """Código corto para reconocer una llave pública a simple vista (el lector muestra el mismo): AB12-CD34."""
+    h = hashlib.sha256(str(publica_b64 or '').strip().encode('ascii', 'ignore')).hexdigest()[:8].upper()
+    return f'{h[:4]}-{h[4:]}'
+
+
+def _publica_aprobada():
+    """La pública del lector aprobado en el panel (configuracion_redeemer), o None."""
+    try:
+        from pg_compat import get_db_connection
+        conn = get_db_connection()
+        try:
+            fila = conn.execute('SELECT valor FROM configuracion_redeemer WHERE clave = ?', (CONFIG_PUBLICA,)).fetchone()
+            return fila['valor'] if fila and fila['valor'] else None
+        finally:
+            conn.close()
+    except Exception:
+        return None
+
+
+def llave_publica():
+    """Texto base64 de la llave pública con la que se cifra: BDV_CLAVE_PUBLICA o la del lector aprobado."""
+    global _aviso_llave
+    env = os.environ.get('BDV_CLAVE_PUBLICA', '').strip()
+    if env:
+        if publica_valida(env):
+            return env
+        if not _aviso_llave:
+            logger.error('[BDV] BDV_CLAVE_PUBLICA no es una llave pública válida')
             _aviso_llave = True
         return None
+    aprobada = _publica_aprobada()
+    return aprobada if publica_valida(aprobada) else None
 
 
 def cifrado_disponible():
-    return _fernet() is not None
+    return llave_publica() is not None
 
 
 def cifrar(texto):
-    f = _fernet()
-    if f is None:
-        raise SinLlave('Falta BDV_LLAVE_CIFRADO')
-    return f.encrypt(str(texto).encode('utf-8')).decode('ascii')
-
-
-def descifrar(token):
-    """Solo para el lector, en memoria. Lanza SinLlave si no hay llave o si no corresponde."""
-    f = _fernet()
-    if f is None:
-        raise SinLlave('Falta BDV_LLAVE_CIFRADO')
-    try:
-        return f.decrypt(str(token).encode('ascii')).decode('utf-8')
-    except Exception:
-        raise SinLlave('Los datos no se pueden descifrar con la llave actual')
+    """Cierra el texto con la llave pública del lector. La web NO tiene cómo abrirlo."""
+    from nacl.public import PublicKey, SealedBox
+    publica = llave_publica()
+    if publica is None:
+        raise SinLlave('No hay llave pública del lector')
+    caja = SealedBox(PublicKey(base64.b64decode(publica)))
+    return base64.b64encode(caja.encrypt(str(texto).encode('utf-8'))).decode('ascii')
 
 
 def nuevo_cambio():
@@ -104,7 +129,7 @@ def guardar_conexion(conn, uid, usuario, clave, numero_cuenta, alias='', consent
     """
     from antiduplic import ahora_local
     if not cifrado_disponible():
-        return 503, {'mensaje': 'El BDV todavía no está disponible en este servidor (falta la llave de cifrado). '
+        return 503, {'mensaje': 'El BDV todavía no está disponible: falta conectar el lector del banco. '
                                 'Avísale al administrador.'}
     usuario = str(usuario or '').strip()
     clave = str(clave or '')
@@ -155,11 +180,11 @@ def cambiar_lectura(conn, uid, cuenta_id, encender):
         return 409, {'mensaje': 'Esta cuenta no tiene conexión: guarda tus datos primero'}
     if encender:
         conn.execute("UPDATE cuentas_banco SET lector_encendido = TRUE, lector_estado = 'pendiente', "
-                     "lector_mensaje = 'Volviendo a entrar al banco…' WHERE id = ?", (cuenta['id'],))
+                     "lector_mensaje = 'Volviendo a entrar al banco…', lector_cambio = ? WHERE id = ?", (nuevo_cambio(), cuenta['id']))
         mensaje = 'Lectura encendida: la web vuelve a entrar a tu BDV'
     else:
-        conn.execute("UPDATE cuentas_banco SET lector_encendido = FALSE, lector_mensaje = 'Cerrando la sesión en el banco…' "
-                     'WHERE id = ?', (cuenta['id'],))
+        conn.execute("UPDATE cuentas_banco SET lector_encendido = FALSE, lector_mensaje = 'Cerrando la sesión en el banco…', "
+                     'lector_cambio = ? WHERE id = ?', (nuevo_cambio(), cuenta['id']))
         mensaje = 'Pausando: la web cierra la sesión en el banco en unos segundos'
     conn.commit()
     return 200, {'mensaje': mensaje}

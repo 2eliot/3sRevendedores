@@ -9,14 +9,30 @@ import os
 import tempfile
 import unittest
 
-from cryptography.fernet import Fernet
+import base64
+
+from nacl.exceptions import CryptoError
+from nacl.public import PrivateKey, SealedBox
 
 _tmp = tempfile.mkdtemp()
 os.environ['DATABASE_PATH'] = os.path.join(_tmp, 'bdv.db')
 os.environ.pop('DATABASE_URL', None)
 os.environ['SECRET_KEY'] = 'test-' + 'x' * 30
-LLAVE = Fernet.generate_key().decode()
-os.environ['BDV_LLAVE_CIFRADO'] = LLAVE
+# La prueba hace de lector: solo ella tiene la llave privada. La web recibe únicamente la pública.
+PRIVADA = PrivateKey.generate()
+PUBLICA = base64.b64encode(bytes(PRIVADA.public_key)).decode()
+os.environ['BDV_CLAVE_PUBLICA'] = PUBLICA
+
+
+def abrir(cifrado, privada=PRIVADA):
+    """Lo que hará el lector externo con su llave privada."""
+    return SealedBox(privada).decrypt(base64.b64decode(cifrado)).decode('utf-8')
+
+
+def cifrados_guardados():
+    """Los textos cifrados guardados en la base: tampoco deben salir nunca en una respuesta."""
+    filas = q("SELECT bdv_usuario_cifrado, bdv_clave_cifrada, numero_cuenta_cifrado FROM cuentas_banco WHERE banco = 'BDV'")
+    return [v for f in filas for v in (f['bdv_usuario_cifrado'], f['bdv_clave_cifrada'], f['numero_cuenta_cifrado']) if v]
 
 import app as webapp  # noqa: E402,F401
 import antiduplic as ad  # noqa: E402
@@ -52,7 +68,7 @@ class BdvDatosTest(unittest.TestCase):
         ad.init_tablas()
 
     def setUp(self):
-        os.environ['BDV_LLAVE_CIFRADO'] = LLAVE
+        os.environ['BDV_CLAVE_PUBLICA'] = PUBLICA
         for t in ('usos_referencia', 'revisiones_pago', 'pagos_banco', 'claves_lector', 'cuentas_banco', 'webservice_accounts'):
             q(f'DELETE FROM {t}')
         self.conn = get_db_connection()
@@ -68,20 +84,32 @@ class BdvDatosTest(unittest.TestCase):
         return bdv.guardar_conexion(self.conn, uid or self.A, **datos)
 
     # ---------- cifrado ----------
-    def test_cifrar_y_descifrar(self):
+    def test_la_web_solo_cierra_y_solo_el_lector_abre(self):
         token = bdv.cifrar('hola')
         self.assertNotIn('hola', token)
-        self.assertEqual(bdv.descifrar(token), 'hola')
-        os.environ['BDV_LLAVE_CIFRADO'] = Fernet.generate_key().decode()  # otra llave no lo abre
-        with self.assertRaises(bdv.SinLlave):
-            bdv.descifrar(token)
-        os.environ['BDV_LLAVE_CIFRADO'] = ''
+        self.assertNotEqual(token, bdv.cifrar('hola'))   # cada vez distinto
+        self.assertEqual(abrir(token), 'hola')           # el lector (llave privada) sí lo abre
+        with self.assertRaises(CryptoError):
+            abrir(token, PrivateKey.generate())          # otra llave no
+        self.assertFalse(hasattr(bdv, 'descifrar'))      # la web no tiene cómo abrir nada
+        os.environ['BDV_CLAVE_PUBLICA'] = 'esto-no-es-una-llave'
+        self.assertFalse(bdv.cifrado_disponible())
+        os.environ['BDV_CLAVE_PUBLICA'] = ''
         self.assertFalse(bdv.cifrado_disponible())
         with self.assertRaises(bdv.SinLlave):
             bdv.cifrar('x')
+        # sin la variable vale la pública del lector aprobado en el panel
+        q("INSERT INTO configuracion_redeemer (clave, valor) VALUES ('bdv_lector_publica', ?)", (PUBLICA,))
+        try:
+            self.assertTrue(bdv.cifrado_disponible())
+            self.assertEqual(abrir(bdv.cifrar('hola')), 'hola')
+        finally:
+            q("DELETE FROM configuracion_redeemer WHERE clave = 'bdv_lector_publica'")
+        self.assertEqual(bdv.huella(PUBLICA), bdv.huella(PUBLICA + '\n'))
+        self.assertRegex(bdv.huella(PUBLICA), r'^[0-9A-F]{4}-[0-9A-F]{4}$')
 
     def test_sin_llave_no_se_puede_guardar(self):
-        os.environ['BDV_LLAVE_CIFRADO'] = ''
+        os.environ['BDV_CLAVE_PUBLICA'] = ''
         status, datos = self.conectar()
         self.assertEqual(status, 503)
         self.assertEqual(q("SELECT COUNT(*) AS n FROM cuentas_banco WHERE banco = 'BDV'")[0]['n'], 0)
@@ -94,8 +122,9 @@ class BdvDatosTest(unittest.TestCase):
         for secreto in (USUARIO, CLAVE, NUMERO, NUMERO[:16]):
             self.assertNotIn(secreto, crudo)
         self.assertEqual(fila['ultimos_digitos'], '2411')
-        self.assertEqual(bdv.descifrar(fila['bdv_clave_cifrada']), CLAVE)
-        self.assertEqual(bdv.descifrar(fila['numero_cuenta_cifrado']), NUMERO)
+        self.assertEqual(abrir(fila['bdv_usuario_cifrado']), USUARIO)
+        self.assertEqual(abrir(fila['bdv_clave_cifrada']), CLAVE)
+        self.assertEqual(abrir(fila['numero_cuenta_cifrado']), NUMERO)
         self.assertEqual(fila['lector_estado'], 'pendiente')
         self.assertTrue(fila['consentimiento_en'])
 
@@ -104,7 +133,7 @@ class BdvDatosTest(unittest.TestCase):
         cuentas = ad.listar_cuentas(self.conn, self.A, banco='BDV')
         self.assertEqual(len(cuentas), 1)
         texto = str(cuentas)
-        for secreto in (USUARIO, CLAVE, NUMERO, 'cifrad', 'gAAAA'):
+        for secreto in (USUARIO, CLAVE, NUMERO, 'cifrad', *cifrados_guardados()):
             self.assertNotIn(secreto, texto)
         self.assertTrue(cuentas[0]['conectada'])
         self.assertEqual(cuentas[0]['lector']['estado'], 'pendiente')
@@ -240,7 +269,7 @@ class BdvPantallaTest(unittest.TestCase):
                  "VALUES ('Prueba', 'P', '0', ?, 'x', 0) RETURNING id", (correo,))[0][0]
 
     def setUp(self):
-        os.environ['BDV_LLAVE_CIFRADO'] = LLAVE
+        os.environ['BDV_CLAVE_PUBLICA'] = PUBLICA
         for t in ('usos_referencia', 'revisiones_pago', 'pagos_banco', 'claves_lector', 'cuentas_banco', 'webservice_accounts'):
             q(f'DELETE FROM {t}')
         self.c = self.app.test_client()
@@ -255,7 +284,7 @@ class BdvPantallaTest(unittest.TestCase):
         return self.c.post('/referencias/bdv/cuentas', json=datos)
 
     def sin_secretos(self, texto):
-        for secreto in (USUARIO, CLAVE, NUMERO, NUMERO[4:16], 'gAAAA'):
+        for secreto in (USUARIO, CLAVE, NUMERO, NUMERO[4:16], *cifrados_guardados()):
             self.assertNotIn(secreto, texto)
 
     def test_pestanas_y_conexion_sin_secretos(self):
@@ -277,7 +306,7 @@ class BdvPantallaTest(unittest.TestCase):
             self.sin_secretos(self.c.get(url).get_data(as_text=True))
 
     def test_sin_llave_la_pestana_avisa_y_no_guarda(self):
-        os.environ['BDV_LLAVE_CIFRADO'] = ''
+        os.environ['BDV_CLAVE_PUBLICA'] = ''
         self.entrar(self.A, 'ana-pantalla@test.local')
         self.assertFalse(self.c.get('/referencias/bdv/cuentas').get_json()['disponible'])
         self.assertEqual(self.conectar().status_code, 503)
@@ -371,7 +400,7 @@ class BdvApiTest(unittest.TestCase):
         cls.B = BdvPantallaTest.usuario('beto-api@test.local')
 
     def setUp(self):
-        os.environ['BDV_LLAVE_CIFRADO'] = LLAVE
+        os.environ['BDV_CLAVE_PUBLICA'] = PUBLICA
         for t in ('usos_referencia', 'revisiones_pago', 'pagos_banco', 'claves_lector', 'cuentas_banco', 'webservice_accounts'):
             q(f'DELETE FROM {t}')
         api_panel._limites.clear()
@@ -422,7 +451,7 @@ class BdvApiTest(unittest.TestCase):
     def test_cuentas_del_bdv_con_estado_y_sin_datos(self):
         r = self.get('/api/v1/referencias/cuentas', self.clave_bdv)
         texto = r.get_data(as_text=True)
-        for secreto in (USUARIO, CLAVE, NUMERO, NUMERO[4:16], 'cifrad', 'gAAAA'):
+        for secreto in (USUARIO, CLAVE, NUMERO, NUMERO[4:16], 'cifrad', *cifrados_guardados()):
             self.assertNotIn(secreto, texto)
         cuentas = r.get_json()['cuentas']
         self.assertEqual([(c['banco'], c['ultimos_digitos']) for c in cuentas], [('BDV', '2411')])
