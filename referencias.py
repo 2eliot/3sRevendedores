@@ -487,7 +487,9 @@ def referencias_api_accion(cuenta_id, accion):
 
 def _cuentas_bdv(conn, uid):
     import bdv
-    return {'cuentas': ad.listar_cuentas(conn, uid, banco=ad.BDV), 'disponible': bdv.cifrado_disponible()}
+    import bdv_lector_api
+    return {'cuentas': ad.listar_cuentas(conn, uid, banco=ad.BDV), 'disponible': bdv.cifrado_disponible(),
+            'lector_vivo': bdv_lector_api.lector_vivo(conn)}
 
 
 @bp.route('/referencias/bdv/cuentas', methods=['GET', 'POST'])

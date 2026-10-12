@@ -7,6 +7,7 @@ Arranca la web completa sobre una base SQLite temporal (sin tocar el BDV real).
 import json
 import os
 import tempfile
+import time
 import unittest
 
 import base64
@@ -371,6 +372,35 @@ class BdvPantallaTest(unittest.TestCase):
         self.assertEqual([c['id'] for c in d['conexiones_bdv']], [cid])
         self.assertEqual(self.c.post(f'/admin/antiduplic/bdv/{cid}/pausar', json={}).status_code, 200)
         self.assertFalse(q('SELECT lector_encendido FROM cuentas_banco WHERE id = ?', (cid,))[0]['lector_encendido'])
+
+    def test_aviso_si_el_lector_no_responde(self):
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        self.conectar()
+        q("DELETE FROM configuracion_redeemer WHERE clave = 'bdv_lector_latido'")
+        try:
+            self.assertFalse(self.c.get('/referencias/bdv/cuentas').get_json()['lector_vivo'])   # nunca dio señales
+            self.assertFalse(self.c.get('/referencias/datos?banco=BDV').get_json()['resumen']['lector_vivo'])
+            self.assertNotIn('lector_vivo', self.c.get('/referencias/datos?banco=Bancamiga').get_json()['resumen'])
+            q("INSERT INTO configuracion_redeemer (clave, valor) VALUES ('bdv_lector_latido', ?)",
+              (json.dumps({'t': time.time(), 'cuando': '2026-10-11 10:00:00', 'ip': '203.0.113.7'}),))
+            self.assertTrue(self.c.get('/referencias/bdv/cuentas').get_json()['lector_vivo'])
+            self.assertTrue(self.c.get('/referencias/datos?banco=BDV').get_json()['resumen']['lector_vivo'])
+            self.assertIn('El lector no responde', self.c.get('/referencias').get_data(as_text=True))
+            # el admin ve el lector: aprobado (aquí fijado en el .env), vivo y su IP; nunca la llave
+            self.entrar(self.B, 'admin@test.local', admin=True)
+            lector = self.c.get('/admin/antiduplic/datos?banco=BDV').get_json()['lector_bdv']
+            self.assertEqual((lector['aprobado']['codigo'], lector['aprobado']['fija_por_env'], lector['vivo'], lector['latido']['ip']),
+                             (bdv.huella(PUBLICA), True, True, '203.0.113.7'))
+            self.assertNotIn(PUBLICA, json.dumps(lector))
+            html = self.c.get('/admin/antiduplic').get_data(as_text=True)
+            for viejo in ('lector_bdv.py', 'BDV_LLAVE_CIFRADO'):   # el lector ya no corre en la web
+                self.assertNotIn(viejo, html)
+            self.assertIn('data-lector="aprobar"', html)
+            q("UPDATE configuracion_redeemer SET valor = ? WHERE clave = 'bdv_lector_latido'",
+              (json.dumps({'t': time.time() - 300, 'cuando': 'x', 'ip': '203.0.113.7'}),))
+            self.assertFalse(self.c.get('/admin/antiduplic/datos?banco=BDV').get_json()['lector_bdv']['vivo'])   # 5 min sin señal
+        finally:
+            q("DELETE FROM configuracion_redeemer WHERE clave = 'bdv_lector_latido'")
 
 
     def test_documentacion_del_bdv_aparte(self):

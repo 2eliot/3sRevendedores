@@ -38,9 +38,6 @@ ESTADOS = {
     'sin_conexion': 'Sin conectar',
 }
 MAX_CUENTAS_POR_USUARIO = 3
-MSG_DETENIDO = 'El banco rechazó tus datos: revísalos y guárdalos de nuevo'
-MSG_PAUSADO = 'En pausa — la sesión del banco está cerrada ✅. Ya puedes entrar al BDV desde tu teléfono o tu computadora'
-MSG_PAUSA_SIN_CONFIRMAR = 'No se pudo confirmar el cierre de sesión en el banco. Si no te deja entrar, espera unos minutos'
 CONFIG_PUBLICA = 'bdv_lector_publica'   # llave pública del lector aprobado en el panel (no es secreta)
 
 _aviso_llave = False

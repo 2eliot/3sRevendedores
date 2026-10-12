@@ -25,6 +25,11 @@
     .ad-kpi strong { display: block; margin-top: 4px; font-size: 20px; font-family: var(--rc-mono); font-weight: 500; }
     .ad-kpi small { display: block; margin-top: 2px; color: var(--rc-ash); font-size: 12px; }
     .ad-hl { color: var(--rc-hl); }
+    .ad-lector { display: grid; gap: 8px; margin: 0 0 12px; }
+    .ad-lector-box { background: var(--rc-recess); border: 1px solid var(--rc-border); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+    .ad-lector-box.pide { border-color: var(--rc-yellow); }
+    .ad-lector-box .ad-fila { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .ad-codigo { font-family: var(--rc-mono); font-size: 16px; font-weight: 600; letter-spacing: .06em; white-space: nowrap; }
     .ad-ok { color: var(--rc-green); } .ad-warn { color: var(--rc-yellow); } .ad-bad { color: var(--rc-coral); }
     .ad-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
     .ad-filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--rc-ash); }
@@ -100,8 +105,8 @@
 
     <section class="ad-card" id="ad-bdv-card">
       <h2>Conexiones del BDV</h2>
-      <p class="ad-lead" style="margin-bottom:10px;">Cuentas del Banco de Venezuela que lee la web (proceso <code>lector_bdv.py</code>). Nunca se ven los datos de acceso de nadie. «Pausar» cierra la sesión de esa cuenta en el banco, igual que el interruptor del usuario.</p>
-      <p class="ad-api" id="ad-bdv-lector"></p>
+      <p class="ad-lead" style="margin-bottom:10px;">Cuentas del Banco de Venezuela que lee el <b>lector del BDV</b>, un programa aparte en otro servidor. Nunca se ven los datos de acceso de nadie. «Pausar» cierra la sesión de esa cuenta en el banco, igual que el interruptor del usuario.</p>
+      <div class="ad-lector" id="ad-bdv-lector"></div>
       <div class="ad-table-wrap">
         <table class="ad-table">
           <thead><tr><th>Usuario</th><th>Cuenta</th><th>Estado</th><th>Última lectura</th><th>Último pago</th><th></th></tr></thead>
@@ -161,8 +166,8 @@
         {% if token_banco %}<span class="ad-ok">configurada en el servidor</span>{% else %}<span class="ad-bad">no configurada</span>{% endif %}.<br>
         Verificar pagos: <code>POST {{ api_url }}/api/verificar-pago</code> con una <strong>clave de API de Referencias</strong> del usuario (la crea él en Referencias o tú en
         <a href="/admin/api" style="color:var(--rc-hl);">API</a>). Verifica solo contra los pagos de ese usuario <strong>y de su banco</strong>: las claves del BDV solo ven el BDV y las de Bancamiga solo Bancamiga.<br>
-        BDV: la web lee sola las cuentas que cada usuario conecta en su pestaña «BDV» (proceso aparte <code>python lector_bdv.py</code>, llave
-        <code>BDV_LLAVE_CIFRADO</code>: {% if bdv_llave %}<span class="ad-ok">configurada</span>{% else %}<span class="ad-bad">no configurada</span>{% endif %}).
+        BDV: las cuentas que cada usuario conecta en su pestaña «BDV» las lee el <strong>lector del BDV</strong>, un programa aparte en otro servidor.
+        Se aprueba una sola vez arriba, en «Conexiones del BDV» (instalación en la <a href="/admin/antiduplic/docs/bdv" style="color:var(--rc-hl);">Documentación BDV</a>).
       </p>
     </section>
   </div>
@@ -240,21 +245,53 @@
       }
     }
 
-    function pintarBdv(cuentas, lector) {
-      var info = document.getElementById('ad-bdv-lector');
-      if (lector && lector.latido) {
-        info.innerHTML = 'Lector: última señal <span class="ad-mono">' + esc(lector.latido) + '</span> · leyendo ' + esc(lector.cuentas_leyendo) +
-          ' de máx. ' + esc(lector.max_cuentas) + (lector.en_espera ? ' · ' + esc(lector.en_espera) + ' en espera' : '') +
-          (lector.memoria_mb ? ' · memoria real: <b>' + esc(lector.memoria_mb) + ' MB</b>' +
-           (lector.por_cuenta_mb ? ' (~' + esc(lector.por_cuenta_mb) + ' MB por cuenta)' : '') : '');
-      } else {
-        info.innerHTML = 'El lector del BDV todavía no ha dado señales (¿está arrancado <code>python lector_bdv.py</code>?).';
+    function haceTexto(seg) {
+      if (seg == null) return '';
+      if (seg < 90) return 'hace ' + seg + ' s';
+      if (seg < 5400) return 'hace ' + Math.round(seg / 60) + ' min';
+      return 'hace ' + Math.round(seg / 3600) + ' h';
+    }
+
+    // El lector del BDV (otro servidor): se aprueba una vez con su código; después todo es automático
+    function pintarLector(l) {
+      var html = '';
+      if (l.pendiente) {
+        html += '<div class="ad-lector-box pide"><b>Un lector pide conectarse</b> · código <span class="ad-codigo">' + esc(l.pendiente.codigo) + '</span>' +
+          '<br><span style="color:var(--rc-ash);">Desde la IP <span class="ad-mono">' + esc(l.pendiente.ip || '?') + '</span> · ' + esc(l.pendiente.cuando || '') + '</span>' +
+          '<br>Apruébalo solo si es <b>el mismo código</b> que muestra el lector en su servidor (<code>journalctl -u lector-bdv</code>). Si no lo reconoces, recházalo.' +
+          (l.pendiente.reemplaza ? '<br><span class="ad-bad">Reemplazaría al lector aprobado: todos los usuarios tendrán que volver a guardar sus datos del BDV.</span>' : '') +
+          '<div class="ad-fila"><button type="button" class="ad-btn ad-btn-main" data-lector="aprobar" data-codigo="' + esc(l.pendiente.codigo) + '">Aprobar</button>' +
+          '<button type="button" class="ad-btn" data-lector="rechazar">Rechazar</button></div></div>';
       }
+      if (l.aprobado) {
+        var lat = l.latido, est = l.estado || {};
+        html += '<div class="ad-lector-box">Lector aprobado · código <span class="ad-codigo">' + esc(l.aprobado.codigo) + '</span>' +
+          (l.aprobado.fija_por_env ? ' <span style="color:var(--rc-ash);">(fijado en el .env con BDV_CLAVE_PUBLICA)</span>' : '') + '<br>' +
+          (l.vivo ? '<span class="ad-ok">Funcionando ✅</span>' : '<span class="ad-bad">El lector no responde ❌</span>') +
+          (lat ? ' · último contacto ' + esc(haceTexto(lat.hace_seg)) + ' (' + esc(lat.cuando || '') + ') desde la IP <span class="ad-mono">' + esc(lat.ip || '?') + '</span>'
+               : ' · todavía no se ha conectado') +
+          (l.vivo && est.max_cuentas ? '<br>Leyendo ' + esc(est.cuentas_leyendo) + ' de máx. ' + esc(est.max_cuentas) +
+            (est.en_espera ? ' · ' + esc(est.en_espera) + ' en espera' : '') +
+            (est.memoria_mb ? ' · memoria real: <b>' + esc(est.memoria_mb) + ' MB</b>' + (est.por_cuenta_mb ? ' (~' + esc(est.por_cuenta_mb) + ' MB por cuenta)' : '') : '') +
+            (est.version ? ' · versión ' + esc(est.version) : '') : '') +
+          (l.aprobado.fija_por_env ? '' : '<div class="ad-fila"><button type="button" class="ad-btn" data-lector="desconectar">Desconectar el lector</button></div>') + '</div>';
+      }
+      if (!l.aprobado && !l.pendiente) {
+        html = '<div class="ad-lector-box">No hay ningún lector del BDV conectado. Instálalo en su servidor (ver la <a href="/admin/antiduplic/docs/bdv" style="color:var(--rc-hl);">Documentación BDV</a>): ' +
+               'al arrancar aparece aquí para aprobarlo con un clic.</div>';
+      }
+      document.getElementById('ad-bdv-lector').innerHTML = html;
+    }
+
+    function pintarBdv(cuentas, lector) {
+      lector = lector || {};
+      pintarLector(lector);
       var con = cuentas.filter(function (c) { return c.conectada; });
       document.getElementById('ad-bdv-tbody').innerHTML = con.length ? con.map(function (c) {
         var e = c.lector || {}, est = ESTADO_BDV[e.estado] || [e.estado || '—', ''];
         if (!e.encendido && e.estado !== 'pausado') est = ['Pausando…', 'ad-warn'];
         if (e.encendido && e.estado === 'pausado') est = ['Volviendo a entrar…', 'ad-warn'];
+        if (!lector.vivo && e.encendido && e.estado !== 'detenido') est = ['El lector no responde ⚠️', 'ad-bad'];
         return '<tr><td>' + esc(NOMBRE[c.usuario_id] || 'Usuario') + '<br><span class="ad-mono" style="color:var(--rc-ash);font-size:11px;">ID ' + esc(c.usuario_id) +
           '</span></td><td>' + esc(c.alias) + ' <span class="ad-mono" style="color:var(--rc-ash);">··' + esc(c.ultimos_digitos) + '</span></td>' +
           '<td><span class="' + est[1] + '">' + esc(est[0]) + '</span>' + (e.mensaje ? '<br><span style="color:var(--rc-ash);font-size:12px;">' + esc(e.mensaje) + '</span>' : '') +
@@ -309,6 +346,14 @@
     document.getElementById('ad-todas').addEventListener('click', function () { form.fecha.value = ''; cargar(); });
 
     document.addEventListener('click', async function (e) {
+      var bl = e.target.closest('[data-lector]');
+      if (bl) {
+        var acc = bl.dataset.lector;
+        if (acc === 'aprobar' && !confirm('¿Aprobar el lector con código ' + bl.dataset.codigo + '? Debe ser el mismo código que muestra el lector en su servidor.')) return;
+        if (acc === 'desconectar' && !confirm('¿Desconectar el lector? Deja de leer todas las cuentas del BDV (cierra sus sesiones en el banco) hasta que lo apruebes de nuevo.')) return;
+        var dl = await postJSON('/admin/antiduplic/lector/' + acc, acc === 'aprobar' ? {codigo: bl.dataset.codigo} : {});
+        alert(dl.mensaje || dl.error || 'Error'); cargar(); return;
+      }
       var bb = e.target.closest('[data-bdv]');
       if (bb) {
         if (bb.dataset.accion === 'pausar' && !confirm('¿Pausar esta conexión? La web cierra su sesión en el banco y deja de leer hasta que el usuario (o tú) la vuelva a encender.')) return;

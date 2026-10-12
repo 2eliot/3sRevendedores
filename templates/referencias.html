@@ -434,7 +434,7 @@
       document.getElementById('k-usados').textContent = s.usados_hoy;
       document.getElementById('k-rev').textContent = s.revision_hoy;
       var bot = document.getElementById('k-bot'), sub = document.getElementById('k-bot-sub'), aviso = document.getElementById('rf-aviso-bot');
-      if (BANCO === 'BDV') { pintarLectorBdv(s.cuentas || [], bot, sub, aviso); return; }
+      if (BANCO === 'BDV') { pintarLectorBdv(s.cuentas || [], s.lector_vivo, bot, sub, aviso); return; }
       var min = minutosDesde(s.ultimo_envio_bot, ahora);
       if (min === null) { bot.textContent = 'Sin envíos'; bot.className = 'rf-bad'; sub.textContent = 'Tu bot aún no ha enviado movimientos'; }
       else {
@@ -447,11 +447,17 @@
                                        : 'Tu bot del banco no envía movimientos hace ' + min + ' minutos. Revisa que esté encendido.';
     }
 
-    function pintarLectorBdv(cuentas, bot, sub, aviso) {
+    function pintarLectorBdv(cuentas, vivo, bot, sub, aviso) {
       var con = cuentas.filter(function (c) { return c.conectada; });
       if (!con.length) {
         bot.textContent = 'Sin conectar'; bot.className = 'rf-bad'; sub.textContent = 'Conecta tu cuenta en «Cuentas bancarias»';
         aviso.hidden = false; aviso.textContent = 'Todavía no has conectado tu cuenta del BDV. Hazlo en la pestaña «Cuentas bancarias».';
+        return;
+      }
+      if (vivo === false && con.some(function (c) { return c.lector && c.lector.encendido; })) {
+        bot.textContent = 'El lector no responde'; bot.className = 'rf-bad'; sub.textContent = 'Tus pagos nuevos llegarán cuando vuelva';
+        aviso.hidden = false;
+        aviso.textContent = 'El lector del BDV no responde. Tus pagos nuevos se guardarán cuando vuelva; si sigue así, avísale al administrador.';
         return;
       }
       var e = con[0].lector || {}, est = ESTADO_BDV[e.estado] || [e.estado || '—', ''];
@@ -551,9 +557,16 @@
       var disponible = d.disponible !== false;
       document.getElementById('rf-bdv-sin-llave').hidden = disponible;
       document.querySelectorAll('#rf-bdv-form input, #rf-bdv-form button').forEach(function (x) { x.disabled = !disponible; });
-      var cs = d.cuentas || [];
+      var cs = d.cuentas || [], vivo = d.lector_vivo !== false;
       document.getElementById('rf-bdv-cuentas').innerHTML = cs.length ? cs.map(function (c) {
-        var e = c.lector || {}, est = estadoVisible(e);
+        var e = c.lector || {}, est = estadoVisible(e), mensaje = e.mensaje;
+        if (!vivo && e.encendido && e.estado !== 'detenido') {
+          est = ['El lector no responde ⚠️', 'rf-bad'];
+          mensaje = 'La lectura está parada por un problema del servidor del lector. Tus pagos nuevos se guardarán cuando vuelva.';
+        } else if (!vivo && !e.encendido) {
+          est = ['Pausado ⏸', 'rf-muted'];
+          mensaje = 'Ya puedes entrar al BDV desde tu teléfono o tu computadora (si no te deja, espera unos minutos).';
+        }
         if (!c.conectada) {
           return '<div class="rf-bdv rf-borrada"><div class="rf-row"><b>' + esc(c.alias) + '</b><span class="rf-mono rf-muted">··' + esc(c.ultimos_digitos) + '</span>' +
                  '<span class="rf-estado rf-muted">Conexión borrada</span></div><div class="rf-muted rf-small">Sus pagos ya guardados siguen aquí. Para volver a conectarla, guarda tus datos arriba.</div></div>';
@@ -561,7 +574,7 @@
         return '<div class="rf-bdv"><div class="rf-row"><b>' + esc(c.alias) + '</b><span class="rf-mono rf-muted">··' + esc(c.ultimos_digitos) + '</span>' +
           '<span class="rf-estado ' + est[1] + '">' + esc(est[0]) + '</span>' +
           '<label class="rf-switch"><input type="checkbox" data-bdv-leer="' + c.id + '"' + (e.encendido ? ' checked' : '') + '><span></span> Leer movimientos</label></div>' +
-          (e.mensaje ? '<div class="rf-small">' + esc(e.mensaje) + '</div>' : '') +
+          (mensaje ? '<div class="rf-small">' + esc(mensaje) + '</div>' : '') +
           '<div class="rf-muted rf-small">Usuario: •••••• · Contraseña: •••••• · Última lectura: <span class="rf-mono">' + esc(e.ultima_lectura || '—') +
           '</span> · Último pago nuevo: <span class="rf-mono">' + esc(e.ultimo_pago || '—') + '</span></div>' +
           '<div class="rf-row">' + (e.estado === 'detenido' ? '<button type="button" class="rf-btn rf-main" data-bdv="' + c.id + '" data-accion="reanudar">Reanudar</button>' : '') +

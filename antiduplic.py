@@ -14,8 +14,8 @@ Flujo:
 
 No toca el saldo de nadie: solo verifica y registra el uso de pagos.
 
-Bancos: cada cuenta bancaria es de un banco. 'BDV' (Banco de Venezuela) va totalmente aparte: sus pagos los saca la
-propia web (lector_bdv.py), tiene sus revisiones, sus usos (una orden del BDV no choca con una de Bancamiga) y sus
+Bancos: cada cuenta bancaria es de un banco. 'BDV' (Banco de Venezuela) va totalmente aparte: sus pagos los manda el
+lector del BDV (lector_externo/, en otro servidor), tiene sus revisiones, sus usos (una orden del BDV no choca con una de Bancamiga) y sus
 claves de API (webservice_accounts.banco = 'BDV'). Todo lo demás es Bancamiga, igual que antes.
 
 Variables de entorno:
@@ -849,7 +849,7 @@ def resumen(conn, uid=None, fecha=None, banco=None):
         c.pop('titular', None)
         c.pop('creado_en', None)
     envios = [c['ultimo_envio'] for c in cuentas if c['activo'] and c['ultimo_envio']]
-    return {
+    datos = {
         'hoy': fecha, 'pagos_hoy': int(res['n'] or 0), 'total_hoy': _f2(res['total'] or 0),
         'disponibles_hoy': int(res['disp'] or 0), 'usados_hoy': int(res['usados'] or 0),
         'revision_hoy': int(res['rev'] or 0),
@@ -859,6 +859,10 @@ def resumen(conn, uid=None, fecha=None, banco=None):
         'aviso_bot_minutos': AVISO_BOT_MIN,
         'cuentas': cuentas,
     }
+    if banco == BDV:   # ¿el lector del BDV dio señales en los últimos 2 min?
+        import bdv_lector_api
+        datos['lector_vivo'] = bdv_lector_api.lector_vivo(conn)
+    return datos
 
 
 def listar_revisiones(conn, uid=None, estado='pendiente', banco=None):
@@ -1023,10 +1027,9 @@ def admin_antiduplic():
         dueno = usuario_dueno(conn)
     finally:
         conn.close()
-    import bdv
     return render_template('admin_antiduplic.html', hoy=hoy_local(), usuarios=usuarios, dueno=dueno,
                            token_banco=bool(os.environ.get('PAGOS_BANCO_TOKEN', '').strip()),
-                           bdv_llave=bdv.cifrado_disponible(), api_url=request.host_url.rstrip('/'))
+                           api_url=request.host_url.rstrip('/'))
 
 
 @bp.route('/admin/antiduplic/docs')
@@ -1050,6 +1053,7 @@ def admin_antiduplic_docs_bdv():
 
 @bp.route('/admin/antiduplic/datos')
 def admin_antiduplic_datos():
+    import bdv_lector_api
     err = _solo_admin_json()
     if err:
         return err
@@ -1064,7 +1068,7 @@ def admin_antiduplic_datos():
                                     q=request.args.get('q') or '', por_pagina=500, banco=banco)
         return jsonify(pagos=pagos, total=total, resumen=resumen(conn, uid, banco=banco),
                        revisiones=listar_revisiones(conn, uid, banco=banco),
-                       conexiones_bdv=listar_cuentas(conn, uid, banco=BDV), lector_bdv=_estado_lector_bdv(conn),
+                       conexiones_bdv=listar_cuentas(conn, uid, banco=BDV), lector_bdv=bdv_lector_api.info_lector(conn),
                        ahora=ahora_local())
     finally:
         conn.close()
@@ -1093,14 +1097,6 @@ def admin_antiduplic_descartar():
         return jsonify(ok=False, mensaje='Se espera JSON'), 415
     status, body = descartar(None, (request.get_json(silent=True) or {}).get('revision_id'), hecho_por=_admin_firma())
     return jsonify(body), status
-
-
-def _estado_lector_bdv(conn):
-    """Lo último que informó lector_bdv.py: latido, cuentas leyendo y memoria real (o None)."""
-    try:
-        return json.loads(_config_get(conn, 'bdv_lector_estado') or 'null')
-    except ValueError:
-        return None
 
 
 @bp.route('/admin/antiduplic/bdv/<int:cuenta_id>/<accion>', methods=['POST'])
