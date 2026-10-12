@@ -255,7 +255,7 @@ def referencias_docs_bdv():
     if _uid() is None:
         return redirect('/auth')
     return render_template('referencias_docs_bdv.html', api_url=request.host_url.rstrip('/'), admin=False,
-                           volver='/referencias', docs_bancamiga='/referencias/docs', bdv_llave=False)
+                           volver='/referencias', docs_bancamiga='/referencias/docs')
 
 
 @bp.route('/referencias/datos')

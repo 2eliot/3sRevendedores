@@ -1048,7 +1048,7 @@ def admin_antiduplic_docs_bdv():
         return redirect('/auth')
     import bdv
     return render_template('referencias_docs_bdv.html', api_url=request.host_url.rstrip('/'), admin=True,
-                           volver='/admin/antiduplic', docs_bancamiga='/admin/antiduplic/docs', bdv_llave=bdv.cifrado_disponible())
+                           volver='/admin/antiduplic', docs_bancamiga='/admin/antiduplic/docs', lector_aprobado=bdv.cifrado_disponible())
 
 
 @bp.route('/admin/antiduplic/datos')

@@ -88,6 +88,7 @@
     <tr><td><b>Datos rechazados ❌</b></td><td>El banco rechazó la entrada dos veces seguidas. La web <b>se detiene</b> y no vuelve a intentar sola, para no bloquearte la cuenta.</td><td>Entra al BDV a mano para ver si pide algo nuevo, guarda tus datos de nuevo o pulsa <b>Reanudar</b>.</td></tr>
     <tr><td><b>Pausado ⏸</b></td><td>Apagaste «Leer movimientos»: la sesión de la web en el banco está cerrada.</td><td>Enciéndelo cuando quieras que vuelva a leer.</td></tr>
     <tr><td><b>En espera ⏳</b></td><td>Hay muchas cuentas conectadas a la vez; la tuya entra en cuanto se libera un lugar.</td><td>Nada.</td></tr>
+    <tr><td><b>El lector no responde ⚠️</b></td><td>El programa que lee el BDV no da señales hace más de 2 minutos: es un problema del servidor, no de tu cuenta. Tus pagos nuevos se guardan cuando vuelva.</td><td>Si sigue así, avísale al administrador.</td></tr>
   </table></div>
 
   <h3 id="interruptor">El interruptor «Leer movimientos»</h3>
@@ -101,7 +102,7 @@
   <h2 id="seguridad">3. Seguridad</h2>
   <ul>
     <li><b>La web solo lee</b> tus movimientos: nunca hace pagos ni transferencias, ni toca nada más de tu banco.</li>
-    <li>Tu usuario, tu contraseña y tu número de cuenta se guardan <b>cifrados</b>. <b>Nadie puede volver a verlos</b>: ni tú, ni el administrador, ni la API. En la pantalla se ven como «••••••» y solo se muestran los últimos 4 dígitos de la cuenta.</li>
+    <li>Tu usuario, tu contraseña y tu número de cuenta se guardan <b>cifrados</b> con una llave que solo tiene el lector del BDV, en otro servidor: la web y su base de datos no pueden abrirlos. <b>Nadie puede volver a verlos</b>: ni tú, ni el administrador, ni la API. En la pantalla se ven como «••••••» y solo se muestran los últimos 4 dígitos de la cuenta.</li>
     <li>Nunca aparecen en registros, mensajes ni respuestas de la API.</li>
     <li><b>Borrar conexión</b> cierra la sesión de la web en el banco y borra tus datos guardados. Los pagos que ya se guardaron se quedan.</li>
   </ul>
@@ -203,10 +204,14 @@
   <h2 id="admin">9. Administración</h2>
   <ul>
     <li><b>Paso 0 (comprobado por el dueño el 11/10/2026):</b> el BDV deja entrar desde el VPS (IP de EE. UU.), tanto con <code>curl</code> como con Chromium sin ventana.</li>
-    <li><b>El lector es un proceso aparte</b> de la web: <code>python lector_bdv.py</code>. Un solo Chromium sin ventana con un contexto por cuenta conectada. Con systemd: <code>deploy/lector-bdv.service</code> (arranca solo al reiniciar el VPS); con un Procfile, la línea <code>worker:</code>. Solo puede haber uno funcionando a la vez.</li>
-    <li><b>Variables:</b> <code>BDV_LLAVE_CIFRADO</code> (obligatoria: {% if bdv_llave %}<b>configurada</b>{% else %}<b>no configurada</b>{% endif %}) y <code>BDV_MAX_CUENTAS</code> (cuentas leyendo a la vez, por defecto 30; las demás quedan «en espera»). La llave se genera con
-      <code>python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"</code>. <b>Guarda una copia segura:</b> si se pierde o cambia, todos tendrán que volver a escribir sus datos del BDV.</li>
-    <li><b>Memoria:</b> el lector mide cada 5 minutos la memoria real que usa y la muestra en Referencias (todos) → Conexiones del BDV. Primera medida en una PC: unos 70 MB por cuenta con la página del banco cargada, más unos 60 MB de base.</li>
+    <li><b>El lector del BDV es un programa aparte, en otro servidor</b> (carpeta <code>lector_externo/</code> del repositorio): un solo Chromium sin ventana con un contexto por cuenta conectada. No importa nada de la web y habla con ella por HTTPS. La web no abre ningún navegador para el BDV. Solo puede haber un lector funcionando a la vez.</li>
+    <li><b>Llaves:</b> el lector crea su par de llaves la primera vez. La web solo tiene la <b>pública</b>: con ella cierra el usuario, la contraseña y el número de cuenta, y no puede volver a abrirlos. La <b>privada</b> solo está en el servidor del lector (<code>/var/lib/lector-bdv/.lector-bdv/llave_privada</code>, permisos 600). <b>Respáldala:</b> si se pierde, hay que aprobar un lector nuevo y cada usuario debe volver a guardar sus datos del BDV.</li>
+    <li><b>Aprobarlo (una sola vez):</b> al arrancar, el lector escribe su código (por ejemplo <code>AB12-CD34</code>) en su registro y aparece en <b>Referencias (todos) → Conexiones del BDV</b> como «Un lector pide conectarse», con su IP. Si el código es el mismo, pulsa <b>Aprobar</b>; si no lo reconoces, <b>Rechazar</b>. Después todo es automático, también para los usuarios nuevos. <b>Desconectar el lector</b> le corta el acceso y cierra sus sesiones en el banco hasta que lo apruebes de nuevo. Ahora: {% if lector_aprobado %}<b>hay un lector aprobado</b>{% else %}<b>no hay ningún lector aprobado</b>{% endif %}.</li>
+    <li><b>Variables de la web:</b> ninguna obligatoria. Opcional: <code>BDV_CLAVE_PUBLICA</code> (la llave pública del lector) lo deja fijo sin pasar por la aprobación; con ella, el panel no deja aprobar ni desconectar otro lector.</li>
+    <li><b>Instalarlo:</b> en el servidor del lector, como root, con los pasos de <code>lector_externo/LEEME.md</code>: un usuario sin privilegios (<code>lectorbdv</code>), el código en <code>/opt/lector-bdv</code>, <code>pip install -r requirements.txt</code>, <code>playwright install --with-deps chromium</code>, el archivo <code>/etc/lector-bdv.env</code> con <code>BDV_WEB_URL</code> (la dirección https de esta web) y <code>BDV_MAX_CUENTAS</code> (cuentas leyendo a la vez, por defecto 30; las demás quedan «en espera»), y el servicio <code>lector-bdv.service</code> con <code>systemctl enable --now lector-bdv</code>.</li>
+    <li><b>Siempre en marcha:</b> systemd lo vuelve a levantar si se cae y cada vez que se prende el servidor; si se traba más de 5 minutos se reinicia solo; si Chromium muere, lo vuelve a abrir. Si la web no responde, sigue leyendo y guarda los pagos en una cola hasta que vuelva. Al detenerlo pulsa «Salir» en el banco en todas las cuentas.</li>
+    <li><b>¿Está vivo?</b> Aquí, en Conexiones del BDV: «Funcionando ✅» con su último contacto y su IP. Si pasan más de 2 minutos sin contacto, el panel y las cuentas de los usuarios dicen «El lector no responde». En su servidor: <code>systemctl status lector-bdv</code> y <code>journalctl -u lector-bdv -f</code> (nunca muestra usuarios, claves ni números de cuenta).</li>
+    <li><b>Memoria:</b> el lector mide cada 5 minutos la memoria real que usa y la muestra en Conexiones del BDV. Primera medida en una PC: unos 70 MB por cuenta con la página del banco cargada, más unos 60 MB de base. El servicio tiene un tope (<code>MemoryMax</code>) que se ajusta con esa medida.</li>
     <li><b>Vista del admin:</b> en <code>/admin/antiduplic</code> se ven las conexiones BDV de cada usuario con su estado, <b>nunca sus datos</b>, y se pueden pausar (cierra la sesión en el banco, igual que el interruptor del usuario).</li>
     <li><b>Claves de API del BDV:</b> en Admin → API, tipo Referencias, banco BDV; o el usuario en su pestaña BDV → Claves.</li>
   </ul>

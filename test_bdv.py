@@ -411,12 +411,18 @@ class BdvPantallaTest(unittest.TestCase):
         self.assertIn('referencias-bdv-documentacion.pdf', html)   # su propio PDF
         self.assertIn('http://localhost/api/verificar-pago', html)  # la URL real del sitio
         self.assertNotIn('id="admin"', html)
+        self.assertIn('El lector no responde', html)
+        self.assertNotIn('/api/lector-bdv', html)   # las rutas del lector no son para los usuarios
         self.assertIn('/referencias/docs/bdv', self.c.get('/referencias/docs').get_data(as_text=True))
         self.assertEqual(self.c.get('/admin/antiduplic/docs/bdv').status_code, 302)   # no es admin
         self.entrar(self.B, 'admin@test.local', admin=True)
         html = self.c.get('/admin/antiduplic/docs/bdv').get_data(as_text=True)
         self.assertIn('id="admin"', html)
-        self.assertIn('BDV_LLAVE_CIFRADO', html)
+        self.assertIn('lector_externo/LEEME.md', html)
+        self.assertIn('BDV_CLAVE_PUBLICA', html)
+        self.assertIn('hay un lector aprobado', html)
+        for viejo in ('BDV_LLAVE_CIFRADO', 'lector_bdv.py', 'Fernet', 'deploy/lector-bdv'):   # el lector ya no corre en la web
+            self.assertNotIn(viejo, html)
 
 
 class BdvApiTest(unittest.TestCase):
