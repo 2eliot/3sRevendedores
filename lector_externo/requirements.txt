@@ -1,0 +1,4 @@
+# Solo para el servidor del lector del BDV (no para la web)
+playwright>=1.49
+requests>=2.31
+pynacl>=1.5

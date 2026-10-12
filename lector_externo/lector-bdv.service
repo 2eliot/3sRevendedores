@@ -1,0 +1,32 @@
+# Lector del BDV: servicio de systemd en el servidor del lector (no en el de la web). Instalación en LEEME.md.
+[Unit]
+Description=Lector del BDV para Referencias de 3sRevendedores
+After=network-online.target
+Wants=network-online.target
+# Nunca se rinde: si se cae, vuelve a levantarse siempre
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=lectorbdv
+Group=lectorbdv
+WorkingDirectory=/opt/lector-bdv/lector_externo
+EnvironmentFile=/etc/lector-bdv.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PLAYWRIGHT_BROWSERS_PATH=/opt/lector-bdv/navegadores
+ExecStart=/opt/lector-bdv/venv/bin/python lector_bdv.py
+Restart=always
+RestartSec=10
+# Al detenerlo, la señal va solo al lector (no a Chromium): así alcanza a pulsar «Salir» en el banco
+KillMode=mixed
+TimeoutStopSec=120
+# Tope de memoria (Chromium incluido). Ajústalo con lo que muestre el panel (memoria por cuenta)
+MemoryMax=8G
+# Sin privilegios: no puede volverse root, ni escribir en el sistema, ni ver /root ni /home
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
