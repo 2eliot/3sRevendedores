@@ -396,6 +396,8 @@ from referencias import bp as referencias_bp
 app.register_blueprint(referencias_bp)
 import recuperar as _recuperar
 app.register_blueprint(_recuperar.bp)
+from bdv_lector_api import bp as bdv_lector_api_bp   # API del lector externo del BDV
+app.register_blueprint(bdv_lector_api_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
