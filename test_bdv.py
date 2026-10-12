@@ -702,6 +702,9 @@ class BdvLectorApiTest(unittest.TestCase):
         self.assertTrue(c['version'])
         r2 = self.get('/api/lector-bdv/cuentas', clave, **{'If-None-Match': r.headers['ETag']})
         self.assertEqual((r2.status_code, r2.get_data()), (304, b''))   # nada cambió: sin cuerpo
+        debil = self.get('/api/lector-bdv/cuentas', clave, **{'If-None-Match': 'W/' + r.headers['ETag']})
+        self.assertEqual(debil.status_code, 304)   # la misma ETag debilitada por Cloudflare al comprimir
+        self.assertEqual(self.get('/api/lector-bdv/cuentas', clave, **{'If-None-Match': 'W/"otra"'}).status_code, 200)
         # el reporte del propio lector no cambia la ETag; pausar sí
         self.post('/api/lector-bdv/estado', clave, {'cuentas': [{'id': leer, 'version': c['version'], 'estado': 'conectado'}]})
         self.assertEqual(self.get('/api/lector-bdv/cuentas', clave, **{'If-None-Match': r.headers['ETag']}).status_code, 304)

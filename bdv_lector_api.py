@@ -258,13 +258,24 @@ def cuentas():
     # el propio lector: así casi siempre se responde 304 sin cuerpo.
     base = json.dumps([[c['id'], c['version'], c['bdv_clave_cifrada'][-12:]] for c in leer] + [cerrar])
     etag = '"' + hashlib.sha256(base.encode()).hexdigest()[:32] + '"'
-    if request.headers.get('If-None-Match') == etag:
+    if _etag_coincide(request.headers.get('If-None-Match'), etag):
         resp = Response(status=304)
     else:
         resp = jsonify(ok=True, cuentas=leer, cerrar=cerrar)
     resp.headers['ETag'] = etag
     resp.headers['Cache-Control'] = 'no-store'
     return resp
+
+
+def _etag_coincide(cabecera, etag):
+    """If-None-Match puede traer la ETag débil (W/"…"): Cloudflare la debilita cuando comprime la respuesta."""
+    for parte in (cabecera or '').split(','):
+        parte = parte.strip()
+        if parte.startswith('W/'):
+            parte = parte[2:]
+        if parte == etag:
+            return True
+    return False
 
 
 def _texto(v, largo):
