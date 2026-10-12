@@ -343,6 +343,21 @@ class BdvPantallaTest(unittest.TestCase):
         self.assertFalse(q('SELECT lector_encendido FROM cuentas_banco WHERE id = ?', (cid,))[0]['lector_encendido'])
 
 
+    def test_documentacion_del_bdv_aparte(self):
+        self.assertEqual(self.c.get('/referencias/docs/bdv').status_code, 302)   # sin sesión
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        html = self.c.get('/referencias/docs/bdv').get_data(as_text=True)
+        self.assertIn('Documentación del BDV', html)
+        self.assertIn('referencias-bdv-documentacion.pdf', html)   # su propio PDF
+        self.assertIn('http://localhost/api/verificar-pago', html)  # la URL real del sitio
+        self.assertNotIn('id="admin"', html)
+        self.assertIn('/referencias/docs/bdv', self.c.get('/referencias/docs').get_data(as_text=True))
+        self.assertEqual(self.c.get('/admin/antiduplic/docs/bdv').status_code, 302)   # no es admin
+        self.entrar(self.B, 'admin@test.local', admin=True)
+        html = self.c.get('/admin/antiduplic/docs/bdv').get_data(as_text=True)
+        self.assertIn('id="admin"', html)
+        self.assertIn('BDV_LLAVE_CIFRADO', html)
+
 
 class BdvApiTest(unittest.TestCase):
     """Los mismos endpoints de siempre: el banco lo decide la clave."""

@@ -249,6 +249,15 @@ def referencias_docs():
                            token_banco=False, volver='/referencias')
 
 
+@bp.route('/referencias/docs/bdv')
+def referencias_docs_bdv():
+    """Documentación del BDV (aparte de la de Bancamiga), con su propio PDF."""
+    if _uid() is None:
+        return redirect('/auth')
+    return render_template('referencias_docs_bdv.html', api_url=request.host_url.rstrip('/'), admin=False,
+                           volver='/referencias', docs_bancamiga='/referencias/docs', bdv_llave=False)
+
+
 @bp.route('/referencias/datos')
 def referencias_datos():
     uid, err = _sesion_json()

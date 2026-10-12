@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentación del BDV</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='descargar-pdf.js') }}" defer></script>
+  <style>
+    .dc-wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; background: var(--rc-canvas); }
+    .dc-wrap h1 { margin: 16px 0 4px; font-size: 28px; font-weight: 600; }
+    .dc-wrap h2 { margin: 34px 0 10px; font-size: 20px; font-weight: 600; padding-top: 8px; border-top: 1px solid var(--rc-border); }
+    .dc-wrap h3 { margin: 22px 0 8px; font-size: 16px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .dc-wrap p, .dc-wrap li { font-size: 14px; line-height: 1.6; color: var(--rc-mist); }
+    .dc-wrap ol, .dc-wrap ul { padding-left: 24px; }
+    .dc-lead { color: var(--rc-ash) !important; margin: 0 0 16px; }
+    .dc-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+    .dc-toc a { font-size: 13px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--rc-border); color: var(--rc-text); text-decoration: none; }
+    code, pre { font-family: var(--rc-mono); }
+    .dc-wrap p code, .dc-wrap li code, td code { font-size: 12.5px; padding: 1px 6px; border-radius: 6px; background: var(--rc-recess); border: 1px solid var(--rc-border); color: var(--rc-text); }
+    pre { margin: 8px 0 14px; padding: 12px 14px; border-radius: 12px; background: var(--rc-recess); border: 1px solid var(--rc-border); font-size: 12.5px; line-height: 1.55; overflow-x: auto; color: var(--rc-text); white-space: pre-wrap; word-break: break-word; }
+    .dc-m { font-family: var(--rc-mono); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+    .dc-get { background: var(--rc-blue-bg); color: var(--rc-blue); } .dc-post { background: var(--rc-green-bg); color: var(--rc-green); }
+    .dc-perm { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--rc-yellow-bg); color: var(--rc-yellow); }
+    table.dc-t { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 14px; }
+    .dc-t th { text-align: left; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; padding: 7px 10px; border-bottom: 1px solid var(--rc-border); }
+    .dc-t td { padding: 8px 10px; border-bottom: 1px solid var(--rc-border); vertical-align: top; }
+    .dc-tw { overflow-x: auto; }
+    .dc-note { padding: 10px 14px; border-radius: 12px; border: 1px solid var(--rc-border); background: var(--rc-recess); font-size: 13.5px; line-height: 1.55; margin: 10px 0; }
+    .dc-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
+    .dc-step { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; background: var(--rc-card); font-size: 13px; line-height: 1.5; color: var(--rc-mist); }
+    .dc-step b { display: block; color: var(--rc-text); margin-bottom: 4px; }
+    .dc-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .dc-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
+    .dc-main { background: var(--rc-mist); color: var(--rc-card); border: 0; }
+    .pdf-modo .back-button, .pdf-modo .dc-actions, .pdf-modo .dc-toc { display: none !important; }
+    .pdf-modo .dc-wrap { padding-top: 0; }
+    @media print { .back-button, .dc-actions, .dc-toc { display: none !important; } body { background: #fff !important; } }
+  </style>
+</head>
+<body>
+<div class="dc-wrap" id="dc-doc">
+  <a href="{{ volver }}" class="back-button">← Volver</a>
+  <h1>Documentación del BDV</h1>
+  <p class="dc-lead">Cómo conecta un usuario su cuenta del Banco de Venezuela, cómo la web lee sus pagos recibidos sola y cómo verificarlos desde otro sistema con la clave de API del BDV. Es aparte de Bancamiga: cada banco tiene sus propios pagos, órdenes, revisiones y claves. Referencias solo verifica pagos: no suma ni resta saldo a nadie.</p>
+  <div class="dc-actions">
+    <button class="dc-btn dc-main" onclick="descargarPDF('#dc-doc', 'referencias-bdv-documentacion.pdf', this)">⬇ Descargar PDF</button>
+    <button class="dc-btn" onclick="window.print()">Imprimir</button>
+  </div>
+  <nav class="dc-toc">
+    <a href="#como">Cómo funciona</a><a href="#conectar">Conectar la cuenta</a><a href="#estados">Estados</a><a href="#interruptor">Leer movimientos</a>
+    <a href="#seguridad">Seguridad</a><a href="#claves">Clave de API</a><a href="#api">Desde otro sistema</a><a href="#codigos">Códigos</a>
+    <a href="#pagos">Qué pagos se guardan</a><a href="#errores">Errores y límites</a>{% if admin %}<a href="#admin">Administración</a>{% endif %}
+  </nav>
+
+  <h2 id="como">1. Cómo funciona</h2>
+  <div class="dc-flow">
+    <div class="dc-step"><b>1. Conectas tu cuenta</b>En Referencias → BDV → Cuentas bancarias guardas tu usuario, tu contraseña y tu número de cuenta del BDV. No instalas nada.</div>
+    <div class="dc-step"><b>2. La web lee sola</b>La web entra a tu BDV en línea y cada ~25 segundos lee tus movimientos.</div>
+    <div class="dc-step"><b>3. Se guardan los pagos</b>Solo los pagos que recibes. Los repetidos se ignoran y quedan aparte de Bancamiga.</div>
+    <div class="dc-step"><b>4. Se verifica</b>Tu sistema pregunta por una referencia y un monto con tu <em>clave de API del BDV</em>; si es válido, queda <b style="display:inline;">usado</b> por esa orden.</div>
+  </div>
+  <p>Todo lo tuyo es solo tuyo: nadie más ve tus pagos, cuentas, revisiones ni claves del BDV.</p>
+
+  <h2 id="conectar">2. Conectar tu cuenta del BDV</h2>
+  <ol>
+    <li>Entra a <b>Referencias</b> (icono de arriba) y elige la pestaña de banco <b>BDV</b>.</li>
+    <li>Abre <b>Cuentas bancarias</b> y escribe tu <b>usuario</b> y tu <b>contraseña</b> del BDV en línea personas, tu <b>número de cuenta</b> (20 dígitos, empieza por 0102) y, si quieres, un nombre.</li>
+    <li>Marca la casilla <i>«Autorizo a 3srevendedores a entrar a mi BDV solo para leer mis movimientos»</i> y pulsa <b>Guardar y conectar</b>.</li>
+    <li>En menos de un minuto la tarjeta de tu cuenta pasa a <b>Conectado ✅</b> y empiezan a llegar tus pagos a la pestaña <b>Pagos</b> del BDV.</li>
+  </ol>
+  <p>Para cambiar tu usuario o tu contraseña (por ejemplo, si la cambiaste en el banco), vuelve a guardar el formulario con el <b>mismo número de cuenta</b>: se reemplazan los datos y tus pagos siguen en la misma cuenta. Puedes conectar hasta 3 cuentas.</p>
+
+  <h3 id="estados">Qué significa cada estado</h3>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Estado</th><th>Qué pasa</th><th>Qué hacer</th></tr>
+    <tr><td><b>Conectando…</b></td><td>La web está entrando a tu banco.</td><td>Esperar unos segundos.</td></tr>
+    <tr><td><b>Conectado ✅</b></td><td>La web está dentro y lee tus movimientos cada ~25 s.</td><td>Nada.</td></tr>
+    <tr><td><b>El banco no responde ⏳</b></td><td>La página del BDV no carga (banco saturado o sin servicio). Se reintenta en 1, 2, 4, 8 y hasta 10 minutos.</td><td>Nada: no cuenta como intento fallido.</td></tr>
+    <tr><td><b>El banco rechazó la entrada ⏳</b></td><td>El banco dijo que no una vez. Se espera 5 minutos y se prueba <b>una sola vez</b> más.</td><td>Revisa tus datos si cambiaste algo.</td></tr>
+    <tr><td><b>Datos rechazados ❌</b></td><td>El banco rechazó la entrada dos veces seguidas. La web <b>se detiene</b> y no vuelve a intentar sola, para no bloquearte la cuenta.</td><td>Entra al BDV a mano para ver si pide algo nuevo, guarda tus datos de nuevo o pulsa <b>Reanudar</b>.</td></tr>
+    <tr><td><b>Pausado ⏸</b></td><td>Apagaste «Leer movimientos»: la sesión de la web en el banco está cerrada.</td><td>Enciéndelo cuando quieras que vuelva a leer.</td></tr>
+    <tr><td><b>En espera ⏳</b></td><td>Hay muchas cuentas conectadas a la vez; la tuya entra en cuanto se libera un lugar.</td><td>Nada.</td></tr>
+  </table></div>
+
+  <h3 id="interruptor">El interruptor «Leer movimientos»</h3>
+  <p>El BDV <b>no deja entrar con otra sesión abierta</b>. Mientras la web está dentro de tu cuenta, tú no puedes entrar desde tu teléfono o tu computadora. Por eso cada cuenta tiene el interruptor <b>«Leer movimientos»</b>:</p>
+  <ul>
+    <li><b>Al apagarlo</b>, en unos segundos la web termina la lectura que esté haciendo, <b>cierra su sesión en el banco con «Salir»</b> y la tarjeta pasa a <b>Pausado</b>: «Ya puedes entrar al BDV desde tu teléfono o tu computadora». Si no logra confirmar la salida, te avisa para que esperes unos minutos.</li>
+    <li><b>Al encenderlo</b>, la web vuelve a entrar y sigue leyendo. Los pagos que llegaron durante la pausa se leen en la primera vuelta.</li>
+    <li>Una pausa <b>no</b> cuenta como error ni como intento fallido, y <b>no se reanuda sola</b>.</li>
+  </ul>
+
+  <h2 id="seguridad">3. Seguridad</h2>
+  <ul>
+    <li><b>La web solo lee</b> tus movimientos: nunca hace pagos ni transferencias, ni toca nada más de tu banco.</li>
+    <li>Tu usuario, tu contraseña y tu número de cuenta se guardan <b>cifrados</b>. <b>Nadie puede volver a verlos</b>: ni tú, ni el administrador, ni la API. En la pantalla se ven como «••••••» y solo se muestran los últimos 4 dígitos de la cuenta.</li>
+    <li>Nunca aparecen en registros, mensajes ni respuestas de la API.</li>
+    <li><b>Borrar conexión</b> cierra la sesión de la web en el banco y borra tus datos guardados. Los pagos que ya se guardaron se quedan.</li>
+  </ul>
+
+  <h2 id="claves">4. Tu clave de API del BDV</h2>
+  <p>Para verificar pagos del BDV desde otro sistema (por ejemplo tu CRM) necesitas una <b>clave de API del BDV</b>, <b>distinta</b> de la de Bancamiga. Se crea en <b>Referencias → BDV → Claves</b> (el BDV no usa claves de lector: lo lee la web). Va en la cabecera <code>X-API-Key</code> de cada petición.</p>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Permiso</th><th>Qué deja hacer</th></tr>
+    <tr><td><b>Verificar pagos</b></td><td><code>POST /api/verificar-pago</code></td></tr>
+    <tr><td><b>Ver pagos</b></td><td>Resumen, lista y detalle de pagos, revisiones y cuentas del BDV.</td></tr>
+    <tr><td><b>Gestionar pagos</b></td><td>Asignar un pago a una orden, resolver y descartar revisiones del BDV.</td></tr>
+  </table></div>
+  <div class="dc-note">La clave se muestra <b>una sola vez</b> al crearla o renovarla: cópiala en ese momento. Si la pierdes, pulsa «Nueva clave» (la anterior deja de funcionar al instante). Una clave del BDV <b>solo ve el BDV</b>; una de Bancamiga, solo Bancamiga.</div>
+
+  <h2 id="api">5. Desde otro sistema: la clave decide el banco</h2>
+  <p>Son <b>los mismos endpoints que Bancamiga</b>; lo que cambia es la clave. Con una clave del BDV todo responde solo con datos del BDV de tu usuario, y un pago de otro banco responde <code>404</code>, igual que uno de otro usuario. Las reglas de búsqueda y los códigos de respuesta son los mismos. Montos con 2 decimales, fechas <code>AAAA-MM-DD</code> y horas <code>HH:MM</code> (el BDV da la hora sin segundos).</p>
+
+  <h3 id="verificar"><span class="dc-m dc-post">POST</span> <code>/api/verificar-pago</code> <span class="dc-perm">Verificar pagos</span></h3>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>Campo</th><th>Obligatorio</th><th>Descripción</th></tr>
+    <tr><td><code>referencia</code></td><td>sí</td><td>Solo números. Con 6 dígitos o más bastan los últimos.</td></tr>
+    <tr><td><code>monto</code></td><td>sí</td><td>En bolívares. Acepta <code>1234.56</code> o <code>"1.234,56"</code>.</td></tr>
+    <tr><td><code>orden_id</code></td><td>sí</td><td>ID de la orden en tu sistema. Las órdenes del BDV son aparte de las de Bancamiga: una orden del BDV nunca consume dos pagos.</td></tr>
+    <tr><td><code>fecha</code></td><td>con 4 o 5 dígitos</td><td><code>AAAA-MM-DD</code>.</td></tr>
+    <tr><td><code>hora</code></td><td>si hay empate</td><td><code>HH:MM</code>.</td></tr>
+  </table></div>
+<pre>curl -X POST {{ api_url }}/api/verificar-pago -H "X-API-Key: wsk_••••••••••••" -H "Content-Type: application/json" \
+  -d '{"referencia": "111222333", "monto": "1.234,56", "orden_id": "ORD-5001"}'</pre>
+<pre>{"ok": true, "codigo": "aprobado", "mensaje": "Pago verificado",
+ "pago": {"id": 210, "referencia": "000111222333", "fecha": "2026-10-11", "hora": "09:15", "monto": 1234.56,
+          "tipo": "BDV PAGO MOVIL DE CLIENTE", "estado": "usado"}}</pre>
+
+  <h3 id="consultas"><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/resumen</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Resumen de hoy (o de <code>?fecha=AAAA-MM-DD</code>) de tus pagos del BDV. <code>ultimo_envio_bot</code> es la última lectura de la web.</p>
+<pre>{"ok": true, "banco": "BDV", "resumen": {"hoy": "2026-10-11", "pagos_hoy": 6, "total_hoy": 18420.5, "disponibles_hoy": 2,
+  "usados_hoy": 4, "revision_hoy": 0, "ultimo_envio_bot": "2026-10-11 20:15:03", "ultimo_movimiento": "2026-10-11 20:01", "cuentas": [...]}}</pre>
+
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/pagos</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Con los mismos filtros que Bancamiga: <code>fecha</code>, <code>desde</code>, <code>hasta</code>, <code>estado</code> (<code>disponible</code>, <code>usado</code>, <code>revision</code>), <code>q</code> (referencia o monto), <code>cuenta_id</code>, <code>pagina</code> y <code>por_pagina</code> (máximo 200).</p>
+<pre>curl "{{ api_url }}/api/v1/referencias/pagos?fecha=2026-10-11&estado=disponible" -H "X-API-Key: wsk_••••••••••••"</pre>
+<pre>{"ok": true, "banco": "BDV", "total": 2, "pagina": 1, "por_pagina": 50, "pagos": [
+  {"id": 214, "referencia": "5550001112", "fecha": "2026-10-11", "hora": "10:40", "monto": 75.0, "estado": "disponible",
+   "banco": "BDV", "cuenta_id": 9, "cuenta": "BDV personal", "uso": null}]}</pre>
+
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/pagos/&lt;id&gt;</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Un pago con su uso. Si no existe, no es tuyo o es de Bancamiga: <code>404</code>.</p>
+
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/revisiones</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Las revisiones del BDV (por defecto las pendientes; <code>?estado=resuelta</code> o <code>descartada</code>), cada una con sus pagos candidatos.</p>
+
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/cuentas</code> <span class="dc-perm">Ver pagos</span></h3>
+  <p>Tus cuentas del BDV con el estado de la lectura. <b>Nunca</b> trae usuario, contraseña ni número completo.</p>
+<pre>{"ok": true, "banco": "BDV", "cuentas": [{"id": 9, "banco": "BDV", "alias": "BDV personal", "ultimos_digitos": "2411",
+  "activo": true, "conectada": true, "ultimo_envio": "2026-10-11 20:15:03",
+  "lector": {"estado": "conectado", "mensaje": "Leyendo tus movimientos cada 25 s", "ultima_lectura": "2026-10-11 20:15:03",
+             "ultimo_pago": "2026-10-11 20:01:44", "encendido": true}}]}</pre>
+
+  <h3 id="gestion"><span class="dc-m dc-post">POST</span> <code>/api/v1/referencias/asignar</code> <span class="dc-perm">Gestionar pagos</span></h3>
+  <p>Marca a mano un pago del BDV disponible como usado por una orden del BDV. Body: <code>{"pago_id": 214, "orden_id": "ORD-5002"}</code>. Un pago de Bancamiga: <code>404</code>.</p>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/v1/referencias/revisiones/&lt;id&gt;/resolver</code> <span class="dc-perm">Gestionar pagos</span></h3>
+  <p>Body: <code>{"pago_id": 220}</code>. Asigna ese candidato a la orden de la revisión; los demás vuelven a estar disponibles.</p>
+  <h3><span class="dc-m dc-post">POST</span> <code>/api/v1/referencias/revisiones/&lt;id&gt;/descartar</code> <span class="dc-perm">Gestionar pagos</span></h3>
+  <p>Cierra la revisión sin asignar; los candidatos vuelven a estar disponibles.</p>
+
+  <h2 id="codigos">6. Códigos de verificación</h2>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th><code>codigo</code></th><th><code>ok</code></th><th>Qué significa</th><th>Qué hacer</th></tr>
+    <tr><td><code>aprobado</code></td><td>true</td><td>Pago válido; queda usado por esta orden.</td><td>Seguir (por ejemplo, recargar).</td></tr>
+    <tr><td><code>ya_aprobado</code></td><td>true</td><td>Esta orden del BDV ya tenía su pago aprobado.</td><td>Seguir sin cobrar otro pago.</td></tr>
+    <tr><td><code>usado</code></td><td>false</td><td>Referencia duplicada: ya la usó otra orden.</td><td>Rechazar y avisar al cliente.</td></tr>
+    <tr><td><code>no_encontrado</code></td><td>false</td><td>Todavía no está en tus movimientos del BDV.</td><td>Reintentar en 1 minuto (la web lee cada ~25 s).</td></tr>
+    <tr><td><code>monto_no_coincide</code></td><td>false</td><td>La referencia existe con otro monto.</td><td>Pedir que revise el monto.</td></tr>
+    <tr><td><code>falta_fecha</code></td><td>false</td><td>Referencia de 4 o 5 dígitos sin fecha.</td><td>Pedir la fecha.</td></tr>
+    <tr><td><code>revision</code></td><td>false</td><td>Con <code>pedir_hora: true</code> falta la hora; sin él quedó para revisión manual.</td><td>Pedir la hora o revisar a mano.</td></tr>
+    <tr><td><code>ref_corta</code></td><td>false</td><td>Menos de 4 dígitos o con letras.</td><td>Pedir la referencia completa.</td></tr>
+  </table></div>
+
+  <h2 id="pagos">7. Qué pagos se guardan</h2>
+  <ul>
+    <li>Solo los <b>créditos</b> (dinero que recibes). Los débitos no se guardan.</li>
+    <li>Se excluyen los movimientos del propio banco: descripción con «INTERES», «COMISION», «REINTEGRO» o «AJUSTE».</li>
+    <li>Cada pago se guarda con su referencia, fecha (<code>AAAA-MM-DD</code>), hora (<code>HH:MM</code>), monto con 2 decimales y <code>tipo</code> = «BDV » + la descripción del banco.</li>
+    <li>La tabla del banco muestra también movimientos de días anteriores: los que ya estaban guardados se ignoran.</li>
+  </ul>
+
+  <h2 id="errores">8. Errores y límites</h2>
+  <div class="dc-tw"><table class="dc-t">
+    <tr><th>HTTP</th><th>Cuándo</th></tr>
+    <tr><td><code>400</code></td><td>Datos inválidos.</td></tr>
+    <tr><td><code>401</code></td><td>Falta la clave o no es válida (o está desactivada).</td></tr>
+    <tr><td><code>403</code></td><td>La clave no tiene el permiso, o es de otro tipo (una clave de Recargas no sirve aquí).</td></tr>
+    <tr><td><code>404</code></td><td>No existe, no es tuyo o es de Bancamiga.</td></tr>
+    <tr><td><code>409</code></td><td>Conflicto: pago ya usado, orden con pago, revisión ya resuelta.</td></tr>
+    <tr><td><code>429</code></td><td>Demasiadas peticiones: hasta 120 lecturas y 60 escrituras por minuto por clave.</td></tr>
+  </table></div>
+  <p>Todas las respuestas de error traen <code>{"ok": false, "mensaje": "..."}</code>. La documentación de Bancamiga está en <a href="{{ docs_bancamiga }}" style="color:var(--rc-hl);">Documentación de Referencias</a>.</p>
+
+  {% if admin %}
+  <h2 id="admin">9. Administración</h2>
+  <ul>
+    <li><b>Paso 0 (comprobado por el dueño el 11/10/2026):</b> el BDV deja entrar desde el VPS (IP de EE. UU.), tanto con <code>curl</code> como con Chromium sin ventana.</li>
+    <li><b>El lector es un proceso aparte</b> de la web: <code>python lector_bdv.py</code>. Un solo Chromium sin ventana con un contexto por cuenta conectada. Con systemd: <code>deploy/lector-bdv.service</code> (arranca solo al reiniciar el VPS); con un Procfile, la línea <code>worker:</code>. Solo puede haber uno funcionando a la vez.</li>
+    <li><b>Variables:</b> <code>BDV_LLAVE_CIFRADO</code> (obligatoria: {% if bdv_llave %}<b>configurada</b>{% else %}<b>no configurada</b>{% endif %}) y <code>BDV_MAX_CUENTAS</code> (cuentas leyendo a la vez, por defecto 30; las demás quedan «en espera»). La llave se genera con
+      <code>python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"</code>. <b>Guarda una copia segura:</b> si se pierde o cambia, todos tendrán que volver a escribir sus datos del BDV.</li>
+    <li><b>Memoria:</b> el lector mide cada 5 minutos la memoria real que usa y la muestra en Referencias (todos) → Conexiones del BDV. Primera medida en una PC: unos 70 MB por cuenta con la página del banco cargada, más unos 60 MB de base.</li>
+    <li><b>Vista del admin:</b> en <code>/admin/antiduplic</code> se ven las conexiones BDV de cada usuario con su estado, <b>nunca sus datos</b>, y se pueden pausar (cierra la sesión en el banco, igual que el interruptor del usuario).</li>
+    <li><b>Claves de API del BDV:</b> en Admin → API, tipo Referencias, banco BDV; o el usuario en su pestaña BDV → Claves.</li>
+  </ul>
+  {% endif %}
+</div>
+</body>
+</html>

@@ -1038,6 +1038,16 @@ def admin_antiduplic_docs():
                            token_banco=bool(os.environ.get('PAGOS_BANCO_TOKEN', '').strip()), volver='/admin/antiduplic')
 
 
+@bp.route('/admin/antiduplic/docs/bdv')
+def admin_antiduplic_docs_bdv():
+    if not session.get('is_admin'):
+        flash('Acceso denegado. Solo administradores.', 'error')
+        return redirect('/auth')
+    import bdv
+    return render_template('referencias_docs_bdv.html', api_url=request.host_url.rstrip('/'), admin=True,
+                           volver='/admin/antiduplic', docs_bancamiga='/admin/antiduplic/docs', bdv_llave=bdv.cifrado_disponible())
+
+
 @bp.route('/admin/antiduplic/datos')
 def admin_antiduplic_datos():
     err = _solo_admin_json()
