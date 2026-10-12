@@ -24,6 +24,8 @@ TimeoutStopSec=120
 MemoryMax=8G
 # Sin privilegios: no puede volverse root, ni escribir en el sistema, ni ver /root ni /home
 NoNewPrivileges=true
+# Sin volcados de memoria a disco: podrían contener contraseñas que el lector está usando
+LimitCORE=0
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true

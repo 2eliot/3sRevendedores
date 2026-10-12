@@ -171,12 +171,24 @@ async def hay_rechazo(page):
     return False
 
 
+def en_el_banco(page):
+    """¿La página está de verdad en el dominio del banco? Los datos del usuario solo se escriben ahí."""
+    try:
+        actual = urlsplit(page.url)
+    except ValueError:
+        return False
+    esperado = urlsplit(URL)
+    return actual.scheme == esperado.scheme and actual.hostname == esperado.hostname
+
+
 async def entrar(page, usuario, clave):
     try:
         await page.goto(URL, wait_until='domcontentloaded', timeout=TIMEOUT_MS)
         await page.wait_for_selector('input[formcontrolname="username"], table.table-saldo-cuenta', timeout=TIMEOUT_MS)
     except Exception:
         raise BancoNoResponde('la página del banco no cargó')
+    if not en_el_banco(page):   # p. ej. una redirección a otro sitio: ahí no se escribe nada
+        raise BancoNoResponde('la página no es la del banco')
     if await page.locator('table.table-saldo-cuenta').count():
         return
     campo = page.locator('input[formcontrolname="username"]')
@@ -189,6 +201,8 @@ async def entrar(page, usuario, clave):
         if await hay_rechazo(page):
             raise LoginRechazado('el banco rechazó el usuario')
         raise BancoNoResponde('no apareció la casilla de la contraseña')
+    if not en_el_banco(page):
+        raise BancoNoResponde('la página no es la del banco')
     await campo_clave.fill(clave)
     await campo_clave.locator('xpath=ancestor::form').locator('button[type="submit"]').click()
     fin = time.monotonic() + TIMEOUT_MS * 1.5 / 1000
@@ -338,9 +352,12 @@ class Web:
 
     def _llamar(self, metodo, ruta, **kw):
         try:
-            r = self.sesion.request(metodo, self.base + ruta, timeout=WEB_TIMEOUT_SEG, **kw)
+            # Sin seguir redirecciones: la clave temporal solo va a la dirección configurada
+            r = self.sesion.request(metodo, self.base + ruta, timeout=WEB_TIMEOUT_SEG, allow_redirects=False, **kw)
         except requests.RequestException as e:
             raise WebCaida(type(e).__name__)
+        if 300 <= r.status_code < 400 and r.status_code != 304:
+            raise WebCaida(f'HTTP {r.status_code}: la web redirige a otra dirección; revisa BDV_WEB_URL')
         if r.status_code >= 500 or r.status_code == 429:
             raise WebCaida(f'HTTP {r.status_code}')
         return r
@@ -972,6 +989,18 @@ def tomar_candado(ruta):
     return f
 
 
+def cuidar_llave(ruta):
+    """La llave privada solo la lee el lector: si alguien la dejó abierta a otros usuarios, se vuelve a cerrar."""
+    if os.name != 'posix':
+        return
+    try:
+        if ruta.stat().st_mode & 0o077:
+            os.chmod(ruta, 0o600)
+            logger.warning('[BDV] La llave privada tenía permisos abiertos a otros usuarios: se dejaron en 600')
+    except OSError:
+        pass
+
+
 def vigilante(gestor):
     """Si el programa se queda trabado (sin dar vueltas) más de VIGILANTE_SEG, se cierra para que systemd lo levante."""
     while True:
@@ -1025,6 +1054,7 @@ def main():
         time.sleep(60)
         sys.exit(1)
     privada, publica, creada = generar_llaves.cargar_o_crear(os.environ.get('BDV_CLAVE_PRIVADA', '').strip() or None)
+    cuidar_llave(generar_llaves.ruta_por_defecto())
     if creada:
         logger.warning(f'[BDV] Se creó la llave del lector en {generar_llaves.ruta_por_defecto()} (permisos 600): respáldala')
     logger.info(f'[BDV] Código de este lector: {generar_llaves.huella(publica)}')

@@ -165,6 +165,16 @@ class BancoFalso:
                 with banco.lock:
                     usuario = banco.sesiones.get(self._sesion())
                 if self.path == '/':
+                    host = (self.headers.get('Host') or '').split(':')[0]
+                    if banco.redirigir and host != 'localhost':   # manda a otro sitio (otro dominio)
+                        self.send_response(302)
+                        self.send_header('Location', f'http://localhost:{banco.servidor.server_address[1]}/')
+                        self.send_header('Content-Length', '0')
+                        self.end_headers()
+                        return
+                    if host == 'localhost':
+                        with banco.lock:
+                            banco.otro_sitio += 1
                     # caído: la página no termina de cargar y el lector no encuentra la casilla
                     cuerpo = b'<html><body>Cargando...</body></html>' if banco.caido else PAGINA.encode()
                     self.send_response(200)
@@ -218,6 +228,7 @@ class BancoFalso:
         with self.lock:
             self.claves = {U1: C1, U2: C2}
             self.sesiones, self.rechazar, self.caido, self.estilo = {}, set(), False, 'arriba'
+            self.redirigir, self.otro_sitio = False, 0
             self.intentos, self.entradas, self.salidas, self.lecturas = Counter(), Counter(), Counter(), Counter()
             self.movimientos = {U1: [], U2: []}
 
@@ -334,6 +345,43 @@ class PiezasTest(unittest.TestCase):
         dos = lb.tomar_candado(ruta)
         self.assertIsNotNone(dos)
         dos.close()
+
+    def test_no_sigue_redirecciones_de_la_web(self):
+        visitas = []
+
+        class Redirige(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_POST(self):
+                visitas.append(self.headers.get('Authorization'))
+                self.send_response(301)
+                self.send_header('Location', 'http://127.0.0.1:9/robar')
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+            do_GET = do_POST
+        srv = ThreadingHTTPServer(('127.0.0.1', 0), Redirige)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            privada = PrivateKey.generate()
+            web = lb.Web(f'http://127.0.0.1:{srv.server_address[1]}', privada, base64.b64encode(bytes(privada.public_key)).decode())
+            with self.assertRaises(lb.WebCaida) as e:
+                web.registrar()
+            self.assertIn('BDV_WEB_URL', str(e.exception))
+            web.clave, web.vence = 'clave-temporal', time.time() + 600
+            with self.assertRaises(lb.WebCaida):
+                web.cuentas()
+            self.assertEqual(len(visitas), 2)   # no siguió a la otra dirección
+        finally:
+            srv.shutdown()
+
+    @unittest.skipUnless(os.name == 'posix', 'permisos de Linux')
+    def test_cierra_los_permisos_de_la_llave(self):
+        ruta = Path(tempfile.mkdtemp()) / 'llave_privada'
+        generar_llaves.cargar_o_crear(ruta)
+        os.chmod(ruta, 0o644)
+        lb.cuidar_llave(ruta)
+        self.assertEqual(ruta.stat().st_mode & 0o777, 0o600)
 
 
 # ---------------------------------------------------------------------------
@@ -647,6 +695,17 @@ class LectorExternoTest(unittest.TestCase):
             await hasta(lambda: self.banco.entradas[U1] == 2, que='abrir otro navegador y volver a entrar')
             await hasta(lambda: self.estado(cid) == 'conectado', que='seguir leyendo')
         self.correr(escenario)
+
+    def test_no_escribe_los_datos_fuera_del_dominio_del_banco(self):
+        self.aprobado()
+        self.banco.redirigir = True   # la página del banco manda a otro dominio con un formulario igual
+        cid = self.conectar()
+
+        async def escenario(hasta):
+            await hasta(lambda: self.estado(cid) == 'banco_no_responde', que='no entrar')
+        self.correr(escenario)
+        self.assertGreater(self.banco.otro_sitio, 0)      # sí llegó a la otra página…
+        self.assertEqual(self.banco.intentos[U1], 0)      # …pero no escribió nada en ella
 
     def test_datos_cerrados_con_la_llave_de_otro_lector(self):
         otra = base64.b64encode(bytes(PrivateKey.generate().public_key)).decode()
