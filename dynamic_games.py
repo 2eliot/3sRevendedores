@@ -471,20 +471,57 @@ def admin_toggle_game(game_id):
     return jsonify({'success': True, 'activo': new_state})
 
 
+def _quiere_json():
+    """Las pantallas piden con fetch (Accept: application/json): se les responde JSON, nunca una redirección."""
+    return request.is_json or 'application/json' in (request.headers.get('Accept') or '')
+
+
+def _quitar_mapeos(conn, juego_id=None, paquete_id=None):
+    """Borra la configuración de Mapeo (principal, pasos y respaldo) de un juego o de un paquete."""
+    for tabla in ('rev_item_mapping_steps', 'rev_item_mapping_respaldo', 'rev_item_mappings'):
+        if paquete_id is not None:
+            conn.execute(f'DELETE FROM {tabla} WHERE paquete_id = ?', (paquete_id,))
+        else:
+            conn.execute(f'DELETE FROM {tabla} WHERE juego_id = ?', (juego_id,))
+
+
+def _con_historial(conn, columna, valor):
+    """Texto como «3 ventas y 10 PINs cargados» si tiene ventas o PINs (no se borran: son historial y stock), o ''."""
+    ventas = conn.execute(f'SELECT COUNT(*) AS n FROM transacciones_dinamicas WHERE {columna} = ?', (valor,)).fetchone()['n']
+    pines = conn.execute(f'SELECT COUNT(*) AS n FROM pines_dinamicos_stock WHERE {columna} = ?', (valor,)).fetchone()['n']
+    partes = ([f'{ventas} venta' + ('s' if ventas != 1 else '')] if ventas else []) + \
+             ([f'{pines} PIN' + ('s' if pines != 1 else '') + ' cargado' + ('s' if pines != 1 else '')] if pines else [])
+    return ' y '.join(partes)
+
+
 @bp.route('/admin/dynamic-games/<int:game_id>/delete', methods=['POST'])
 def admin_delete_game(game_id):
+    """Borra un juego con sus paquetes y su Mapeo. Si tiene ventas o PINs no se borra (se perdería ese historial):
+    se desactiva en su lugar."""
     if not session.get('is_admin'):
         return jsonify({'error': 'Acceso denegado'}), 403
     conn = _get_conn()
-    conn.execute('DELETE FROM paquetes_dinamicos WHERE juego_id=?', (game_id,))
-    conn.execute('DELETE FROM pines_dinamicos_stock WHERE juego_id=?', (game_id,))
-    conn.execute('DELETE FROM transacciones_dinamicas WHERE juego_id=?', (game_id,))
-    conn.execute('DELETE FROM juegos_dinamicos WHERE id=?', (game_id,))
-    conn.commit()
-    conn.close()
-    if request.is_json:
-        return jsonify({'success': True})
-    flash('Juego eliminado.', 'success')
+    try:
+        historial = _con_historial(conn, 'juego_id', game_id)
+        if historial:
+            error = (f'Este juego tiene {historial}: no se borra para no perder ese historial. '
+                     'Desactívalo y dejará de verse en la tienda y en la API.')
+            status = 409
+        else:
+            _quitar_mapeos(conn, juego_id=game_id)
+            conn.execute('DELETE FROM paquetes_dinamicos WHERE juego_id=?', (game_id,))
+            conn.execute('DELETE FROM juegos_dinamicos WHERE id=?', (game_id,))
+            conn.commit()
+            error, status = None, 200
+    except Exception as e:
+        conn.rollback()
+        logger.error(f'[DynGames] No se pudo eliminar el juego {game_id}: {e}')
+        error, status = 'No se pudo eliminar el juego', 500
+    finally:
+        conn.close()
+    if _quiere_json():
+        return (jsonify({'success': True}) if status == 200 else jsonify({'success': False, 'error': error})), status
+    flash('Juego eliminado.' if status == 200 else error, 'success' if status == 200 else 'error')
     return redirect('/admin/dynamic-games')
 
 
@@ -577,10 +614,20 @@ def admin_delete_package(pkg_id):
     if not session.get('is_admin'):
         return jsonify({'error': 'Acceso denegado'}), 403
     conn = _get_conn()
-    conn.execute('DELETE FROM pines_dinamicos_stock WHERE paquete_id=?', (pkg_id,))
-    conn.execute('DELETE FROM paquetes_dinamicos WHERE id=?', (pkg_id,))
-    conn.commit()
-    conn.close()
+    try:
+        historial = _con_historial(conn, 'paquete_id', pkg_id)
+        if historial:
+            return jsonify({'success': False, 'error': f'Este paquete tiene {historial}: no se borra para no perder ese '
+                                                       'historial. Desactívalo y dejará de venderse.'}), 409
+        _quitar_mapeos(conn, paquete_id=pkg_id)
+        conn.execute('DELETE FROM paquetes_dinamicos WHERE id=?', (pkg_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        logger.error(f'[DynGames] No se pudo eliminar el paquete {pkg_id}: {e}')
+        return jsonify({'success': False, 'error': 'No se pudo eliminar el paquete'}), 500
+    finally:
+        conn.close()
     return jsonify({'success': True})
 
 

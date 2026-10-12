@@ -291,8 +291,10 @@
   }
 
   async function deleteGame(id) {
-    await fetch(`/admin/dynamic-games/${id}/delete`, {method:'POST',headers:{'Accept':'application/json'}});
-    document.getElementById('game-card-'+id)?.remove();
+    const res = await fetch(`/admin/dynamic-games/${id}/delete`, {method:'POST',headers:{'Accept':'application/json'}});
+    let data = {}; try { data = await res.json(); } catch(e) {}
+    if (data.success) document.getElementById('game-card-'+id)?.remove();
+    else alert(data.error || ('No se pudo eliminar el juego (error ' + res.status + ')'));
   }
 
   async function syncPrices(id) {
@@ -343,7 +345,7 @@
     });
     const data = await res.json();
     if (data.success) location.reload();
-    else alertesc(data.error || 'Error');
+    else alert(data.error || 'Error');
   }
 
   function showAddPkg(id) {
@@ -363,7 +365,7 @@
     });
     const data = await res.json();
     if (data.success) location.reload();
-    else alertesc(data.error || 'Error');
+    else alert(data.error || 'Error');
   }
 
   async function savePkg(id) {
@@ -377,7 +379,7 @@
     });
     const data = await res.json();
     if (data.success) { const row = document.getElementById('pkg-row-'+id); if(row) row.style.background='rgba(74,222,128,0.08)'; setTimeout(()=>{if(row)row.style.background='';},1500); }
-    else alertesc(data.error || 'Error');
+    else alert(data.error || 'Error');
   }
 
   async function togglePkg(id, newState) {
@@ -388,8 +390,10 @@
   }
 
   async function deletePkg(id) {
-    await fetch(`/admin/dynamic-games/packages/${id}/delete`, {method:'POST',headers:{'Accept':'application/json'}});
-    document.getElementById('pkg-row-'+id)?.remove();
+    const res = await fetch(`/admin/dynamic-games/packages/${id}/delete`, {method:'POST',headers:{'Accept':'application/json'}});
+    let data = {}; try { data = await res.json(); } catch(e) {}
+    if (data.success) document.getElementById('pkg-row-'+id)?.remove();
+    else alert(data.error || ('No se pudo eliminar el paquete (error ' + res.status + ')'));
   }
 
   function updatePkgProfit(pkgId) {

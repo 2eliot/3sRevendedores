@@ -1699,16 +1699,18 @@
       const sel = document.getElementById('price_game_select');
       const gameName = sel ? sel.options[sel.selectedIndex].text : '';
       if (!confirm(`¿Eliminar "${gameName}" y todos sus paquetes? Esta acción no se puede deshacer.`)) return;
+      let res;
       try {
-        const res = await fetch(`/admin/dynamic-games/${_currentDynGameId}/delete`, {
+        res = await fetch(`/admin/dynamic-games/${_currentDynGameId}/delete`, {
           method:'POST', headers:{'Accept':'application/json'}
         });
-        const data = await res.json();
-        if (data.success) {
-          alert('Juego eliminado');
-          location.reload();
-        } else { alertesc(data.error || 'Error al eliminar'); }
-      } catch(e) { alert('Error de red'); }
+      } catch(e) { alert('Error de red: revisa tu conexión e inténtalo de nuevo'); return; }
+      let data = {};
+      try { data = await res.json(); } catch(e) {}
+      if (data.success) {
+        alert('Juego eliminado');
+        location.reload();
+      } else { alert(data.error || ('No se pudo eliminar el juego (error ' + res.status + ')')); }
     }
 
     // Buscador de usuarios: ID exacto si es numérico, si no nombre/email
