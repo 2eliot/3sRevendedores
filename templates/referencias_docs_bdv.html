@@ -57,7 +57,7 @@
   <nav class="dc-toc">
     <a href="#como">Cómo funciona</a><a href="#conectar">Conectar la cuenta</a><a href="#estados">Estados</a><a href="#interruptor">Leer movimientos</a>
     <a href="#seguridad">Seguridad</a><a href="#claves">Clave de API</a><a href="#api">Desde otro sistema</a><a href="#codigos">Códigos</a>
-    <a href="#pagos">Qué pagos se guardan</a><a href="#errores">Errores y límites</a>{% if admin %}<a href="#admin">Administración</a>{% endif %}
+    <a href="#corte">Qué referencias se usan</a><a href="#pagos">Qué pagos se guardan</a><a href="#errores">Errores y límites</a>{% if admin %}<a href="#admin">Administración</a>{% endif %}
   </nav>
 
   <h2 id="como">1. Cómo funciona</h2>
@@ -141,7 +141,7 @@
   "usados_hoy": 4, "revision_hoy": 0, "ultimo_envio_bot": "2026-10-11 20:15:03", "ultimo_movimiento": "2026-10-11 20:01", "cuentas": [...]}}</pre>
 
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/pagos</code> <span class="dc-perm">Ver pagos</span></h3>
-  <p>Con los mismos filtros que Bancamiga: <code>fecha</code>, <code>desde</code>, <code>hasta</code>, <code>estado</code> (<code>disponible</code>, <code>usado</code>, <code>revision</code>), <code>q</code> (referencia o monto), <code>cuenta_id</code>, <code>pagina</code> y <code>por_pagina</code> (máximo 200).</p>
+  <p>Con los mismos filtros que Bancamiga: <code>fecha</code>, <code>desde</code>, <code>hasta</code>, <code>estado</code> (<code>disponible</code>, <code>usado</code>, <code>revision</code>, <code>bloqueado</code>), <code>q</code> (referencia o monto), <code>cuenta_id</code>, <code>pagina</code> y <code>por_pagina</code> (máximo 200).</p>
 <pre>curl "{{ api_url }}/api/v1/referencias/pagos?fecha=2026-10-11&estado=disponible" -H "X-API-Key: wsk_••••••••••••"</pre>
 <pre>{"ok": true, "banco": "BDV", "total": 2, "pagina": 1, "por_pagina": 50, "pagos": [
   {"id": 214, "referencia": "5550001112", "fecha": "2026-10-11", "hora": "10:40", "monto": 75.0, "estado": "disponible",
@@ -154,7 +154,7 @@
   <p>Las revisiones del BDV (por defecto las pendientes; <code>?estado=resuelta</code> o <code>descartada</code>), cada una con sus pagos candidatos.</p>
 
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/cuentas</code> <span class="dc-perm">Ver pagos</span></h3>
-  <p>Tus cuentas del BDV con el estado de la lectura. <b>Nunca</b> trae usuario, contraseña ni número completo.</p>
+  <p>Tus cuentas del BDV con el estado de la lectura, su fecha de corte (<code>usar_desde</code>) y su antigüedad máxima (<code>antiguedad_max_horas</code>). <b>Nunca</b> trae usuario, contraseña ni número completo.</p>
 <pre>{"ok": true, "banco": "BDV", "cuentas": [{"id": 9, "banco": "BDV", "alias": "BDV personal", "ultimos_digitos": "2411",
   "activo": true, "conectada": true, "ultimo_envio": "2026-10-11 20:15:03",
   "lector": {"estado": "conectado", "mensaje": "Leyendo tus movimientos cada 25 s", "ultima_lectura": "2026-10-11 20:15:03",
@@ -178,17 +178,29 @@
     <tr><td><code>falta_fecha</code></td><td>false</td><td>Referencia de 4 o 5 dígitos sin fecha.</td><td>Pedir la fecha.</td></tr>
     <tr><td><code>revision</code></td><td>false</td><td>Con <code>pedir_hora: true</code> falta la hora; sin él quedó para revisión manual.</td><td>Pedir la hora o revisar a mano.</td></tr>
     <tr><td><code>ref_corta</code></td><td>false</td><td>Menos de 4 dígitos o con letras.</td><td>Pedir la referencia completa.</td></tr>
+    <tr><td><code>anterior_al_corte</code></td><td>false</td><td>El pago es anterior a la fecha de corte de la cuenta (viene en <code>corte</code>): se da por usado antes de conectar.</td><td>Rechazar. Si de verdad no se usó, el dueño lo desbloquea en Referencias.</td></tr>
+    <tr><td><code>pago_antiguo</code></td><td>false</td><td>La cuenta tiene una antigüedad máxima (opcional) y el pago es más viejo (viene en <code>antiguedad_max_horas</code>).</td><td>Rechazar o asignarlo a mano si corresponde.</td></tr>
+    <tr><td><code>eliminado</code></td><td>false</td><td>El dueño eliminó esa referencia de sus pagos.</td><td>Rechazar.</td></tr>
   </table></div>
 
-  <h2 id="pagos">7. Qué pagos se guardan</h2>
+  <h2 id="corte">7. Qué referencias se pueden usar</h2>
+  <ul>
+    <li><b>Fecha de corte:</b> cuando conectas una cuenta, el banco también trae pagos de antes (de hoy o de días anteriores) que casi siempre ya usaste por fuera. Por eso cada cuenta tiene una fecha y hora de corte: los pagos <b>anteriores</b> se guardan y se ven como <b>«Anterior al corte»</b> (estado <code>bloqueado</code>), pero <b>no se pueden usar</b>.</li>
+    <li>El corte se pone <b>solo</b> al conectar la cuenta. Lo cambias (o lo quitas) en <b>Referencias → BDV → Cuentas bancarias → Qué referencias se pueden usar</b>. Al cambiarlo, los pagos se bloquean o se liberan según la nueva fecha.</li>
+    <li><b>Desbloquear:</b> si un pago anterior al corte de verdad no se usó, pulsa <b>Desbloquear</b> en la pestaña Pagos y ya se podrá usar (si te equivocaste, «Volver a bloquear»).</li>
+    <li><b>Antigüedad máxima (opcional):</b> si la eliges (de 6 horas a 7 días), la verificación automática no acepta pagos más viejos que eso, aunque sean posteriores al corte (código <code>pago_antiguo</code>). A mano siempre puedes asignarlos. Si no la necesitas, déjala en «Sin límite».</li>
+    <li><b>Eliminar referencias:</b> en la pestaña Pagos puedes eliminar las referencias que no se usaron del BDV (las de Bancamiga se eliminan en su pestaña): todas o las anteriores a una fecha y hora. Las usadas y las que están en revisión <b>nunca</b> se eliminan (son la prueba de que ya se usaron). Lo eliminado no vuelve aunque el banco lo mande otra vez, y si alguien la intenta usar recibe <code>eliminado</code>.</li>
+  </ul>
+
+  <h2 id="pagos">8. Qué pagos se guardan</h2>
   <ul>
     <li>Solo los <b>créditos</b> (dinero que recibes). Los débitos no se guardan.</li>
     <li>Se excluyen los movimientos del propio banco: descripción con «INTERES», «COMISION», «REINTEGRO» o «AJUSTE».</li>
     <li>Cada pago se guarda con su referencia, fecha (<code>AAAA-MM-DD</code>), hora (<code>HH:MM</code>), monto con 2 decimales y <code>tipo</code> = «BDV » + la descripción del banco.</li>
-    <li>La tabla del banco muestra también movimientos de días anteriores: los que ya estaban guardados se ignoran.</li>
+    <li>La tabla del banco muestra también movimientos de días anteriores: los que ya estaban guardados se ignoran, y los anteriores a la fecha de corte quedan sin usar.</li>
   </ul>
 
-  <h2 id="errores">8. Errores y límites</h2>
+  <h2 id="errores">9. Errores y límites</h2>
   <div class="dc-tw"><table class="dc-t">
     <tr><th>HTTP</th><th>Cuándo</th></tr>
     <tr><td><code>400</code></td><td>Datos inválidos.</td></tr>
@@ -201,7 +213,7 @@
   <p>Todas las respuestas de error traen <code>{"ok": false, "mensaje": "..."}</code>. La documentación de Bancamiga está en <a href="{{ docs_bancamiga }}" style="color:var(--rc-hl);">Documentación de Referencias</a>.</p>
 
   {% if admin %}
-  <h2 id="admin">9. Administración</h2>
+  <h2 id="admin">10. Administración</h2>
   <ul>
     <li><b>Paso 0 (comprobado por el dueño el 11/10/2026):</b> el BDV deja entrar desde el VPS (IP de EE. UU.), tanto con <code>curl</code> como con Chromium sin ventana.</li>
     <li><b>El lector del BDV es un programa aparte, en otro servidor</b> (carpeta <code>lector_externo/</code> del repositorio): un solo Chromium sin ventana con un contexto por cuenta conectada. No importa nada de la web y habla con ella por HTTPS. La web no abre ningún navegador para el BDV. Solo puede haber un lector funcionando a la vez.</li>

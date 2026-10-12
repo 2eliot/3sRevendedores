@@ -101,8 +101,8 @@ def api_pagos():
     if pagina < 1 or por_pagina < 1 or por_pagina > POR_PAGINA_MAX:
         return _err(400, f'por_pagina debe estar entre 1 y {POR_PAGINA_MAX}')
     estado = a.get('estado') or ''
-    if estado and estado not in ('disponible', 'usado', 'revision'):
-        return _err(400, 'estado debe ser disponible, usado o revision')
+    if estado and estado not in ('disponible', 'usado', 'revision', 'bloqueado'):
+        return _err(400, 'estado debe ser disponible, usado, revision o bloqueado')
     conn = get_db_connection()
     try:
         pagos, total = ad.listar_pagos(conn, cuenta['usuario_id'], estado=estado, q=a.get('q') or '',
@@ -151,7 +151,7 @@ def api_cuentas():
         cuentas = ad.listar_cuentas(conn, cuenta['usuario_id'], banco=_banco(cuenta))
     finally:
         conn.close()
-    campos = ('id', 'banco', 'alias', 'ultimos_digitos', 'titular', 'activo', 'ultimo_envio')
+    campos = ('id', 'banco', 'alias', 'ultimos_digitos', 'titular', 'activo', 'ultimo_envio', 'usar_desde', 'antiguedad_max_horas')
     salida = []
     for c in cuentas:
         d = {k: c[k] for k in campos}
@@ -332,9 +332,10 @@ def referencias_cuentas():
         vals, error = _datos_cuenta(request.get_json(silent=True) or {})
         if error:
             return _err(400, error)
-        conn.execute('INSERT INTO cuentas_banco (usuario_id, banco, alias, ultimos_digitos, titular, activo, creado_en) '
-                     'VALUES (?, ?, ?, ?, ?, TRUE, ?)',
-                     (uid, vals['banco'], vals['alias'], vals['ultimos_digitos'], vals['titular'], ad.ahora_local()))
+        # El corte se pone en este momento: los movimientos de antes que mande el bot quedan sin usar
+        conn.execute('INSERT INTO cuentas_banco (usuario_id, banco, alias, ultimos_digitos, titular, activo, creado_en, usar_desde) '
+                     'VALUES (?, ?, ?, ?, ?, TRUE, ?, ?)',
+                     (uid, vals['banco'], vals['alias'], vals['ultimos_digitos'], vals['titular'], ad.ahora_local(), ad.ahora_minuto()))
         conn.commit()
         return jsonify(ok=True, mensaje='Cuenta creada', cuentas=ad.listar_cuentas(conn, uid, banco=ad.BANCAMIGA))
     finally:
@@ -364,6 +365,61 @@ def referencias_cuenta_editar(cuenta_id):
         return jsonify(ok=True, mensaje='Cuenta guardada', cuentas=ad.listar_cuentas(conn, uid, banco=ad.BANCAMIGA))
     finally:
         conn.close()
+
+
+@bp.route('/referencias/cuentas/<int:cuenta_id>/corte', methods=['POST'])
+def referencias_cuenta_corte(cuenta_id):
+    """Fecha de corte («no usar referencias antes de») y antigüedad máxima opcional de una cuenta (de cualquier banco)."""
+    uid, err = _sesion_json(post=True)
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    conn = get_db_connection()
+    try:
+        status, datos = ad.guardar_corte(conn, uid, cuenta_id, data.get('usar_desde'), data.get('antiguedad_max_horas'))
+        if status != 200:
+            return _err(status, datos['mensaje'])
+        return jsonify(ok=True, mensaje=datos['mensaje'], cuentas=ad.listar_cuentas(conn, uid, banco=_banco_peticion()))
+    finally:
+        conn.close()
+
+
+@bp.route('/referencias/eliminar', methods=['POST'])
+def referencias_eliminar():
+    """Elimina las referencias sin usar del banco elegido: todas o las anteriores a una fecha y hora.
+    Sin «confirmar» solo dice cuántas serían (para preguntar antes de borrar)."""
+    uid, err = _sesion_json(post=True)
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    modo = data.get('modo')
+    if modo not in ('todas', 'antes'):
+        return _err(400, 'Elige qué referencias eliminar')
+    antes = str(data.get('antes') or '') if modo == 'antes' else None
+    conn = get_db_connection()
+    try:
+        status, datos = ad.eliminar_pagos(conn, uid, _banco_peticion(), antes, bool(data.get('confirmar')))
+    finally:
+        conn.close()
+    if status != 200:
+        return _err(status, datos['mensaje'])
+    return jsonify(ok=True, **datos)
+
+
+@bp.route('/referencias/pagos/<int:pago_id>/<accion>', methods=['POST'])
+def referencias_pago_bloqueo(pago_id, accion):
+    """desbloquear: un pago anterior al corte se podrá usar. bloquear: deshace eso."""
+    if accion not in ('desbloquear', 'bloquear'):
+        return _err(404, 'Acción no encontrada')
+    uid, err = _sesion_json(post=True)
+    if err:
+        return err
+    conn = get_db_connection()
+    try:
+        status, datos = ad.cambiar_bloqueo(conn, uid, pago_id, accion == 'bloquear', banco=_banco_peticion())
+    finally:
+        conn.close()
+    return (jsonify(ok=True, mensaje=datos['mensaje']) if status == 200 else _err(status, datos['mensaje']))
 
 
 # ---------- Claves (lector y API) ----------

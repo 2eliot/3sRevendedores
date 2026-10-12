@@ -214,7 +214,8 @@ class ReferenciasTest(unittest.TestCase):
         d = self.c.post('/referencias/claves-lector', json={'nombre': 'PC', 'cuenta_id': nueva['id']}).get_json()
         self.assertTrue(d['clave'].startswith('lec_'))
         self.assertNotIn(d['clave'], str(d['lector']))  # la clave completa no se vuelve a mostrar
-        self.assertEqual(self.enviar([pago('1212121212', 9)], d['clave']).status_code, 200)
+        # la cuenta nueva usa referencias desde que se creó: el pago de hoy, más tarde, sí vale
+        self.assertEqual(self.enviar([pago('1212121212', 9, fecha=ad.hoy_local(), hora='23:59:59')], d['clave']).status_code, 200)
         self.assertEqual(q("SELECT cuenta_banco_id FROM pagos_banco WHERE referencia = '1212121212'")[0]['cuenta_banco_id'], nueva['id'])
         d = self.c.post('/referencias/claves-api', json={'nombre': 'CRM', 'permisos': {'verificar_pago': True, 'recargas': True}}).get_json()
         fila = q("SELECT tipo, perm_recargas, perm_verificar_pago FROM webservice_accounts WHERE usuario_id = ?", (self.B,))[0]

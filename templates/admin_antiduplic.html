@@ -49,6 +49,7 @@
     .ad-badge.disponible { background: var(--rc-green-bg); color: var(--rc-green); }
     .ad-badge.usado { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
     .ad-badge.revision { background: var(--rc-yellow-bg); color: var(--rc-yellow); }
+    .ad-badge.bloqueado { background: transparent; color: var(--rc-coral); box-shadow: inset 0 0 0 1px var(--rc-coral); }
     .ad-uso { font-size: 12px; color: var(--rc-ash); line-height: 1.5; }
     .ad-uso b { color: var(--rc-text); font-weight: 600; }
     .ad-empty { padding: 18px; text-align: center; color: var(--rc-ash); font-size: 13px; }
@@ -144,6 +145,7 @@
             <option value="disponible">Disponibles</option>
             <option value="usado">Usados</option>
             <option value="revision">En revisión</option>
+            <option value="bloqueado">Anteriores al corte</option>
           </select>
         </label>
         <label class="ad-q">Buscar <input type="search" name="q" placeholder="Referencia o monto" autocomplete="off"></label>
@@ -197,7 +199,7 @@
       var a = new Date(txt.replace(' ', 'T')), b = new Date(ahora.replace(' ', 'T'));
       return Math.round((b - a) / 60000);
     }
-    var ESTADOS = {disponible: 'Disponible', usado: 'Usado', revision: 'En revisión'};
+    var ESTADOS = {disponible: 'Disponible', usado: 'Usado', revision: 'En revisión', bloqueado: 'Anterior al corte'};
     var ORIGEN = {revendedor: 'Revendedor', crm: 'CRM', manual: 'Manual'};
     var form = document.getElementById('ad-filtros');
     var USUARIOS = {{ usuarios|tojson }};

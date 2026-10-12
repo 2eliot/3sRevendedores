@@ -83,7 +83,10 @@ class BdvDatosTest(unittest.TestCase):
     def conectar(self, uid=None, numero=NUMERO, **extra):
         datos = dict(usuario=USUARIO, clave=CLAVE, numero_cuenta=numero, alias='', consentimiento=True)
         datos.update(extra)
-        return bdv.guardar_conexion(self.conn, uid or self.A, **datos)
+        r = bdv.guardar_conexion(self.conn, uid or self.A, **datos)
+        self.conn.execute("UPDATE cuentas_banco SET usar_desde = NULL WHERE banco = 'BDV'")   # estas pruebas no son del corte
+        self.conn.commit()
+        return r
 
     # ---------- cifrado ----------
     def test_la_web_solo_cierra_y_solo_el_lector_abre(self):
@@ -446,6 +449,7 @@ class BdvApiTest(unittest.TestCase):
         try:
             _, d = bdv.guardar_conexion(conn, self.A, USUARIO, CLAVE, NUMERO, 'Mi BDV', True)
             self.cuenta_bdv = d['cuenta_id']
+            conn.execute('UPDATE cuentas_banco SET usar_desde = NULL WHERE id = ?', (self.cuenta_bdv,))   # no son del corte
             self.clave_bdv = api_panel.crear_cuenta(conn, 'CRM BDV', self.A, 'referencias',
                                                     {'verificar_pago': True, 'ver_pagos': True, 'gestionar_pagos': True}, banco='BDV')[1]
             self.clave_bm = api_panel.crear_cuenta(conn, 'CRM BM', self.A, 'referencias',

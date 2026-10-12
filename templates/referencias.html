@@ -53,6 +53,12 @@
     .rf-badge.disponible { background: var(--rc-green-bg); color: var(--rc-green); }
     .rf-badge.usado { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
     .rf-badge.revision { background: var(--rc-yellow-bg); color: var(--rc-yellow); }
+    .rf-badge.bloqueado { background: transparent; color: var(--rc-coral); box-shadow: inset 0 0 0 1px var(--rc-coral); }
+    .rf-mini { min-height: 32px; padding: 0 10px; font-size: 12px; margin-top: 6px; }
+    .rf-dias { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .rf-dia { min-height: 34px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--rc-border); background: var(--rc-recess); color: var(--rc-mist); font-weight: 600; font-size: 13px; cursor: pointer; }
+    .rf-dia[aria-pressed="true"] { background: var(--rc-mist); color: var(--rc-card); border-color: var(--rc-mist); }
+    .rf-eliminar .rf-form { align-items: center; }
     .rf-uso { font-size: 12px; color: var(--rc-ash); line-height: 1.5; } .rf-uso b { color: var(--rc-text); }
     .rf-empty { padding: 16px; text-align: center; color: var(--rc-ash); font-size: 13px; }
     .rf-rev { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--rc-recess); }
@@ -200,7 +206,7 @@
         <h2>Hoy <span class="rf-mono rf-muted" id="rf-hoy">{{ hoy }}</span></h2>
         <div class="rf-kpis">
           <div class="rf-kpi"><span>Total recibido</span><strong class="rf-hl" id="k-total">—</strong><small id="k-n"></small></div>
-          <div class="rf-kpi"><span>Disponibles</span><strong id="k-disp">—</strong></div>
+          <div class="rf-kpi"><span>Disponibles</span><strong id="k-disp">—</strong><small id="k-disp-sub"></small></div>
           <div class="rf-kpi"><span>Usados</span><strong id="k-usados">—</strong></div>
           <div class="rf-kpi"><span>En revisión</span><strong id="k-rev">—</strong></div>
           <div class="rf-kpi"><span id="k-bot-label">Bot del banco</span><strong id="k-bot" style="font-size:15px;">—</strong><small id="k-bot-sub"></small></div>
@@ -209,16 +215,22 @@
       </div>
 
       <div class="rf-card">
+        <div class="rf-dias" role="group" aria-label="Día">
+          <button type="button" class="rf-dia" data-dias="0">Hoy</button>
+          <button type="button" class="rf-dia" data-dias="1">Ayer</button>
+          <button type="button" class="rf-dia" data-dias="2">Anteayer</button>
+        </div>
         <form class="rf-filtros" id="rf-filtros">
+          <label class="rf-q">Buscar <input type="search" name="q" placeholder="Referencia o monto" autocomplete="off"></label>
           <label>Fecha <input type="date" name="fecha" value="{{ hoy }}"></label>
           <label>Estado
             <select name="estado">
               <option value="">Todos</option><option value="disponible">Disponibles</option>
               <option value="usado">Usados</option><option value="revision">En revisión</option>
+              <option value="bloqueado">Anteriores al corte</option>
             </select>
           </label>
           <label>Cuenta <select name="cuenta_id" id="rf-filtro-cuenta"><option value="">Todas</option></select></label>
-          <label class="rf-q">Buscar <input type="search" name="q" placeholder="Referencia o monto" autocomplete="off"></label>
           <button type="submit" class="rf-btn rf-main">Filtrar</button>
           <button type="button" class="rf-btn" id="rf-todas">Todas las fechas</button>
         </form>
@@ -229,6 +241,21 @@
           </table>
         </div>
       </div>
+
+      <details class="rf-card rf-plegable rf-eliminar">
+        <summary>
+          <span class="rf-sum-t">Eliminar referencias <span class="rf-muted rf-small" id="rf-eliminar-banco">de Bancamiga</span></span>
+          <span class="rf-sum-nota">Borra de tu lista las referencias que no se usaron (por ejemplo, las viejas que trajo el banco al conectar la cuenta).
+            Las usadas y las que están en revisión se quedan: son la prueba de que ya se usaron. Lo eliminado no vuelve aunque el banco lo mande otra vez.</span>
+        </summary>
+        <form id="rf-eliminar" class="rf-form">
+          <label class="rf-check"><input type="radio" name="modo" value="antes" checked> Las anteriores a</label>
+          <label>Fecha y hora (hora de Venezuela) <input type="datetime-local" name="antes"></label>
+          <label class="rf-check"><input type="radio" name="modo" value="todas"> Todas las que no se usaron</label>
+          <button type="submit" class="rf-btn rf-danger">Eliminar referencias</button>
+        </form>
+        <p class="rf-msg" id="rf-eliminar-msg"></p>
+      </details>
     </section>
 
     <!-- ====================== REVISIONES ====================== -->
@@ -298,6 +325,17 @@
             «Leer movimientos» (la web cierra su sesión en el banco). Al encenderlo, vuelve a entrar y lee lo que llegó mientras tanto.</p>
           <div id="rf-bdv-cuentas"><div class="rf-empty">Cargando…</div></div>
         </div>
+      </div>
+
+      <div class="rf-card">
+        <h2>Qué referencias se pueden usar</h2>
+        <p class="rf-muted rf-small">Cuando conectas una cuenta, el banco también trae pagos de antes (de hoy o de días anteriores) que casi siempre ya usaste.
+          Los pagos anteriores a la <b>fecha de corte</b> se guardan, pero <b>no se pueden usar</b>; si alguno de verdad no se usó, desbloquéalo en la pestaña Pagos.
+          El corte se pone solo al conectar la cuenta y puedes cambiarlo.</p>
+        <p class="rf-muted rf-small"><b>Antigüedad máxima (opcional):</b> si la eliges, tu sistema (por ejemplo tu CRM) no acepta pagos más viejos que ese tiempo,
+          aunque sean posteriores al corte. A mano siempre puedes asignarlos. Si no la necesitas, déjala en «Sin límite».</p>
+        <div id="rf-cortes"><div class="rf-empty">Cargando…</div></div>
+        <p class="rf-msg" id="rf-cortes-msg"></p>
       </div>
     </section>
 
@@ -369,7 +407,7 @@
       detenido: ['Datos rechazados ❌', 'rf-bad'], pausado: ['Pausado ⏸', 'rf-muted'], en_espera: ['En espera de un lugar ⏳', 'rf-warn'],
       sin_conexion: ['Sin conectar', 'rf-muted']
     };
-    var ESTADOS = {disponible: 'Disponible', usado: 'Usado', revision: 'En revisión'};
+    var ESTADOS = {disponible: 'Disponible', usado: 'Usado', revision: 'En revisión', bloqueado: 'Anterior al corte'};
     var ORIGEN = {revendedor: 'Revendedor', crm: 'Sistema externo', manual: 'Manual'};
     var datos = {pagos: [], cuentas: []};
 
@@ -395,6 +433,7 @@
       document.getElementById('rf-lector-box').hidden = bdv;
       document.getElementById('rf-docs').href = bdv ? '/referencias/docs/bdv' : '/referencias/docs';
       document.getElementById('k-bot-label').textContent = bdv ? 'Lector del BDV' : 'Bot del banco';
+      document.getElementById('rf-eliminar-banco').textContent = bdv ? 'del BDV' : 'de Bancamiga';
       document.getElementById('rf-api-nota').innerHTML = bdv
         ? 'Estas claves solo sirven para los pagos del <b>BDV</b> y son distintas de las de Bancamiga. Las claves para hacer recargas están en el apartado <a href="/mi-api" style="color:var(--rc-hl);">API</a>.'
         : 'Estas claves solo sirven para los pagos de <b>Bancamiga</b>. Las del BDV se crean en su pestaña. Las claves para hacer recargas están en el apartado <a href="/mi-api" style="color:var(--rc-hl);">API</a> (icono de arriba).';
@@ -410,13 +449,23 @@
 
     // ---------- pagos, resumen y revisiones ----------
     var form = document.getElementById('rf-filtros');
+    var HOY = '{{ hoy }}';
+    function diaMenos(n) { var d = new Date(HOY + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); }
+    function marcarDia() {
+      document.querySelectorAll('.rf-dia').forEach(function (b) { b.setAttribute('aria-pressed', form.fecha.value === diaMenos(+b.dataset.dias) ? 'true' : 'false'); });
+    }
+    document.querySelectorAll('.rf-dia').forEach(function (b) {
+      b.addEventListener('click', function () { form.fecha.value = diaMenos(+b.dataset.dias); cargar(); });
+    });
     async function cargar() {
+      marcarDia();
       var p = new URLSearchParams(new FormData(form));
       try {
         var r = await fetch(conBanco('/referencias/datos?' + p.toString()));
         if (r.status === 401) { location.href = '/auth'; return; }
         var d = await r.json();
         datos.pagos = d.pagos || [];
+        if (d.resumen && d.resumen.hoy && d.resumen.hoy !== HOY) { HOY = d.resumen.hoy; marcarDia(); }
         pintarResumen(d.resumen, d.ahora);
         pintarPagos(datos.pagos);
         pintarRevisiones(d.revisiones || []);
@@ -431,6 +480,7 @@
       document.getElementById('k-total').textContent = bs(s.total_hoy);
       document.getElementById('k-n').textContent = s.pagos_hoy + (s.pagos_hoy === 1 ? ' pago' : ' pagos');
       document.getElementById('k-disp').textContent = s.disponibles_hoy;
+      document.getElementById('k-disp-sub').textContent = s.bloqueados_hoy ? '+ ' + s.bloqueados_hoy + ' anteriores al corte' : '';
       document.getElementById('k-usados').textContent = s.usados_hoy;
       document.getElementById('k-rev').textContent = s.revision_hoy;
       var bot = document.getElementById('k-bot'), sub = document.getElementById('k-bot-sub'), aviso = document.getElementById('rf-aviso-bot');
@@ -483,9 +533,17 @@
       tbody.innerHTML = pagos.map(function (p) {
         return '<tr><td class="rf-mono" data-l="Referencia">' + esc(p.referencia) + '</td><td class="rf-mono" data-l="Fecha">' + esc(p.fecha) +
                '</td><td class="rf-mono" data-l="Hora">' + esc(p.hora) + '</td><td class="rf-mono rf-hl" data-l="Monto">' + bs(p.monto) +
-               '</td><td data-l="Cuenta">' + esc(p.cuenta || '') + '</td><td data-l="Estado"><span class="rf-badge ' + esc(p.estado) + '">' +
-               esc(ESTADOS[p.estado] || p.estado) + '</span></td><td data-l="' + (p.uso ? 'Uso' : '') + '">' + textoUso(p.uso) + '</td></tr>';
+               '</td><td data-l="Cuenta">' + esc(p.cuenta || '') + '</td><td data-l="Estado"><div><span class="rf-badge ' + esc(p.estado) + '">' +
+               esc(ESTADOS[p.estado] || p.estado) + '</span>' + botonBloqueo(p) + '</div></td><td data-l="' + (p.uso ? 'Uso' : '') + '">' + textoUso(p.uso) + '</td></tr>';
       }).join('');
+    }
+
+    function botonBloqueo(p) {
+      if (p.estado === 'bloqueado') return '<br><button type="button" class="rf-btn rf-mini" data-pago-bloqueo="' + p.id + '" data-accion="desbloquear">Desbloquear</button>';
+      if (p.estado === 'disponible' && p.desbloqueado) {
+        return '<br><span class="rf-muted rf-small">Desbloqueado a mano</span><br><button type="button" class="rf-btn rf-mini" data-pago-bloqueo="' + p.id + '" data-accion="bloquear">Volver a bloquear</button>';
+      }
+      return '';
     }
 
     function pintarRevisiones(revs) {
@@ -524,6 +582,23 @@
     form.addEventListener('submit', function (e) { e.preventDefault(); cargar(); });
     document.getElementById('rf-todas').addEventListener('click', function () { form.fecha.value = ''; cargar(); });
 
+    document.getElementById('rf-eliminar').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target, modo = f.modo.value, cuerpo = {modo: modo, antes: f.antes.value};
+      if (modo === 'antes' && !f.antes.value) { msg('rf-eliminar-msg', false, 'Elige la fecha y la hora.'); return; }
+      var cuenta = await postBanco('/referencias/eliminar', cuerpo);
+      if (!cuenta.ok) { msg('rf-eliminar-msg', false, cuenta.mensaje || 'Error'); return; }
+      if (!cuenta.cuantas) { msg('rf-eliminar-msg', null, 'No hay referencias sin usar ' + (modo === 'antes' ? 'antes de esa fecha y hora.' : 'para eliminar.')); return; }
+      var donde = BANCO === 'BDV' ? 'del BDV' : 'de Bancamiga';
+      if (!confirm('Se eliminarán ' + cuenta.cuantas + ' referencias sin usar ' + donde +
+                   (modo === 'antes' ? ' anteriores al ' + f.antes.value.replace('T', ' ') : '') +
+                   '. Las usadas y las que están en revisión se quedan. No se puede deshacer. ¿Eliminar?')) return;
+      cuerpo.confirmar = true;
+      var d = await postBanco('/referencias/eliminar', cuerpo);
+      msg('rf-eliminar-msg', !!d.ok, d.mensaje || 'Error');
+      if (d.ok) cargar();
+    });
+
     document.getElementById('rf-asignar').addEventListener('submit', async function (e) {
       e.preventDefault();
       var f = e.target;
@@ -536,16 +611,45 @@
 
     // ---------- cuentas bancarias ----------
     async function cargarCuentas() {
-      if (BANCO === 'BDV') { cargarBdv(); return; }
+      if (BANCO === 'BDV') { cargarBdv(true); return; }
       var r = await fetch('/referencias/cuentas'); var d = await r.json();
       pintarCuentas(d.cuentas || []);
+      pintarCortes(d.cuentas || []);
     }
 
+    // ---------- fecha de corte y antigüedad máxima (opcional) ----------
+    var OPC_ANTIG = [['', 'Sin límite'], ['6', '6 horas'], ['12', '12 horas'], ['24', '24 horas'], ['48', '48 horas'], ['72', '3 días'], ['168', '7 días']];
+    function pintarCortes(cuentas) {
+      document.getElementById('rf-cortes').innerHTML = cuentas.length ? cuentas.map(function (c) {
+        var h = c.antiguedad_max_horas ? String(c.antiguedad_max_horas) : '';
+        var opciones = OPC_ANTIG.slice();
+        if (h && !opciones.some(function (o) { return o[0] === h; })) opciones.push([h, h + ' horas']);
+        return '<form class="rf-cuenta" data-corte="' + c.id + '"><div class="rf-row"><b>' + esc(c.alias) + '</b>' +
+          (c.ultimos_digitos ? '<span class="rf-mono rf-muted">··' + esc(c.ultimos_digitos) + '</span>' : '') +
+          '<span class="rf-small ' + (c.usar_desde ? 'rf-ok">Usa referencias desde el ' + esc(c.usar_desde) : 'rf-warn">Sin fecha de corte: se pueden usar todas') + '</span></div>' +
+          '<div class="rf-form"><label>No usar referencias antes de (hora de Venezuela) <input type="datetime-local" name="usar_desde" value="' + esc((c.usar_desde || '').replace(' ', 'T')) + '"></label>' +
+          '<label>Antigüedad máxima (opcional) <select name="antiguedad">' + opciones.map(function (o) {
+            return '<option value="' + o[0] + '"' + (o[0] === h ? ' selected' : '') + '>' + o[1] + '</option>';
+          }).join('') + '</select></label>' +
+          '<button type="submit" class="rf-btn rf-main">Guardar</button></div></form>';
+      }).join('') : '<div class="rf-empty">Todavía no tienes cuentas de este banco.</div>';
+    }
+    document.getElementById('rf-cortes').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target;
+      if (!f.usar_desde.value && !confirm('¿Quitar la fecha de corte de esta cuenta? Todas sus referencias anteriores se podrán usar.')) return;
+      var d = await postBanco('/referencias/cuentas/' + f.dataset.corte + '/corte', {usar_desde: f.usar_desde.value, antiguedad_max_horas: f.antiguedad.value});
+      msg('rf-cortes-msg', !!d.ok, d.mensaje || 'Error');
+      if (d.ok) { pintarCortes(d.cuentas || []); cargar(); }
+    });
+
     // ---------- cuentas del BDV (la web lee sola) ----------
-    async function cargarBdv() {
+    async function cargarBdv(conCortes) {
       var r = await fetch('/referencias/bdv/cuentas');
       if (r.status === 401) { location.href = '/auth'; return; }
-      pintarBdv(await r.json());
+      var d = await r.json();
+      pintarBdv(d);
+      if (conCortes) pintarCortes(d.cuentas || []);   // no con el refresco de cada 5 s: borraría lo que se está escribiendo
     }
     function estadoVisible(e) {
       // el interruptor se aplica en segundos: mientras tanto se dice lo que está pasando
@@ -588,7 +692,7 @@
                                                        alias: f.alias.value, consentimiento: f.consentimiento.checked});
       msg('rf-bdv-msg', !!d.ok, d.mensaje || 'Error');
       f.clave.value = '';   // la contraseña nunca se queda en la página
-      if (d.ok) { f.reset(); pintarBdv(d); cargar(); }
+      if (d.ok) { f.reset(); pintarBdv(d); pintarCortes(d.cuentas || []); cargar(); }
     });
     // Mientras se miran las cuentas del BDV, su estado se actualiza solo
     setInterval(function () { if (BANCO === 'BDV' && pestanaActual() === 'cuentas' && !document.hidden) cargarBdv(); }, 5000);
@@ -610,14 +714,14 @@
       var f = e.target;
       var d = await post('/referencias/cuentas', {banco: f.banco.value, alias: f.alias.value, ultimos_digitos: f.ultimos_digitos.value, titular: f.titular.value});
       msg('rf-cuenta-msg', !!d.ok, d.mensaje || 'Error');
-      if (d.ok) { f.alias.value = ''; f.ultimos_digitos.value = ''; f.titular.value = ''; pintarCuentas(d.cuentas); cargar(); }
+      if (d.ok) { f.alias.value = ''; f.ultimos_digitos.value = ''; f.titular.value = ''; pintarCuentas(d.cuentas); pintarCortes(d.cuentas); cargar(); }
     });
     document.getElementById('rf-cuentas').addEventListener('submit', async function (e) {
       e.preventDefault();
       var f = e.target, id = f.dataset.cuenta;
       var d = await post('/referencias/cuentas/' + id, {banco: f.banco.value, alias: f.alias.value, ultimos_digitos: f.ultimos_digitos.value, titular: f.titular.value});
       msg('rf-cuenta-msg', !!d.ok, d.mensaje || 'Error');
-      if (d.ok) { pintarCuentas(d.cuentas); cargar(); }
+      if (d.ok) { pintarCuentas(d.cuentas); pintarCortes(d.cuentas); cargar(); }
     });
 
     // ---------- claves ----------
@@ -701,7 +805,13 @@
     document.addEventListener('click', async function (e) {
       var b = e.target.closest('button');
       if (!b) return;
-      if (b.dataset.resolver) {
+      if (b.dataset.pagoBloqueo) {
+        var desb = b.dataset.accion === 'desbloquear';
+        if (!confirm(desb ? '¿Desbloquear este pago? Se podrá usar aunque sea anterior a la fecha de corte (hazlo solo si de verdad nadie lo ha usado).'
+                          : '¿Volver a bloquear este pago? No se podrá usar mientras sea anterior a la fecha de corte.')) return;
+        var db = await postBanco('/referencias/pagos/' + b.dataset.pagoBloqueo + '/' + b.dataset.accion);
+        alert(db.mensaje || 'Error'); cargar();
+      } else if (b.dataset.resolver) {
         if (!confirm('¿Asignar este pago a esa orden? Los demás candidatos vuelven a estar disponibles.')) return;
         var d = await postBanco('/referencias/asignar', {pago_id: +b.dataset.pago, revision_id: +b.dataset.resolver});
         alert(d.mensaje || 'Error'); cargar();

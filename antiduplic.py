@@ -14,6 +14,15 @@ Flujo:
 
 No toca el saldo de nadie: solo verifica y registra el uso de pagos.
 
+Fecha de corte (por cuenta): al conectar una cuenta, el banco también trae pagos de antes, que casi siempre ya se usaron
+por fuera. Los anteriores a cuentas_banco.usar_desde quedan 'bloqueado' (se ven, pero no se usan) hasta que el usuario
+los desbloquee uno a uno. El corte se pone solo al crear o conectar la cuenta y el usuario lo cambia. Opcional:
+antiguedad_max_horas, para que la verificación automática no acepte pagos más viejos que eso.
+
+Eliminar referencias: el usuario borra de su lista los pagos SIN USAR (disponibles o anteriores al corte) de un banco,
+todos o los anteriores a una fecha y hora. Los usados y los que están en revisión se quedan (son la prueba de que ya se
+usaron). Lo eliminado queda anotado en pagos_borrados para que el bot o el lector no lo vuelvan a traer.
+
 Bancos: cada cuenta bancaria es de un banco. 'BDV' (Banco de Venezuela) va totalmente aparte: sus pagos los manda el
 lector del BDV (lector_externo/, en otro servidor), tiene sus revisiones, sus usos (una orden del BDV no choca con una de Bancamiga) y sus
 claves de API (webservice_accounts.banco = 'BDV'). Todo lo demás es Bancamiga, igual que antes.
@@ -48,6 +57,7 @@ LECTOR_PREFIJO = 'lec_'
 AVISO_BOT_MIN = 10   # minutos sin envíos del bot para mostrar aviso
 BANCAMIGA, BDV = 'Bancamiga', 'BDV'
 BANCOS = (BANCAMIGA, BDV)
+ANTIGUEDAD_MAX_HORAS = 720   # tope de la antigüedad máxima opcional (30 días)
 
 
 def banco_de(valor):
@@ -143,13 +153,21 @@ def _f2(v):
     return round(float(v), 2) if v is not None else None
 
 
+def _col(row, clave, defecto=None):
+    """row[clave], o el defecto si esa consulta no trae la columna."""
+    try:
+        return row[clave]
+    except (KeyError, IndexError):
+        return defecto
+
+
 def _pago_dict(row):
     if not row:
         return None
     return {
         'id': row['id'], 'referencia': row['referencia'], 'fecha': str(row['fecha']),
         'hora': str(row['hora']), 'monto': _f2(row['monto']), 'tipo': row['tipo'],
-        'estado': row['estado'],
+        'estado': row['estado'], 'desbloqueado': bool(_col(row, 'desbloqueado')),
     }
 
 
@@ -293,6 +311,18 @@ def init_tablas():
                     creado_en TEXT NOT NULL
                 )''')  # columnas del BDV: ver _COLUMNAS_BDV
             conn.execute('''
+                CREATE TABLE IF NOT EXISTS pagos_borrados (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usuario_id INTEGER NOT NULL,
+                    cuenta_banco_id INTEGER,
+                    referencia TEXT NOT NULL,
+                    ref_ultimos6 TEXT NOT NULL,
+                    fecha TEXT NOT NULL,
+                    hora TEXT NOT NULL,
+                    monto NUMERIC(15,2) NOT NULL,
+                    borrado_en TEXT NOT NULL
+                )''')
+            conn.execute('''
                 CREATE TABLE IF NOT EXISTS claves_lector (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     usuario_id INTEGER NOT NULL,
@@ -318,6 +348,8 @@ def init_tablas():
                                  ('revisiones_pago', 'usuario_id', 'INTEGER'), ('revisiones_pago', 'resuelto_por', 'TEXT'),
                                  ('usos_referencia', 'banco', "TEXT DEFAULT 'Bancamiga'"),
                                  ('revisiones_pago', 'banco', "TEXT DEFAULT 'Bancamiga'"),
+                                 ('cuentas_banco', 'usar_desde', 'TEXT'), ('cuentas_banco', 'antiguedad_max_horas', 'INTEGER'),
+                                 ('pagos_banco', 'desbloqueado', 'BOOLEAN DEFAULT FALSE'),
                                  *(('cuentas_banco', c, t) for c, t in _COLUMNAS_BDV)):
             _suelto(f'ALTER TABLE {tabla} ADD COLUMN {col} {tipo}')
         _quitar_unico_orden()
@@ -335,10 +367,13 @@ def init_tablas():
                     'CREATE UNIQUE INDEX IF NOT EXISTS ux_usos_usuario_banco_orden ON usos_referencia (usuario_id, banco, orden_id)',
                     'CREATE INDEX IF NOT EXISTS ix_revisiones_usuario_estado ON revisiones_pago (usuario_id, estado)',
                     'CREATE INDEX IF NOT EXISTS ix_cuentas_banco_usuario ON cuentas_banco (usuario_id)',
-                    'CREATE INDEX IF NOT EXISTS ix_claves_lector_usuario ON claves_lector (usuario_id)'):
+                    'CREATE INDEX IF NOT EXISTS ix_claves_lector_usuario ON claves_lector (usuario_id)',
+                    'CREATE UNIQUE INDEX IF NOT EXISTS ux_pagos_borrados_mov ON pagos_borrados (usuario_id, referencia, fecha, hora, monto)',
+                    'CREATE INDEX IF NOT EXISTS ix_pagos_borrados_usuario_ult6 ON pagos_borrados (usuario_id, ref_ultimos6)'):
             if not _suelto(sql):
                 logger.error(f'[Antiduplic] No se pudo crear un índice: {sql}')
         _migrar_datos()
+        _migrar_cortes()
         _tablas_listas = True
 
 
@@ -407,6 +442,183 @@ def _migrar_datos():
         conn.close()
 
 
+def _migrar_cortes():
+    """Una sola vez: las cuentas del BDV ya conectadas reciben como corte el momento en que se conectaron (las de
+    Bancamiga que ya existían siguen sin corte, como hasta ahora; el usuario puede ponérselo)."""
+    conn = get_db_connection()
+    try:
+        if _config_get(conn, 'migr_corte_cuentas'):
+            return
+        filas = conn.execute("SELECT id, consentimiento_en, creado_en FROM cuentas_banco WHERE banco = 'BDV' "
+                             'AND usar_desde IS NULL').fetchall()
+        puestas = 0
+        for f in filas:
+            corte = parse_corte(str(f['consentimiento_en'] or f['creado_en'] or '')[:16])
+            if corte:
+                conn.execute('UPDATE cuentas_banco SET usar_desde = ? WHERE id = ?', (corte, f['id']))
+                aplicar_corte(conn, f['id'])
+                puestas += 1
+        _config_set(conn, 'migr_corte_cuentas', ahora_local())
+        conn.commit()
+        if puestas:
+            logger.info(f'[Antiduplic] Fecha de corte puesta en {puestas} cuenta(s) del BDV ya conectadas')
+    except Exception as e:
+        conn.rollback()
+        logger.error(f'[Antiduplic] No se pudo poner la fecha de corte a las cuentas del BDV: {e}')
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Fecha de corte y antigüedad máxima (por cuenta)
+# ---------------------------------------------------------------------------
+
+_FECHA_HORA = "(CAST(fecha AS TEXT) || ' ' || CAST(hora AS TEXT))"
+
+
+def ahora_minuto():
+    """Ahora (hora de Venezuela) con minutos: el formato de la fecha de corte."""
+    return ahora_local()[:16]
+
+
+def parse_corte(v):
+    """'2026-10-12T00:35' o '2026-10-12 00:35' → '2026-10-12 00:35'; vacío → None (sin corte); False si no es válida."""
+    s = str(v or '').strip()
+    if not s:
+        return None
+    for fmt in ('%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S'):
+        try:
+            return datetime.strptime(s, fmt).strftime('%Y-%m-%d %H:%M')
+        except ValueError:
+            pass
+    return False
+
+
+def antes_del_corte(fecha, hora, corte):
+    return bool(corte) and f'{fecha} {hora}' < corte
+
+
+def aplicar_corte(conn, cuenta_id):
+    """Bloquea los pagos disponibles anteriores al corte de la cuenta y libera los bloqueados que ya no lo son.
+    Los desbloqueados a mano no se vuelven a bloquear."""
+    fila = conn.execute('SELECT usar_desde FROM cuentas_banco WHERE id = ?', (cuenta_id,)).fetchone()
+    corte = fila['usar_desde'] if fila else None
+    if corte:
+        conn.execute("UPDATE pagos_banco SET estado = 'bloqueado' WHERE cuenta_banco_id = ? AND estado = 'disponible' "
+                     f'AND COALESCE(desbloqueado, FALSE) = FALSE AND {_FECHA_HORA} < ?', (cuenta_id, corte))
+        conn.execute(f"UPDATE pagos_banco SET estado = 'disponible' WHERE cuenta_banco_id = ? AND estado = 'bloqueado' "
+                     f'AND {_FECHA_HORA} >= ?', (cuenta_id, corte))
+    else:
+        conn.execute("UPDATE pagos_banco SET estado = 'disponible' WHERE cuenta_banco_id = ? AND estado = 'bloqueado'",
+                     (cuenta_id,))
+
+
+def guardar_corte(conn, uid, cuenta_id, usar_desde, antiguedad_max_horas):
+    """El usuario cambia (o quita) el corte y la antigüedad máxima opcional de una de SUS cuentas. (status, datos)."""
+    if not conn.execute('SELECT 1 FROM cuentas_banco WHERE id = ? AND usuario_id = ?', (cuenta_id, uid)).fetchone():
+        return 404, {'mensaje': 'Cuenta no encontrada'}
+    corte = parse_corte(usar_desde)
+    if corte is False:
+        return 400, {'mensaje': 'Fecha de corte no válida'}
+    if corte and corte > ahora_minuto():
+        return 400, {'mensaje': 'La fecha de corte no puede ser futura'}
+    horas = None
+    if antiguedad_max_horas not in (None, ''):
+        try:
+            horas = int(antiguedad_max_horas)
+        except (TypeError, ValueError):
+            horas = 0
+        if not 1 <= horas <= ANTIGUEDAD_MAX_HORAS:
+            return 400, {'mensaje': f'La antigüedad máxima va de 1 a {ANTIGUEDAD_MAX_HORAS} horas (o sin límite)'}
+    conn.execute('UPDATE cuentas_banco SET usar_desde = ?, antiguedad_max_horas = ? WHERE id = ? AND usuario_id = ?',
+                 (corte, horas, cuenta_id, uid))
+    aplicar_corte(conn, cuenta_id)
+    bloqueados = conn.execute("SELECT COUNT(*) AS n FROM pagos_banco WHERE cuenta_banco_id = ? AND estado = 'bloqueado'",
+                              (cuenta_id,)).fetchone()['n']
+    conn.commit()
+    if corte:
+        mensaje = f'Listo: no se usan referencias antes del {corte}. Pagos anteriores sin usar: {int(bloqueados or 0)}.'
+    else:
+        mensaje = 'Corte quitado: todos los pagos de esta cuenta se pueden usar.'
+    if horas:
+        mensaje += f' Antigüedad máxima: {horas} h.'
+    return 200, {'mensaje': mensaje}
+
+
+def cambiar_bloqueo(conn, uid, pago_id, bloquear, banco=None):
+    """Desbloquea un pago anterior al corte (se podrá usar) o lo vuelve a bloquear. (status, datos)."""
+    fila = conn.execute('SELECT p.id, p.estado, p.fecha, p.hora, p.desbloqueado, cb.usar_desde FROM pagos_banco p '
+                        f'LEFT JOIN cuentas_banco cb ON cb.id = p.cuenta_banco_id WHERE p.id = ? AND p.usuario_id = ? '
+                        f'AND {_cond_banco(banco)}', (pago_id, uid)).fetchone()
+    if not fila:
+        return 404, {'mensaje': 'Pago no encontrado'}
+    if not bloquear:
+        if fila['estado'] != 'bloqueado':
+            return 409, {'mensaje': 'Este pago no está bloqueado'}
+        conn.execute("UPDATE pagos_banco SET estado = 'disponible', desbloqueado = TRUE WHERE id = ? AND estado = 'bloqueado'",
+                     (pago_id,))
+        mensaje = 'Pago desbloqueado: ya se puede usar'
+    else:
+        if fila['estado'] != 'disponible' or not fila['desbloqueado']:
+            return 409, {'mensaje': 'Solo se puede volver a bloquear un pago que desbloqueaste y que sigue disponible'}
+        nuevo = 'bloqueado' if antes_del_corte(fila['fecha'], fila['hora'], fila['usar_desde']) else 'disponible'
+        conn.execute("UPDATE pagos_banco SET estado = ?, desbloqueado = FALSE WHERE id = ? AND estado = 'disponible'",
+                     (nuevo, pago_id))
+        mensaje = 'Pago bloqueado de nuevo' if nuevo == 'bloqueado' else 'Este pago es posterior al corte: sigue disponible'
+    conn.commit()
+    return 200, {'mensaje': mensaje}
+
+
+def eliminar_pagos(conn, uid, banco, antes=None, confirmar=False):
+    """Elimina los pagos SIN USAR del usuario en ese banco: todos (antes=None) o los anteriores a «antes».
+    Sin confirmar solo cuenta cuántos serían. Los usados y los que están en revisión nunca se eliminan. (status, datos)."""
+    where = ['p.usuario_id = ?', _cond_banco(banco), "p.estado IN ('disponible', 'bloqueado')"]
+    params = [uid]
+    corte = None
+    if antes is not None:
+        corte = parse_corte(antes)
+        if not corte:
+            return 400, {'mensaje': 'Indica una fecha y una hora válidas'}
+        where.append("(CAST(p.fecha AS TEXT) || ' ' || CAST(p.hora AS TEXT)) < ?")
+        params.append(corte)
+    cond = ' AND '.join(where)
+    if not confirmar:
+        n = conn.execute(f'SELECT COUNT(*) AS n FROM pagos_banco p WHERE {cond}', tuple(params)).fetchone()['n']
+        return 200, {'cuantas': int(n or 0)}
+    filas = conn.execute(f'SELECT p.* FROM pagos_banco p WHERE {cond}', tuple(params)).fetchall()
+    ahora = ahora_local()
+    eliminadas = 0
+    for f in filas:
+        # Anotada: si el bot o el lector la vuelven a mandar, se ignora
+        conn.execute('INSERT INTO pagos_borrados (usuario_id, cuenta_banco_id, referencia, ref_ultimos6, fecha, hora, monto, borrado_en) '
+                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (usuario_id, referencia, fecha, hora, monto) DO NOTHING',
+                     (uid, f['cuenta_banco_id'], f['referencia'], f['ref_ultimos6'], f['fecha'], f['hora'], f['monto'], ahora))
+        cur = conn.execute("DELETE FROM pagos_banco WHERE id = ? AND usuario_id = ? AND estado IN ('disponible', 'bloqueado')",
+                           (f['id'], uid))
+        eliminadas += max(cur.rowcount, 0)
+    conn.commit()
+    if eliminadas:
+        logger.info(f'[Antiduplic] Usuario {uid}: {eliminadas} referencias sin usar eliminadas ({banco_de(banco)}'
+                    f'{", anteriores al " + corte if corte else ""})')
+    return 200, {'eliminadas': eliminadas,
+                 'mensaje': f'{eliminadas} referencias eliminadas. Las usadas y las que están en revisión se quedan.'}
+
+
+def _limites_antiguedad(conn, cuenta_ids):
+    """{cuenta_id: (fecha-hora mínima aceptada, horas)} de las cuentas que tienen antigüedad máxima."""
+    ids = sorted({int(i) for i in cuenta_ids if i is not None})
+    if not ids:
+        return {}
+    ahora = datetime.now(_tz()).replace(tzinfo=None)
+    out = {}
+    for r in conn.execute(f"SELECT id, antiguedad_max_horas FROM cuentas_banco WHERE id IN ({','.join('?' * len(ids))})",
+                          tuple(ids)).fetchall():
+        if r['antiguedad_max_horas']:
+            horas = int(r['antiguedad_max_horas'])
+            out[int(r['id'])] = ((ahora - timedelta(hours=horas)).strftime('%Y-%m-%d %H:%M:%S'), horas)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Claves de lector (bot del banco)
 # ---------------------------------------------------------------------------
@@ -463,6 +675,8 @@ def guardar_pagos(pagos, usuario_id=None, cuenta_banco_id=None, clave_lector_id=
             usuario_id = usuario_dueno(conn)
         if cuenta_banco_id is None:
             cuenta_banco_id = cuenta_principal(conn, usuario_id)
+        fila_cuenta = conn.execute('SELECT usar_desde FROM cuentas_banco WHERE id = ?', (cuenta_banco_id,)).fetchone()
+        corte = fila_cuenta['usar_desde'] if fila_cuenta else None   # los anteriores al corte llegan bloqueados
         filas, errores = [], []
         for i, p in enumerate(pagos):
             if not isinstance(p, dict):
@@ -473,12 +687,23 @@ def guardar_pagos(pagos, usuario_id=None, cuenta_banco_id=None, clave_lector_id=
             if not ref or not fecha or not hora or monto is None or monto <= 0:
                 errores.append(f'#{i}: datos inválidos')
                 continue
-            filas.append((usuario_id, cuenta_banco_id, ref, ref[-6:], fecha, hora, monto, str(p.get('tipo') or '')[:120], ahora_local()))
+            estado = 'bloqueado' if antes_del_corte(fecha, hora, corte) else 'disponible'
+            filas.append((usuario_id, cuenta_banco_id, ref, ref[-6:], fecha, hora, monto, str(p.get('tipo') or '')[:120], estado,
+                          ahora_local()))
+        # Las que el usuario eliminó no vuelven aunque el bot o el lector las manden otra vez
+        borrados, refs = set(), sorted({f[2] for f in filas})
+        for i in range(0, len(refs), 500):
+            trozo = refs[i:i + 500]
+            for r in conn.execute(f"SELECT referencia, fecha, hora, monto FROM pagos_borrados WHERE usuario_id = ? "
+                                  f"AND referencia IN ({','.join('?' * len(trozo))})", (usuario_id, *trozo)).fetchall():
+                borrados.add((r['referencia'], str(r['fecha']), str(r['hora']), round(float(r['monto']), 2)))
         insertados = 0
         for f in filas:
+            if (f[2], f[4], f[5], round(float(f[6]), 2)) in borrados:
+                continue
             cur = conn.execute(
                 'INSERT INTO pagos_banco (usuario_id, cuenta_banco_id, referencia, ref_ultimos6, fecha, hora, monto, tipo, estado, creado_en) '
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'disponible', ?) "
+                'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) '
                 'ON CONFLICT (usuario_id, referencia, fecha, hora, monto) DO NOTHING', f)
             insertados += max(cur.rowcount, 0)
         ahora = ahora_local()
@@ -541,13 +766,14 @@ def _coincide_ref(banco, rep, corta):
     return b.endswith(r) or r.endswith(b)
 
 
-def _buscar(conn, uid, rep, monto, fecha, corta, con_monto=True, banco=BANCAMIGA):
-    """Pagos del usuario y del banco (cualquier estado) cuya referencia coincide; filtrados por monto si con_monto."""
+def _buscar(conn, uid, rep, monto, fecha, corta, con_monto=True, banco=BANCAMIGA, tabla='pagos_banco'):
+    """Pagos del usuario y del banco (cualquier estado) cuya referencia coincide; filtrados por monto si con_monto.
+    tabla='pagos_borrados' → los que el usuario eliminó."""
     cond = _cond_banco(banco, 'cuenta_banco_id')
     if corta:
-        rows = conn.execute(f'SELECT * FROM pagos_banco WHERE usuario_id = ? AND fecha = ? AND {cond}', (uid, fecha)).fetchall()
+        rows = conn.execute(f'SELECT * FROM {tabla} WHERE usuario_id = ? AND fecha = ? AND {cond}', (uid, fecha)).fetchall()
     else:
-        rows = conn.execute(f'SELECT * FROM pagos_banco WHERE usuario_id = ? AND ref_ultimos6 = ? AND {cond}',
+        rows = conn.execute(f'SELECT * FROM {tabla} WHERE usuario_id = ? AND ref_ultimos6 = ? AND {cond}',
                             (uid, rep[-6:])).fetchall()
     out = [r for r in rows if _coincide_ref(r['referencia'], rep, corta)]
     if con_monto:
@@ -627,7 +853,17 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
             return _r(False, 'falta_fecha', 'Con 4 o 5 dígitos indica también la fecha del pago')
 
         todos = _buscar(conn, uid, ref, monto, fecha, corta, banco=banco)
-        disponibles = _desempatar([c for c in todos if c['estado'] == 'disponible'], fecha, hora)
+        disponibles, antiguos = [], []
+        limites = _limites_antiguedad(conn, [c['cuenta_banco_id'] for c in todos if c['estado'] == 'disponible'])
+        for c in todos:
+            if c['estado'] != 'disponible':
+                continue
+            limite = limites.get(c['cuenta_banco_id'])
+            if limite and f"{c['fecha']} {c['hora']}" < limite[0]:   # más viejo que la antigüedad máxima de su cuenta
+                antiguos.append(limite[1])
+            else:
+                disponibles.append(c)
+        disponibles = _desempatar(disponibles, fecha, hora)
 
         if not disponibles:
             usados = [c for c in todos if c['estado'] == 'usado']
@@ -637,8 +873,20 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
                 return _r(False, 'usado', f'Referencia ya utilizada{(" el " + str(cuando)) if cuando else ""}', usado_en=cuando)
             if any(c['estado'] == 'revision' for c in todos):
                 return _r(False, 'revision', 'Este pago está en revisión manual')
+            bloqueado = next((c for c in todos if c['estado'] == 'bloqueado'), None)
+            if bloqueado:
+                fila = conn.execute('SELECT usar_desde FROM cuentas_banco WHERE id = ?', (bloqueado['cuenta_banco_id'],)).fetchone()
+                corte = fila['usar_desde'] if fila else None
+                return _r(False, 'anterior_al_corte', f'El pago es anterior a la fecha de corte de la cuenta'
+                                                      f'{(" (" + corte + ")") if corte else ""}: no se usa. Si de verdad no se ha '
+                                                      'usado, desbloquéalo en Referencias.', corte=corte)
+            if antiguos:
+                return _r(False, 'pago_antiguo', f'El pago tiene más de {antiguos[0]} horas: no se acepta automáticamente. '
+                                                 'Si corresponde, asígnalo a mano en Referencias.', antiguedad_max_horas=antiguos[0])
             if _buscar(conn, uid, ref, monto, fecha, corta, con_monto=False, banco=banco):
                 return _r(False, 'monto_no_coincide', 'La referencia existe pero el monto no coincide')
+            if _buscar(conn, uid, ref, monto, fecha, corta, banco=banco, tabla='pagos_borrados'):
+                return _r(False, 'eliminado', 'Esa referencia fue eliminada de los pagos de la cuenta: no se usa.')
             return _r(False, 'no_encontrado', 'Pago no encontrado. Puede que el banco aún no lo haya enviado: '
                                               'inténtalo de nuevo en 1 minuto.')
 
@@ -761,7 +1009,7 @@ def listar_pagos(conn, uid=None, fecha=None, desde=None, hasta=None, estado='', 
     if hasta:
         where.append('p.fecha <= ?')
         params.append(hasta)
-    if estado in ('disponible', 'usado', 'revision'):
+    if estado in ('disponible', 'usado', 'revision', 'bloqueado'):
         where.append('p.estado = ?')
         params.append(estado)
     if cuenta_id:
@@ -804,7 +1052,8 @@ def _cuenta_publica(r):
     d = {'id': r['id'], 'usuario_id': r['usuario_id'], 'banco': r['banco'], 'alias': r['alias'],
          'ultimos_digitos': r['ultimos_digitos'] or '',
          'titular': r['titular'] or '', 'activo': bool(r['activo']), 'ultimo_envio': r['ultimo_envio'],
-         'creado_en': r['creado_en']}
+         'creado_en': r['creado_en'], 'usar_desde': _col(r, 'usar_desde'),
+         'antiguedad_max_horas': _col(r, 'antiguedad_max_horas')}
     if banco_de(r['banco']) == BDV:
         d['conectada'] = bool(r['bdv_clave_cifrada'])
         d['lector'] = {'estado': r['lector_estado'] or ('pendiente' if d['conectada'] else 'sin_conexion'),
@@ -839,7 +1088,8 @@ def resumen(conn, uid=None, fecha=None, banco=None):
         "SELECT COUNT(*) AS n, COALESCE(SUM(monto), 0) AS total, "
         "SUM(CASE WHEN estado = 'disponible' THEN 1 ELSE 0 END) AS disp, "
         "SUM(CASE WHEN estado = 'usado' THEN 1 ELSE 0 END) AS usados, "
-        "SUM(CASE WHEN estado = 'revision' THEN 1 ELSE 0 END) AS rev "
+        "SUM(CASE WHEN estado = 'revision' THEN 1 ELSE 0 END) AS rev, "
+        "SUM(CASE WHEN estado = 'bloqueado' THEN 1 ELSE 0 END) AS bloq "
         f"FROM pagos_banco WHERE {cond} AND fecha = ?", params + (fecha,)).fetchone()
     ultimo_pago = conn.execute(f'SELECT MAX(creado_en) AS t FROM pagos_banco WHERE {cond}', params).fetchone()['t']
     ultimo_mov = conn.execute(f'SELECT fecha, hora FROM pagos_banco WHERE {cond} ORDER BY fecha DESC, hora DESC LIMIT 1',
@@ -852,7 +1102,7 @@ def resumen(conn, uid=None, fecha=None, banco=None):
     datos = {
         'hoy': fecha, 'pagos_hoy': int(res['n'] or 0), 'total_hoy': _f2(res['total'] or 0),
         'disponibles_hoy': int(res['disp'] or 0), 'usados_hoy': int(res['usados'] or 0),
-        'revision_hoy': int(res['rev'] or 0),
+        'revision_hoy': int(res['rev'] or 0), 'bloqueados_hoy': int(res['bloq'] or 0),
         'ultimo_envio_bot': max(envios) if envios else None,
         'ultimo_pago_nuevo': ultimo_pago,
         'ultimo_movimiento': f"{ultimo_mov['fecha']} {ultimo_mov['hora']}" if ultimo_mov else None,
@@ -946,6 +1196,8 @@ def asignar(uid, pago_id, orden_id=None, revision_id=None, revendedor_id=None, h
             return 400, {'ok': False, 'mensaje': 'Indica el ID de la orden'}
         if orden_id and _uso_de_orden(conn, dueno, orden_id, banco):
             return 409, {'ok': False, 'mensaje': 'Esa orden ya tiene un pago asignado'}
+        if pago['estado'] == 'bloqueado':
+            return 409, {'ok': False, 'mensaje': 'Ese pago es anterior a la fecha de corte: desbloquéalo primero en la pestaña Pagos'}
 
         ref_rep = revision['referencia_reportada'] if revision else 'asignación manual'
         monto_rep = revision['monto_reportado'] if revision else None

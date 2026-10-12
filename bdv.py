@@ -124,7 +124,7 @@ def guardar_conexion(conn, uid, usuario, clave, numero_cuenta, alias='', consent
 
     Si ya tenía esa cuenta (mismos últimos 4 dígitos) se actualiza, así sus pagos siguen en la misma cuenta.
     """
-    from antiduplic import ahora_local
+    from antiduplic import ahora_local, ahora_minuto, aplicar_corte
     if not cifrado_disponible():
         return 503, {'mensaje': 'El BDV todavía no está disponible: falta conectar el lector del banco. '
                                 'Avísale al administrador.'}
@@ -143,10 +143,15 @@ def guardar_conexion(conn, uid, usuario, clave, numero_cuenta, alias='', consent
     alias = str(alias or '').strip()[:60] or f'BDV ··{ultimos}'
     ahora = ahora_local()
     datos = (cifrar(usuario), cifrar(clave), cifrar(numero))
-    existente = conn.execute("SELECT id FROM cuentas_banco WHERE usuario_id = ? AND banco = 'BDV' AND ultimos_digitos = ? "
-                             'ORDER BY id LIMIT 1', (uid, ultimos)).fetchone()
+    existente = conn.execute("SELECT id, bdv_clave_cifrada, usar_desde FROM cuentas_banco WHERE usuario_id = ? AND banco = 'BDV' "
+                             'AND ultimos_digitos = ? ORDER BY id LIMIT 1', (uid, ultimos)).fetchone()
     if existente:
         cuenta_id = int(existente['id'])
+        # Si estaba desconectada, el corte pasa a ahora (lo de mientras tanto pudo usarse por fuera); si solo cambia
+        # sus datos, el corte se queda como estaba
+        if not existente['bdv_clave_cifrada'] or not existente['usar_desde']:
+            conn.execute('UPDATE cuentas_banco SET usar_desde = ? WHERE id = ?', (ahora_minuto(), cuenta_id))
+            aplicar_corte(conn, cuenta_id)
         conn.execute(
             'UPDATE cuentas_banco SET alias = ?, activo = TRUE, bdv_usuario_cifrado = ?, bdv_clave_cifrada = ?, '
             "numero_cuenta_cifrado = ?, lector_estado = 'pendiente', lector_mensaje = ?, lector_fallos_login = 0, "
@@ -160,8 +165,9 @@ def guardar_conexion(conn, uid, usuario, clave, numero_cuenta, alias='', consent
         cur = conn.execute(
             'INSERT INTO cuentas_banco (usuario_id, banco, alias, ultimos_digitos, activo, creado_en, bdv_usuario_cifrado, '
             'bdv_clave_cifrada, numero_cuenta_cifrado, lector_estado, lector_mensaje, lector_fallos_login, lector_encendido, '
-            "lector_cambio, consentimiento_en) VALUES (?, 'BDV', ?, ?, TRUE, ?, ?, ?, ?, 'pendiente', ?, 0, TRUE, ?, ?) RETURNING id",
-            (uid, alias, ultimos, ahora, *datos, 'Datos guardados: conectando con el banco…', nuevo_cambio(), ahora))
+            "lector_cambio, consentimiento_en, usar_desde) VALUES (?, 'BDV', ?, ?, TRUE, ?, ?, ?, ?, 'pendiente', ?, 0, TRUE, ?, ?, ?) "
+            'RETURNING id',
+            (uid, alias, ultimos, ahora, *datos, 'Datos guardados: conectando con el banco…', nuevo_cambio(), ahora, ahora_minuto()))
         cuenta_id = int(cur.fetchone()[0])
     conn.commit()
     logger.info(f'[BDV] Usuario {uid}: conexión guardada en la cuenta {cuenta_id}')  # sin datos de acceso
