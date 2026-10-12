@@ -154,7 +154,6 @@
     </p>
   </section>
 
-  <div id="bs-toast-container" style="position: fixed; right: 16px; top: 84px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;"></div>
 
   <!-- Popup modal de noticias -->
   <div id="news-popup-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:10000; align-items:center; justify-content:center; padding:20px;">
@@ -191,12 +190,10 @@
     <div class="transaction-container">
       {% if transactions %}
         {% for transaction in transactions %}
-        <div class="transaction-card-simple {% if transaction.get('is_bloodstriker') %}bloodstriker-transaction{% endif %}{% if transaction.get('is_freefire_id') %} freefire-id-transaction{% endif %}{% if transaction.get('is_dynamic_game') %} bloodstriker-transaction{% endif %}">
+        <div class="transaction-card-simple{% if transaction.get('is_freefire_id') %} freefire-id-transaction{% endif %}{% if transaction.get('is_dynamic_game') %} juego-transaction{% endif %}">
           {% set juego = 'Otros' %}
           {% if transaction.get('is_dynamic_game') %}
             {% set juego = transaction.juego_nombre if transaction.get('juego_nombre') else transaction.paquete %}
-          {% elif transaction.get('is_bloodstriker') %}
-            {% set juego = 'Blood Striker' %}
           {% elif transaction.get('is_freefire_id') %}
             {% set juego = 'Bot de Free Fire' %}
           {% elif '💎' in transaction.paquete or 'Free Fire' in transaction.paquete or 'Tarjeta' in transaction.paquete %}
@@ -207,7 +204,7 @@
           </div>
           <div class="transaction-row">
             <div class="transaction-main">
-              {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
+              {% if not transaction.get('is_freefire_id') and not transaction.get('is_dynamic_game') %}
               <div class="user-simple" style="margin-bottom:4px;">
                 {% if session.get('is_admin') %}
                   ID: {{ transaction.usuario_id }} - {{ transaction.nombre }} {{ transaction.apellido }}
@@ -217,22 +214,14 @@
               </div>
               {% endif %}
               <div class="control-status">
-                {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
+                {% if not transaction.get('is_freefire_id') and not transaction.get('is_dynamic_game') %}
                 <span class="control-num">{{ transaction.numero_control }}</span>
                 {% endif %}
-                {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
-                  {% if transaction.get('is_bloodstriker') %}
-                    {% if (transaction.get('estado') or '')|lower == 'pendiente' %}
-                <span class="status-simple">⏳</span>
-                    {% else %}
+                {% if not transaction.get('is_freefire_id') and not transaction.get('is_dynamic_game') %}
                 <span class="status-simple">✅</span>
-                    {% endif %}
-                  {% else %}
-                <span class="status-simple">✅</span>
-                  {% endif %}
                 {% endif %}
               </div>
-              {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
+              {% if not transaction.get('is_freefire_id') and not transaction.get('is_dynamic_game') %}
               <div class="package-cost">
                 <span class="package">{{ transaction.paquete }}</span>
                 <span class="cost">${{ "%.2f"|format(transaction.monto|abs) }}</span>
@@ -241,20 +230,9 @@
             </div>
             
             <!-- En el panel derecho ahora va la FECHA/HORA -->
-            {% if not transaction.get('is_freefire_id') and not transaction.get('is_bloodstriker') and not transaction.get('is_dynamic_game') %}
+            {% if not transaction.get('is_freefire_id') and not transaction.get('is_dynamic_game') %}
             <div class="transaction-pin">
               <span class="date-simple">{{ transaction.fecha|format_date }}</span>
-            </div>
-            {% endif %}
-            {% if transaction.get('is_bloodstriker') and session.get('is_admin') and (transaction.get('estado') or '')|lower == 'pendiente' %}
-            <!-- Botones para transacciones de Blood Striker (solo admin) -->
-            <div class="transaction-actions">
-              <form method="POST" action="/admin/approve_bloodstriker/{{ transaction.id }}" style="display: inline;">
-                <button type="submit" class="block-btn approve">✅ Aprobar</button>
-              </form>
-              <form method="POST" action="/admin/reject_bloodstriker/{{ transaction.id }}" style="display: inline;">
-                <button type="submit" class="block-btn reject">❌ Rechazar</button>
-              </form>
             </div>
             {% endif %}
             {% if transaction.get('is_freefire_id') and session.get('is_admin') and (transaction.get('estado') or '')|lower == 'pendiente' %}
@@ -270,7 +248,7 @@
             {% endif %}
           </div>
           <div class="transaction-footer">
-            {% if transaction.get('is_freefire_id') or transaction.get('is_bloodstriker') or transaction.get('is_dynamic_game') %}
+            {% if transaction.get('is_freefire_id') or transaction.get('is_dynamic_game') %}
             <div class="ffid-voucher">
               <div class="ffid-voucher-status">
                 <span class="ffid-voucher-status-label">Estado:</span>
@@ -325,7 +303,7 @@
             </div>
             {% endif %}
           </div>
-          {% if transaction.get('is_freefire_id') or transaction.get('is_bloodstriker') or transaction.get('is_dynamic_game') %}
+          {% if transaction.get('is_freefire_id') or transaction.get('is_dynamic_game') %}
           <div class="tx-corner-date">{{ transaction.fecha|format_date }}</div>
           {% endif %}
         </div>
@@ -555,106 +533,6 @@
     setInterval(refreshAdminRevendedoresBalance, 10000);
     {% endif %}
 
-    async function fetchBloodStrikerReloadNotifications() {
-      try {
-        const res = await fetch('/api/notifications/bloodstriker_reload', {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' }
-        });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return (data && data.notifications) ? data.notifications : [];
-      } catch (e) {
-        return [];
-      }
-    }
-
-    async function dismissBloodStrikerReloadNotification(notificationId) {
-      try {
-        const res = await fetch(`/api/notifications/dismiss/${notificationId}`, {
-          method: 'POST',
-          headers: { 'Accept': 'application/json' }
-        });
-        return res.ok;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    function renderBloodStrikerToasts(notifications) {
-      const container = document.getElementById('bs-toast-container');
-      if (!container) return;
-
-      const existingIds = new Set(Array.from(container.querySelectorAll('[data-notification-id]')).map(n => n.getAttribute('data-notification-id')));
-      (notifications || []).forEach(n => {
-        const idStr = String(n.id);
-        if (existingIds.has(idStr)) return;
-
-        const toast = document.createElement('div');
-        toast.setAttribute('data-notification-id', idStr);
-        toast.style.background = '#0f172a';
-        toast.style.color = 'var(--rc-text)';
-        toast.style.borderRadius = '12px';
-        toast.style.boxShadow = '0 8px 24px rgba(0,0,0,0.22)';
-        toast.style.padding = '12px 12px 12px 14px';
-        toast.style.width = '320px';
-        toast.style.maxWidth = 'calc(100vw - 32px)';
-        toast.style.border = '1px solid rgba(var(--rc-ink),0.10)';
-        toast.style.display = 'flex';
-        toast.style.gap = '10px';
-
-        const left = document.createElement('div');
-        left.style.flex = '1';
-
-        const title = document.createElement('div');
-        title.style.fontWeight = '700';
-        title.style.marginBottom = '4px';
-        title.textContent = n.titulo || 'Recarga realizada con éxito';
-
-        const msg = document.createElement('div');
-        msg.style.fontSize = '13px';
-        msg.style.lineHeight = '1.35';
-        msg.style.opacity = '0.92';
-        msg.textContent = n.mensaje || '';
-
-        left.appendChild(title);
-        left.appendChild(msg);
-
-        const close = document.createElement('button');
-        close.type = 'button';
-        close.textContent = 'X';
-        close.setAttribute('aria-label', 'Cerrar notificación');
-        close.style.background = 'transparent';
-        close.style.color = 'var(--rc-text)';
-        close.style.border = 'none';
-        close.style.cursor = 'pointer';
-        close.style.fontWeight = '700';
-        close.style.fontSize = '14px';
-        close.style.width = '24px';
-        close.style.height = '24px';
-        close.style.opacity = '0.85';
-        close.onclick = async function() {
-          close.disabled = true;
-          await dismissBloodStrikerReloadNotification(n.id);
-          toast.remove();
-        };
-
-        toast.appendChild(left);
-        toast.appendChild(close);
-
-        container.appendChild(toast);
-      });
-    }
-
-    async function initBloodStrikerReloadToasts() {
-      const notifications = await fetchBloodStrikerReloadNotifications();
-      renderBloodStrikerToasts(notifications);
-      setInterval(async function() {
-        const notifs = await fetchBloodStrikerReloadNotifications();
-        renderBloodStrikerToasts(notifs);
-      }, 15000);
-    }
-
     // ===== Sistema de popup de noticias =====
     let _newsQueue = [];
     let _currentNewsId = null;
@@ -742,7 +620,6 @@
       renderNewsPopups(news);
     }
 
-    initBloodStrikerReloadToasts();
     initNewsToasts();
   </script>
 </body>

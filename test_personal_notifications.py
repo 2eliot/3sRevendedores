@@ -46,17 +46,6 @@ def test_personal_notifications():
     user_name = f"{user['nombre']} {user['apellido']}"
     print(f"👤 Usuario de prueba: {user_name} (ID: {user_id})")
     
-    # Verificar transacciones de Blood Striker pendientes
-    bs_transactions = conn.execute('''
-        SELECT bs.*, p.nombre as paquete_nombre, p.precio
-        FROM transacciones_bloodstriker bs
-        JOIN precios_bloodstriker p ON bs.paquete_id = p.id
-        WHERE bs.estado = 'pendiente'
-        LIMIT 1
-    ''').fetchall()
-    
-    print(f"📋 Transacciones Blood Striker pendientes: {len(bs_transactions)}")
-    
     conn.close()
     
     # PRUEBA 1: Crear notificación personalizada
@@ -116,27 +105,6 @@ def test_personal_notifications():
         print(f"❌ Error marcando como leídas: {e}")
         return False
     
-    # PRUEBA 5: Simular aprobación de Blood Striker (si hay transacciones pendientes)
-    if bs_transactions:
-        print("\n🎯 PRUEBA 5: Simular aprobación de Blood Striker")
-        try:
-            bs_transaction = bs_transactions[0]
-            
-            # Crear notificación como lo haría la función de aprobación
-            titulo = "🎯 Recarga Blood Striker Aprobada"
-            mensaje = f"Tu recarga de {bs_transaction['paquete_nombre']} por ${bs_transaction['precio']:.2f} ha sido aprobada exitosamente. ID: {bs_transaction['player_id']}"
-            
-            notification_id = create_personal_notification(bs_transaction['usuario_id'], titulo, mensaje, 'success')
-            print(f"✅ Notificación de aprobación creada (ID: {notification_id})")
-            
-            # Verificar contador
-            count = get_unread_personal_notifications_count(bs_transaction['usuario_id'])
-            print(f"📊 Contador para usuario {bs_transaction['usuario_id']}: {count}")
-            
-        except Exception as e:
-            print(f"❌ Error simulando aprobación: {e}")
-            return False
-    
     print("\n" + "=" * 60)
     print("🎉 TODAS LAS PRUEBAS COMPLETADAS EXITOSAMENTE")
     print("✅ El sistema de notificaciones personalizadas está funcionando correctamente")
@@ -145,7 +113,6 @@ def test_personal_notifications():
     print("- ✅ Contador de notificaciones no leídas")
     print("- ✅ Obtención de notificaciones del usuario")
     print("- ✅ Marcado como leídas (eliminación)")
-    print("- ✅ Integración con aprobaciones de Blood Striker")
     
     return True
 

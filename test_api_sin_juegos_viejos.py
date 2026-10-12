@@ -1,5 +1,5 @@
 """
-Ninguna API ofrece Blood Strike ni el Free Fire ID viejo, y ninguna usa los PINs del Bot de Free Fire
+Ninguna API ofrece Blood Strike (ya no existe) ni el Free Fire ID viejo, y ninguna usa los PINs del Bot de Free Fire
 (ni las rutas viejas que usaba Inefable Store con WEBB_API_KEY).
 
     python -m unittest test_api_sin_juegos_viejos -v
@@ -36,10 +36,7 @@ class ApiSinJuegosViejosTest(unittest.TestCase):
     def setUpClass(cls):
         webapp.app.config['TESTING'] = True
         # Aunque alguien volviera a activar sus paquetes, no deben salir por ninguna API
-        q('UPDATE precios_bloodstriker SET activo = TRUE')
         q('UPDATE precios_freefire_id SET activo = TRUE')
-        if not q('SELECT COUNT(*) AS n FROM precios_bloodstriker')[0]['n']:
-            q("INSERT INTO precios_bloodstriker (id, nombre, precio, descripcion, activo) VALUES (1, '100+10 BS', 1.0, 'x', TRUE)")
         if not q('SELECT COUNT(*) AS n FROM precios_freefire_id')[0]['n']:
             q("INSERT INTO precios_freefire_id (id, nombre, precio, descripcion, activo) VALUES (1, '100+10 FF', 1.0, 'x', TRUE)")
         q("INSERT INTO pines_freefire_global (monto_id, pin_codigo) VALUES (1, 'PIN-DEL-BOT-1')")

@@ -40,8 +40,6 @@ TABLES = [
     'precios_paquetes',
     'precios_freefire_global',
     'precios_freefire_id',
-    'precios_bloodstriker',
-    'transacciones_bloodstriker',
     'transacciones_freefire_id',
     'configuracion_redeemer',
     'configuracion_fuentes_pines',

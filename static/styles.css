@@ -1130,7 +1130,7 @@ body {
   font-weight: 500;
 }
 
-/* Estilos específicos para Blood Striker */
+/* Páginas de juego: datos de la solicitud y detalles */
 .solicitud-info {
   display: flex;
   align-items: center;
@@ -1212,20 +1212,20 @@ body {
   }
 }
 
-/* ==== ESTILOS PARA TRANSACCIONES DE BLOOD STRIKER ==== */
-.bloodstriker-transaction {
+/* ==== Tarjetas del historial de los juegos creados ==== */
+.juego-transaction {
   border: 1px solid rgba(var(--rc-ink),0.10);
   background: rgba(var(--rc-ink),0.05);
   position: relative;
 }
 
-.bloodstriker-transaction .ffid-voucher {
+.juego-transaction .ffid-voucher {
   margin-left: -0.75rem;
   margin-right: -0.75rem;
   padding-bottom: 28px;
 }
 
-.bloodstriker-transaction .ffid-voucher-status {
+.juego-transaction .ffid-voucher-status {
   justify-content: center;
 }
 

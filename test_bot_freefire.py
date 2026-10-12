@@ -235,11 +235,11 @@ class BotFreeFireTest(unittest.TestCase):
 
     # ---------- Juegos de ejemplo retirados ----------
     def test_sin_paquetes_de_ejemplo_y_rutas_retiradas(self):
-        self.assertEqual(q('SELECT COUNT(*) AS n FROM precios_bloodstriker WHERE activo = TRUE', one=True)['n'], 0)
         self.assertEqual(q('SELECT COUNT(*) AS n FROM precios_freefire_id WHERE activo = TRUE', one=True)['n'], 0)
         with self.c.session_transaction() as s:
             s.update(usuario='crm@test.local', user_db_id=self.uid, is_admin=False)
-        for ruta in ('/juego/freefire', '/juego/freefire_id', '/juego/bloodstriker'):
+        self.assertEqual(self.c.get('/juego/bloodstriker').status_code, 404)   # Blood Strike ya no existe
+        for ruta in ('/juego/freefire', '/juego/freefire_id'):
             r = self.c.get(ruta)
             self.assertEqual((r.status_code, r.headers['Location']), (302, '/'), ruta)
         self.assertNotIn('href="/juego/freefire"', self.c.get('/').get_data(as_text=True))

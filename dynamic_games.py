@@ -27,7 +27,7 @@ def _get_conn():
 
 
 # ---------------------------------------------------------------------------
-# Tasa de cambio para GamePoint (compartida entre Blood Strike y juegos dinámicos)
+# Tasa de cambio para GamePoint (juegos dinámicos)
 # ---------------------------------------------------------------------------
 
 GP_MYR_RATE_KEY = 'gp_myr_to_usd_rate'  # legado (MYR -> USD)
@@ -230,14 +230,6 @@ def admin_set_gp_rate():
         usd_to_myr = (1.0 / rate) if rate < 1 else rate
         set_gp_usd_to_myr_rate(usd_to_myr)
 
-        # Sincronizar Blood Strike inmediatamente con la nueva tasa.
-        bloodstrike_sync = None
-        try:
-            import app as _app
-            bloodstrike_sync = _app._bloodstrike_sync_prices_internal()
-        except Exception as e:
-            bloodstrike_sync = {'error': str(e)}
-
         # Aplicar inmediatamente la nueva tasa en los precios locales de juegos dinámicos.
         # Esto evita esperar al ciclo automático en background para ver cambios en layouts.
         sync_results = sync_all_dynamic_games_prices()
@@ -257,7 +249,6 @@ def admin_set_gp_rate():
             'rate': usd_to_myr,
             'usd_to_myr_rate': usd_to_myr,
             'myr_to_usd_rate': round(1.0 / usd_to_myr, 6),
-            'bloodstrike_sync': bloodstrike_sync,
             'dynamic_sync': {
                 'games_synced': synced_games,
                 'packages_updated': updated_packages,
@@ -720,12 +711,12 @@ def admin_gp_catalog(game_id):
 
 
 # ---------------------------------------------------------------------------
-# ADMIN: Mapping for GameClub tab (same pattern as Blood Strike)
+# ADMIN: Mapping for GameClub tab
 # ---------------------------------------------------------------------------
 
 @bp.route('/admin/dynamic-games/<int:game_id>/gamepoint_packages')
 def admin_dyn_gamepoint_packages(game_id):
-    """Returns GP catalog + local packages for mapping UI (like Blood Strike)."""
+    """Returns GP catalog + local packages for mapping UI."""
     if not session.get('is_admin'):
         return jsonify({'error': 'Acceso denegado'}), 403
     game = get_dynamic_game_by_id(game_id)
@@ -1214,7 +1205,7 @@ def validar_dinamico(slug):
                     logger.info(f"[DynGame:{game['slug']}] inquiry attempt {_attempt+1}: ingamename='{ingame_name}' | item='{item_name}' | serialkey='{serial_key}' | all_fields={list((inq_data or {}).keys())}")
                     if ingame_name or serial_key:
                         break
-                # Limpiar HTML del item (ej: "Blood Strike<br />300 + 20 Gold")
+                # Limpiar HTML del item (ej: "Juego<br />300 + 20 Gold")
                 if item_name:
                     item_name = re.sub(r'<[^>]+>', ' ', item_name).strip()
                     item_name = ' '.join(item_name.split())

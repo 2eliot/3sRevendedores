@@ -136,21 +136,6 @@ def verificar_gestor_lotes():
     else:
         print("   ✅ Todas las transacciones tienen códigos de pin")
     
-    # Verificar Blood Striker
-    print()
-    print("🎯 TRANSACCIONES BLOOD STRIKER:")
-    cursor.execute('SELECT COUNT(*) FROM transacciones_bloodstriker WHERE estado = "pendiente"')
-    bs_pendientes = cursor.fetchone()[0]
-    print(f"   Transacciones pendientes: {bs_pendientes}")
-    
-    cursor.execute('SELECT COUNT(*) FROM transacciones_bloodstriker WHERE estado = "aprobado"')
-    bs_aprobadas = cursor.fetchone()[0]
-    print(f"   Transacciones aprobadas: {bs_aprobadas}")
-    
-    cursor.execute('SELECT COUNT(*) FROM transacciones_bloodstriker WHERE estado = "rechazado"')
-    bs_rechazadas = cursor.fetchone()[0]
-    print(f"   Transacciones rechazadas: {bs_rechazadas}")
-    
     print()
     print("=" * 50)
     print("📋 RESUMEN:")
@@ -168,9 +153,6 @@ def verificar_gestor_lotes():
         print("⚠️  No hay actividad reciente en el sistema")
     else:
         print(f"✅ Sistema activo: {transacciones_semana} transacciones esta semana")
-    
-    if bs_pendientes > 0:
-        print(f"⚠️  Hay {bs_pendientes} transacciones de Blood Striker pendientes de aprobación")
     
     print("=" * 50)
     

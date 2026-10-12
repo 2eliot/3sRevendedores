@@ -79,10 +79,6 @@ def compute_legacy_profit_by_day(conn, start_utc: str, end_utc: str):
     except Exception:
         pass
     try:
-        prices.extend(load_price_map('precios_bloodstriker', 'bloodstriker'))
-    except Exception:
-        pass
-    try:
         prices.extend(load_price_map('precios_freefire_id', 'freefire_id'))
     except Exception:
         pass
@@ -687,15 +683,6 @@ def profit_packages_config():
                         """
                     ).fetchall()
                     rows.extend(g)
-                if table_exists(conn, 'precios_bloodstriker'):
-                    b = conn.execute(
-                        """
-                        SELECT id AS package_id, 'bloodstriker' AS source, id AS category_id, nombre AS package_name, precio AS base_price, (
-                           SELECT precio_compra FROM precios_compra pc WHERE pc.juego='bloodstriker' AND pc.paquete_id = precios_bloodstriker.id AND pc.activo = 1 LIMIT 1
-                         ) AS cost FROM precios_bloodstriker
-                        """
-                    ).fetchall()
-                    rows.extend(b)
                 if table_exists(conn, 'precios_freefire_id'):
                     fi = conn.execute(
                         """
