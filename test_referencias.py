@@ -287,6 +287,9 @@ class ReferenciasTest(unittest.TestCase):
         self.assertIn('/referencias/docs', html)
         self.assertIn('una sola vez', html)
         self.assertNotIn('Admin → Mapeo', html)
+        # la API de Recargas ya no explica cómo verificar pagos (va con la clave de Referencias), ni el webhook
+        for viejo in ('/api/verificar-pago', 'Verificar pago del banco', 'Webhook', 'cualquier cuenta activa'):
+            self.assertNotIn(viejo, html)
         with self.c.session_transaction() as s:
             s['is_admin'] = True
         self.assertIn('Admin → Mapeo', self.c.get('/admin/api/docs').get_data(as_text=True))

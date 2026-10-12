@@ -48,36 +48,36 @@
 <div class="dc-wrap" id="dc-doc">
   <a href="{{ volver }}" class="back-button">← Volver a API</a>
   <h1>Documentación de la API</h1>
-  <p class="dc-lead">{% if admin %}Para conectar tu CRM: recargas, verificación de IDs de jugador y verificación de pagos de Bancamiga.{% else %}Para conectar tu sistema (por ejemplo tu CRM) y hacer recargas automáticas, cobradas de tu saldo igual que en la web.{% endif %} El catálogo de juegos y paquetes de abajo se genera en vivo con los datos actuales de la web.</p>
+  <p class="dc-lead">{% if admin %}Para conectar tu CRM: recargas y verificación de IDs de jugador.{% else %}Para conectar tu sistema (por ejemplo tu CRM) y hacer recargas automáticas, cobradas de tu saldo igual que en la web.{% endif %} El catálogo de juegos y paquetes de abajo se genera en vivo con los datos actuales de la web.</p>
   <div class="dc-actions"><button class="dc-btn" data-pdf style="background:var(--rc-mist);color:var(--rc-card);border:0;" onclick="descargarPDF('#dc-doc', 'api-documentacion.pdf', this)">⬇ Descargar PDF</button><button class="dc-btn" onclick="window.print()">Imprimir</button></div>
   <nav class="dc-toc">
     <a href="#inicio">Inicio rápido</a><a href="#flujo">Flujo del CRM</a><a href="#productos">Catálogo</a><a href="#verify-id">Verificar ID</a>
-    <a href="#verificar-pago">Verificar pago</a><a href="#recarga">Recargar</a><a href="#estado">Estado de órdenes</a><a href="#saldo">Saldo</a>
+    <a href="#recarga">Recargar</a><a href="#estado">Estado de órdenes</a><a href="#saldo">Saldo</a>
     <a href="#errores">Errores</a><a href="#juegos">Juegos y paquetes</a>
   </nav>
 
   <h2 id="inicio">Inicio rápido</h2>
   <ul>
     <li><strong>Dirección base:</strong> <code>{{ api_url }}</code></li>
-    <li><strong>Dos claves, siempre por separado:</strong> una de <strong>Recargas</strong> (recargas y verificar IDs; {% if admin %}la crea cada usuario en su apartado API o el admin en Admin → API{% else %}la creas en tu apartado <strong>API</strong>{% endif %}) y una de <strong>Referencias</strong> (verificar pagos del banco; {% if admin %}la crea el usuario dueño de los pagos en Referencias → Claves o el admin{% else %}la creas en <strong>Referencias → Claves</strong>{% endif %}). Ambas van en la cabecera <code>X-API-Key: wsk_...</code>. Una clave de un tipo no sirve para el otro (responde <code>403</code>).</li>
+    <li><strong>Clave de Recargas:</strong> {% if admin %}la crea cada usuario en su apartado <strong>API</strong> o tú en Admin → API{% else %}la creas en tu apartado <strong>API</strong>{% endif %}. Va en la cabecera <code>X-API-Key: wsk_...</code>.</li>
+    <li><strong>Verificar pagos del banco no es parte de esta API:</strong> usa otra clave, la de Referencias, con su propia <a href="{{ docs_referencias }}" style="color:var(--rc-hl);">documentación</a>. Una clave de Referencias aquí responde <code>403</code>.</li>
     <li><strong>Cada clave se muestra una sola vez</strong>, al crearla o renovarla: cópiala en ese momento. La web solo guarda una huella cifrada, así que nadie puede volver a verla. Si se pierde, pulsa «Nueva clave» (la anterior deja de funcionar al instante).</li>
     <li><strong>Formato:</strong> los datos se envían y se reciben en JSON (<code>Content-Type: application/json</code>).</li>
-    <li><strong>Permisos:</strong> la clave de Recargas tiene <em>Hacer recargas</em> y <em>Verificar IDs de jugador</em>; la de Referencias, <em>Verificar pagos</em>, <em>Ver pagos</em> y <em>Gestionar pagos</em>.</li>
+    <li><strong>Permisos:</strong> cada clave puede tener <em>Hacer recargas</em> y <em>Verificar IDs de jugador</em>; {% if admin %}se activan o se quitan en Admin → API{% else %}los activas o los quitas en tu apartado API{% endif %}.</li>
     <li><strong>Saldo:</strong> cada recarga se cobra {% if admin %}del saldo del usuario dueño de la clave{% else %}de tu saldo{% endif %}. Si falla, el saldo se devuelve solo.</li>
   </ul>
 
   <h2 id="flujo">Flujo recomendado para recargas automáticas</h2>
   <ol>
-    <li>El cliente paga por Bancamiga y manda la referencia y el monto por WhatsApp.</li>
-    <li><strong>Verificar pago</strong> (<code>POST /api/verificar-pago</code>, con la <strong>clave de Referencias</strong>) con la referencia, el monto y el ID de la orden del CRM. Solo sigue si responde <code>"codigo": "aprobado"</code> o <code>"ya_aprobado"</code>.</li>
+    <li><strong>Catálogo</strong> (<code>GET /api/v1/products</code>): el <code>product_id</code> del juego y el <code>package_id</code> del paquete.</li>
     <li><strong>Verificar ID</strong> del jugador (<code>POST /api/v1/verify-id</code>), opcional, para confirmar el nombre antes de recargar.</li>
-    <li><strong>Recargar</strong> (<code>POST /api/v1/recharge</code>) usando el <strong>mismo ID de orden</strong> en <code>external_order_id</code>. Si por un fallo de red el CRM repite la petición, no se recarga dos veces.</li>
+    <li><strong>Recargar</strong> (<code>POST /api/v1/recharge</code>) con el ID de la orden de tu sistema en <code>external_order_id</code>.</li>
     <li>Si la respuesta tarda o se pierde, consulta el <strong>estado</strong> con <code>GET /api/v1/order-status?external_order_id=...</code>.</li>
   </ol>
-  <div class="dc-note">Usa siempre el mismo ID de orden del CRM en los dos pasos. Así una referencia de pago nunca sirve para dos órdenes y una orden nunca se recarga dos veces.</div>
+  <div class="dc-note">Usa siempre el ID de la orden de tu sistema en <code>external_order_id</code>: si por un fallo de red se repite la petición, no se recarga ni se cobra dos veces.</div>
 
   <h2 id="productos">Catálogo</h2>
-  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/products</code> <span class="dc-chip">cualquier cuenta activa</span></h3>
+  <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/products</code> <span class="dc-chip">clave de Recargas</span></h3>
   <p>{% if admin %}Lista <strong>solo los juegos que creaste</strong> y, de ellos, <strong>solo los paquetes con Mapeo activo</strong>, con el precio que les pusiste.{% else %}Lista los juegos y paquetes que se pueden recargar por API, con su precio.{% endif %} El <code>game_id</code> de cada juego es el <code>product_id</code> que usan las demás llamadas.</p>
 <pre>curl {{ api_url }}/api/v1/products -H "X-API-Key: wsk_TU_CLAVE"</pre>
 <pre>{
@@ -104,34 +104,6 @@
 {"ok": false, "error": "ID de jugador no encontrado"}</pre>
   <p>Máximo 30 verificaciones por minuto por cuenta.</p>
 
-  <h2 id="verificar-pago">Verificar pago del banco</h2>
-  <h3><span class="dc-m dc-post">POST</span> <code>/api/verificar-pago</code> <span class="dc-perm">clave de Referencias · Verificar pagos</span></h3>
-  <p>Verifica contra los pagos <strong>del usuario dueño de la clave</strong>. La documentación completa de Referencias (bot del banco, consultas, revisiones y asignaciones por API) está en la <a href="{{ docs_referencias }}" style="color:var(--rc-hl);">documentación de Referencias</a>.</p>
-  <div class="dc-tw"><table class="dc-t">
-    <tr><th>Campo</th><th>Tipo</th><th>Obligatorio</th><th>Descripción</th></tr>
-    <tr><td><code>referencia</code></td><td>texto</td><td>sí</td><td>Solo números. Con 6 dígitos o más basta con los últimos dígitos.</td></tr>
-    <tr><td><code>monto</code></td><td>número o texto</td><td>sí</td><td>En bolívares. Acepta <code>7350</code>, <code>7350.00</code> o <code>"7.350,00"</code>.</td></tr>
-    <tr><td><code>orden_id</code></td><td>texto</td><td>sí</td><td>ID de la orden en el CRM. Una orden nunca consume dos pagos.</td></tr>
-    <tr><td><code>fecha</code></td><td>texto</td><td>si la referencia tiene 4 o 5 dígitos</td><td><code>AAAA-MM-DD</code>.</td></tr>
-    <tr><td><code>hora</code></td><td>texto</td><td>solo si hay empate</td><td><code>HH:MM</code> o <code>HH:MM:SS</code>.</td></tr>
-  </table></div>
-<pre>curl -X POST {{ api_url }}/api/verificar-pago -H "X-API-Key: wsk_TU_CLAVE" -H "Content-Type: application/json" \
-  -d '{"referencia": "7568126123", "monto": 7350.00, "orden_id": "ORD-1001"}'</pre>
-<pre>{"ok": true, "codigo": "aprobado", "mensaje": "Pago verificado",
- "pago": {"id": 31, "referencia": "7568126123", "fecha": "2026-10-05", "hora": "08:14:52",
-          "monto": 7350.0, "tipo": "NC Fondos Recib. Terceros Otros Bancos", "estado": "usado"}}</pre>
-  <div class="dc-tw"><table class="dc-t">
-    <tr><th><code>codigo</code></th><th>Qué significa</th><th>Qué debe hacer el CRM</th></tr>
-    <tr><td><code>aprobado</code></td><td>Pago válido; queda marcado como usado por esta orden.</td><td>Recargar.</td></tr>
-    <tr><td><code>ya_aprobado</code></td><td>Esta orden ya tenía un pago aprobado (devuelve ese pago).</td><td>Seguir con la recarga sin cobrar otro pago.</td></tr>
-    <tr><td><code>usado</code></td><td>Referencia duplicada: ya la usó otra orden.</td><td>Rechazar y avisar al cliente.</td></tr>
-    <tr><td><code>no_encontrado</code></td><td>Todavía no está en los movimientos del banco.</td><td>Reintentar en 1 minuto (el banco se lee cada ~30 s).</td></tr>
-    <tr><td><code>monto_no_coincide</code></td><td>La referencia existe pero con otro monto.</td><td>Pedir al cliente que revise el monto.</td></tr>
-    <tr><td><code>falta_fecha</code></td><td>Referencia de 4 o 5 dígitos sin fecha.</td><td>Pedir la fecha del pago.</td></tr>
-    <tr><td><code>revision</code></td><td>Varios pagos iguales. Si trae <code>"pedir_hora": true</code>, falta la hora; si no, quedó para revisión manual.</td><td>Pedir la hora o pasar la orden a una persona.</td></tr>
-    <tr><td><code>ref_corta</code></td><td>Menos de 4 dígitos o con letras.</td><td>Pedir la referencia completa.</td></tr>
-  </table></div>
-
   <h2 id="recarga">Recargar</h2>
   <h3><span class="dc-m dc-post">POST</span> <code>/api/v1/recharge</code> <span class="dc-perm">permiso: Hacer recargas</span></h3>
   <div class="dc-tw"><table class="dc-t">
@@ -157,10 +129,10 @@
   <h2 id="estado">Estado de órdenes</h2>
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/order-status?external_order_id=ORD-1001</code></h3>
 <pre>{"ok": true, "found": true, "status": "completada",
- "order": {"id": 85, "player_name": "ProPlayer99", "reference_no": "GP123456", "error": ""}}</pre>
+ "order": {"id": 85, "player_name": "ProPlayer99", "reference_no": "GP123456", "error": ""}}
+{"ok": true, "found": false, "status": "not_found"}   ← no hay ninguna recarga con esa external_order_id</pre>
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/orders/&lt;order_id&gt;</code></h3>
   <p>El mismo detalle, buscando por el <code>order_id</code> que devolvió la recarga.</p>
-  <p><strong>Webhook (opcional):</strong> si la clave tiene una URL de webhook, al terminar cada recarga se envía un <code>POST</code> con <code>{"event": "order.updated", "order": {...}}</code>.{% if not admin %} Si lo necesitas, pide al administrador que configure la URL en tu clave.{% endif %}</p>
 
   <h2 id="saldo">Saldo</h2>
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/balance</code></h3>
@@ -170,9 +142,9 @@
   <div class="dc-tw"><table class="dc-t">
     <tr><th>HTTP</th><th>Cuándo</th></tr>
     <tr><td><code>400</code></td><td>Faltan datos o tienen un formato inválido.</td></tr>
-    <tr><td><code>401</code></td><td>Falta la clave, es incorrecta o la cuenta está desactivada.</td></tr>
+    <tr><td><code>401</code></td><td>Falta la clave, es incorrecta o está desactivada.</td></tr>
     <tr><td><code>402</code></td><td>Saldo insuficiente para la recarga.</td></tr>
-    <tr><td><code>403</code></td><td>La cuenta no tiene permiso para esa acción.</td></tr>
+    <tr><td><code>403</code></td><td>La clave no tiene permiso para esa acción, o es una clave de Referencias.</td></tr>
     <tr><td><code>404</code></td><td>Juego, paquete u orden no encontrados, o verificación de ID no disponible para ese juego.</td></tr>
     <tr><td><code>409</code></td><td>Esa <code>external_order_id</code> tiene una recarga todavía en proceso.</td></tr>
     <tr><td><code>202</code></td><td>Recarga aceptada y todavía en proceso (consulta su estado más tarde).</td></tr>
