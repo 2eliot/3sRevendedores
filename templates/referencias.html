@@ -457,13 +457,15 @@
     document.querySelectorAll('.rf-dia').forEach(function (b) {
       b.addEventListener('click', function () { form.fecha.value = diaMenos(+b.dataset.dias); cargar(); });
     });
+    var pedido = 0;   // solo se pinta la respuesta del último pedido (al escribir rápido llegan desordenadas)
     async function cargar() {
       marcarDia();
-      var p = new URLSearchParams(new FormData(form));
+      var p = new URLSearchParams(new FormData(form)), mio = ++pedido;
       try {
         var r = await fetch(conBanco('/referencias/datos?' + p.toString()));
         if (r.status === 401) { location.href = '/auth'; return; }
         var d = await r.json();
+        if (mio !== pedido) return;
         datos.pagos = d.pagos || [];
         if (d.resumen && d.resumen.hoy && d.resumen.hoy !== HOY) { HOY = d.resumen.hoy; marcarDia(); }
         pintarResumen(d.resumen, d.ahora);
@@ -472,6 +474,7 @@
         pintarCuentasFiltro(d.resumen.cuentas || []);
         pintarAsignar();
       } catch (e) {
+        if (mio !== pedido) return;
         document.getElementById('rf-tbody').innerHTML = '<tr><td colspan="7" class="rf-empty">No se pudieron cargar los pagos.</td></tr>';
       }
     }
@@ -579,7 +582,11 @@
       }).join('') : '<option value="">No hay pagos disponibles con los filtros de la pestaña Pagos</option>';
     }
 
-    form.addEventListener('submit', function (e) { e.preventDefault(); cargar(); });
+    // Busca mientras escribes, sin pulsar «Filtrar»; fecha, estado y cuenta se aplican al elegirlos
+    var esperaBusqueda = null;
+    form.q.addEventListener('input', function () { clearTimeout(esperaBusqueda); esperaBusqueda = setTimeout(cargar, 300); });
+    ['fecha', 'estado', 'cuenta_id'].forEach(function (n) { form[n].addEventListener('change', cargar); });
+    form.addEventListener('submit', function (e) { e.preventDefault(); clearTimeout(esperaBusqueda); cargar(); });
     document.getElementById('rf-todas').addEventListener('click', function () { form.fecha.value = ''; cargar(); });
 
     document.getElementById('rf-eliminar').addEventListener('submit', async function (e) {

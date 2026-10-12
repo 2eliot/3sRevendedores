@@ -216,17 +216,20 @@
       return d;
     }
 
+    var pedido = 0;   // solo se pinta la respuesta del último pedido (al escribir rápido llegan desordenadas)
     async function cargar() {
-      var p = new URLSearchParams(new FormData(form));
+      var p = new URLSearchParams(new FormData(form)), mio = ++pedido;
       var tbody = document.getElementById('ad-tbody');
       try {
         var r = await fetch('/admin/antiduplic/datos?' + p.toString());
         var d = await r.json();
+        if (mio !== pedido) return;
         pintarResumen(d.resumen, d.ahora);
         pintarBdv(d.conexiones_bdv || [], d.lector_bdv);
         pintarRevisiones(d.revisiones || []);
         pintarPagos(d.pagos || []);
       } catch (e) {
+        if (mio !== pedido) return;
         tbody.innerHTML = '<tr><td colspan="9" class="ad-empty">No se pudieron cargar los pagos.</td></tr>';
       }
     }
@@ -344,7 +347,11 @@
       }).join('');
     }
 
-    form.addEventListener('submit', function (e) { e.preventDefault(); cargar(); });
+    // Busca mientras escribes, sin pulsar «Filtrar»; los demás filtros se aplican al elegirlos
+    var esperaBusqueda = null;
+    form.q.addEventListener('input', function () { clearTimeout(esperaBusqueda); esperaBusqueda = setTimeout(cargar, 300); });
+    ['usuario_id', 'banco', 'fecha', 'estado'].forEach(function (n) { form[n].addEventListener('change', cargar); });
+    form.addEventListener('submit', function (e) { e.preventDefault(); clearTimeout(esperaBusqueda); cargar(); });
     document.getElementById('ad-todas').addEventListener('click', function () { form.fecha.value = ''; cargar(); });
 
     document.addEventListener('click', async function (e) {
