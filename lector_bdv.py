@@ -211,6 +211,24 @@ async def leer_tabla(page):
     return filas
 
 
+async def como_esta(page):
+    """Qué hay en la página, sin ningún dato del usuario (solo conteos), para los registros."""
+    async def n(sel):
+        try:
+            return await page.locator(sel).count()
+        except Exception:
+            return -1
+    try:
+        ruta = re.sub(r'[?#].*', '', page.url.split('//', 1)[-1].split('/', 1)[-1])[:40]
+    except Exception:
+        ruta = '?'
+    return (f"ruta=/{ruta} login={await n('input[formcontrolname=username]:visible')} "
+            f"clave={await n('input[formcontrolname=password]:visible')} tabla={await n('table.table-saldo-cuenta')} "
+            f"dialogo={await n('mat-dialog-container')} filas={await n('mat-row, .mat-row')} "
+            f"salir_arriba={await n('button[aria-label=Salir]:visible')} menu={await n('mat-sidenav')} "
+            f"aviso={await n('simple-snack-bar:visible, mat-error:visible, .alert:visible')}")
+
+
 async def salir(page):
     """Cierra la sesión en el banco con «Salir». True si se confirmó (vuelve la casilla de usuario)."""
     try:
@@ -441,9 +459,21 @@ class LectorCuenta:
         confirmado = True
         if self.page is not None and cerrar_sesion:
             confirmado = False
-            for _ in range(2):   # si no se confirma, se intenta una vez más
+            for intento in range(2):   # si no se confirma, se intenta una vez más
                 try:
                     if await salir(self.page):
+                        confirmado = True
+                        break
+                except Exception:
+                    pass
+                logger.warning(f'[BDV] Cuenta {self.id}: no se confirmó «Salir» ({intento + 1}/2) · {await como_esta(self.page)}')
+                # La página pudo quedar trabada (aviso del banco, diálogo a medias): se recarga. Si vuelve la casilla de
+                # usuario, la sesión ya estaba cerrada; si sigue dentro, el segundo intento vuelve a tocar «Salir».
+                try:
+                    await self.page.goto(URL, wait_until='domcontentloaded', timeout=TIMEOUT_MS)
+                    await self.page.wait_for_selector('input[formcontrolname="username"], table.table-saldo-cuenta',
+                                                      timeout=TIMEOUT_MS)
+                    if await self.page.locator('input[formcontrolname="username"]:visible').count():
                         confirmado = True
                         break
                 except Exception:
@@ -508,13 +538,18 @@ class LectorCuenta:
 
     async def vuelta(self):
         page = self.page
+        paso = 'entrar'
         try:
             if await en_login(page) or not await en_sesion(page):
                 if not await self.entrar():
                     return
+            paso = 'cerrar el diálogo anterior'
             await cerrar_movimientos(page)   # por si quedó abierta de una vuelta con error
+            paso = 'abrir los movimientos'
             await abrir_movimientos(page, self.info['ultimos'])
+            paso = 'leer la tabla'
             filas = await leer_tabla(page)
+            paso = 'cerrar el diálogo'
             await cerrar_movimientos(page)   # leído: la espera se hace con la ventana cerrada
             pagos = [p for p in (a_pago(f) for f in filas) if p]
             nuevos = await asyncio.to_thread(guardar, self.info, pagos)
@@ -526,7 +561,8 @@ class LectorCuenta:
             await self.estado('conectado', MSG_SIN_CUENTA.format(self.info['ultimos']))
         except Exception as e:
             self.errores_seguidos += 1
-            logger.warning(f'[BDV] Cuenta {self.id}: problema en la vuelta ({self.errores_seguidos}): {type(e).__name__}')
+            logger.warning(f'[BDV] Cuenta {self.id}: problema en la vuelta ({self.errores_seguidos}) al {paso}: '
+                           f'{type(e).__name__} · {await como_esta(page)}')
             if self.errores_seguidos >= 3:   # algo raro en la página: se vuelve a cargar
                 self.errores_seguidos = 0
                 try:
