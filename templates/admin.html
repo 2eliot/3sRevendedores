@@ -531,7 +531,6 @@
         <div class="pin-selector-row">
           <label for="pin_game_selector" class="pin-selector-label">🎮 Juego:</label>
           <select id="pin_game_selector" class="pin-selector">
-            <option value="freefire_global" selected>Bot de Free Fire (PINs)</option>
             {% for dg in dyn_games %}
             {% if dg.usa_stock_local %}
             <option value="dyn_{{ dg.slug }}">{{ dg.nombre }}</option>
@@ -543,15 +542,8 @@
         <div id="package-list" class="package-list"></div>
       </div>
 
-      <!-- Restaurar backup de pines -->
-      <div style="margin-top:20px;padding:14px 18px;background:rgba(86, 194, 255, 0.06);border:1px solid rgba(86, 194, 255, 0.2);border-radius:10px;">
-        <h4 style="color:var(--rc-blue);margin:0 0 8px;font-size:14px;">🗂️ Restaurar Backup de Pines</h4>
-        <p style="color:var(--rc-ash);font-size:12px;margin:0 0 10px;">Importa un archivo <strong style="color:var(--rc-mist);">backup_YYYY-MM-DD.zip</strong> recibido por correo para restablecer el stock de pines Free Fire Global sin duplicados.</p>
-        <form method="POST" action="/admin/restore_backup" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <input type="file" name="backup_zip" accept=".zip" required style="background:rgba(var(--rc-ink),0.05);border:1px solid rgba(var(--rc-ink),0.12);border-radius:6px;color:var(--rc-mist);padding:6px 10px;font-size:13px;flex:1;min-width:200px;">
-          <button type="submit" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap;">📥 Importar Backup</button>
-        </form>
-      </div>
+      <p style="margin:16px 0 0;color:var(--rc-ash);font-size:13px;">Los PINs del <b>Bot de Free Fire</b> (cargarlos, importar CSV y restaurar el backup) están en su propio apartado:
+        <a href="/admin/bot-freefire" style="color:var(--rc-hl);">Bot de Free Fire</a>.</p>
         
         </section>
       </div>
@@ -1097,7 +1089,7 @@
         "nombre": "{{ dg.nombre }}",
         "packages": [
           {% for p in dg._packages %}
-          {"id": {{ p.id }}, "nombre": "{{ p.nombre }}", "precio": {{ p.precio }}}{% if not loop.last %},{% endif %}
+          {"id": {{ p.id }}, "nombre": {{ p.nombre|tojson }}, "precio": {{ p.precio }}, "activo": {{ 'false' if p.activo is sameas false or p.activo == 0 else 'true' }}}{% if not loop.last %},{% endif %}
           {% endfor %}
         ]
       }{% if not loop.last %},{% endif %}
@@ -1341,6 +1333,10 @@
     function renderPackageList(game) {
       const container = document.getElementById('package-list');
       if (!container) return;
+      if (!game || !(game.startsWith('dyn_') && dynGamesData[game])) {   // los PINs del bot están en su apartado
+        container.innerHTML = '<p style="color:var(--rc-ash);font-size:13px;padding:10px;">Todavía no hay juegos de PINs o tarjetas con stock propio. Créalos en Precios → «Nuevo juego».</p>';
+        return;
+      }
       let data = game === 'freefire_global' ? freefireGlobalPackages : freefireLatamPackages;
       let stockMap = game === 'freefire_global' ? freefireGlobalStock : freefireLatamStock;
       if (game.startsWith('dyn_') && dynGamesData[game]) {
@@ -1459,6 +1455,81 @@
       info.innerHTML = `<span style="color:var(--rc-ash);">Costo: $${cost.toFixed(2)}</span> <span style="color:${profitColor};">Ganancia: $${profit.toFixed(2)}</span>`;
     }
 
+    // Eliminar / desactivar paquetes de un juego creado por el admin. Un paquete con ventas o PINs no se borra
+    // (se perdería su historial): se ofrece desactivarlo, y así deja de venderse y de verse en la tienda y en la API.
+    function controlesPaquete(pkg) {
+      if (pkg.activo === false) {
+        return `<button type="button" class="btn" data-act-pkg="${pkg.id}" style="padding:4px 10px;font-size:12px;" title="Volver a venderlo">Activar</button>`;
+      }
+      return `<button type="button" class="btn btn-danger" data-del-pkg="${pkg.id}" style="padding:4px 10px;font-size:12px;" title="Eliminar este paquete">🗑 Eliminar</button>`;
+    }
+    function etiquetaInactivo(pkg) {
+      return pkg.activo === false ? '<div class="pkg-off" style="font-size:11px;font-weight:600;color:var(--rc-ash);">Desactivado · no se vende</div>' : '';
+    }
+    function pintarEstadoPaquete(card, pkg) {
+      const der = card.querySelector('.package-right');
+      if (der) der.innerHTML = controlesPaquete(pkg);
+      const izq = card.querySelector('.package-left');
+      if (izq) { const v = izq.querySelector('.pkg-off'); if (v) v.remove(); izq.insertAdjacentHTML('beforeend', etiquetaInactivo(pkg)); }
+      const forms = card.querySelector('.package-forms');
+      if (forms) forms.style.opacity = pkg.activo === false ? '.55' : '';
+    }
+    function paqueteActual(id) {
+      const game = (document.getElementById('batch_game') || {}).value || '';
+      const lista = (dynGamesData[game] || {}).packages || [];
+      return {game, lista, pkg: lista.find(p => Number(p.id) === Number(id))};
+    }
+    async function cambiarActivoPaquete(id, activo, card) {
+      let res;
+      try {
+        res = await fetch(`/admin/dynamic-games/packages/${id}/update`, {
+          method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}, body: JSON.stringify({activo})
+        });
+      } catch (e) { alert('Error de red: revisa tu conexión e inténtalo de nuevo'); return; }
+      let data = {};
+      try { data = await res.json(); } catch (e) {}
+      if (!data.success) { alert(data.error || ('No se pudo ' + (activo ? 'activar' : 'desactivar') + ' el paquete (error ' + res.status + ')')); return; }
+      const {pkg} = paqueteActual(id);
+      const estado = pkg || {id, activo};
+      estado.activo = activo;
+      if (card) pintarEstadoPaquete(card, estado);
+    }
+    document.addEventListener('click', async function (e) {
+      const del = e.target.closest('#price-package-list [data-del-pkg]');
+      const act = e.target.closest('#price-package-list [data-act-pkg]');
+      if (!del && !act) return;
+      const boton = del || act;
+      const id = Number(del ? boton.dataset.delPkg : boton.dataset.actPkg);
+      const card = boton.closest('.package-card');
+      if (act) { await cambiarActivoPaquete(id, true, card); return; }
+      const {game, lista, pkg} = paqueteActual(id);
+      const nombre = pkg ? pkg.nombre : ((card && card.querySelector('.pkg-name')) || {}).value || '';
+      if (!confirm(`¿Eliminar el paquete "${nombre}" (ID ${id})? No se puede deshacer.`)) return;
+      let res;
+      try {
+        res = await fetch(`/admin/dynamic-games/packages/${id}/delete`, {method: 'POST', headers: {'Accept': 'application/json'}});
+      } catch (x) { alert('Error de red: revisa tu conexión e inténtalo de nuevo'); return; }
+      let data = {};
+      try { data = await res.json(); } catch (x) {}
+      if (data.success) {
+        if (dynGamesData[game]) dynGamesData[game].packages = lista.filter(p => Number(p.id) !== id);
+        if (card) card.remove();   // las demás tarjetas no se vuelven a pintar: no se pierde lo que estés editando
+        const cont = document.getElementById('price-package-list');
+        if (cont && !cont.querySelector('.package-card')) {
+          cont.innerHTML = '<p style="color:var(--rc-ash);font-size:13px;padding:10px;">Sin paquetes. Usa el formulario de abajo para añadir.</p>';
+        }
+        return;
+      }
+      if (res.status === 409) {
+        if (confirm((data.error || 'Este paquete no se puede borrar.') +
+                    '\n\n¿Lo desactivo ahora? Deja de venderse y de verse en la tienda y en la API; su historial se queda.')) {
+          await cambiarActivoPaquete(id, false, card);
+        }
+        return;
+      }
+      alert(data.error || ('No se pudo eliminar el paquete (error ' + res.status + ')'));
+    });
+
     async function renderPricePackageList(game) {
       const container = document.getElementById('price-package-list');
       const batchGame = document.getElementById('batch_game');
@@ -1496,10 +1567,11 @@
         card.innerHTML = `
           <div class="package-card-header">
             <div class="package-left">
-              <div class="package-title">ID ${pkg.id}</div>
+              <div class="package-title">ID ${pkg.id}</div>${isDyn ? etiquetaInactivo(pkg) : ''}
             </div>
+            <div class="package-right">${isDyn ? controlesPaquete(pkg) : ''}</div>
           </div>
-          <div class="package-forms">
+          <div class="package-forms"${isDyn && pkg.activo === false ? ' style="opacity:.55"' : ''}>
             <div class="package-form">
               <label>Nombre</label>
               <input type="text" class="pkg-name" data-id="${pkg.id}" value="${esc(pkg.nombre)}" maxlength="50">
@@ -1670,14 +1742,17 @@
         const data = await res.json();
         if (data.success) {
           const pkgId = data.package_id;
+          const gameKey = (document.getElementById('batch_game') || {}).value || '';
+          if (dynGamesData[gameKey]) (dynGamesData[gameKey].packages = dynGamesData[gameKey].packages || []).push({id: pkgId, nombre, precio, activo: true});
           const container = document.getElementById('price-package-list');
           if (container.querySelector('p')) container.innerHTML = '';
           const card = document.createElement('div');
           card.className = 'package-card';
           card.innerHTML = `
-            <div class="package-card-header"><div class="package-left"><div class="package-title">ID ${pkgId}</div></div></div>
+            <div class="package-card-header"><div class="package-left"><div class="package-title">ID ${pkgId}</div></div>
+              <div class="package-right">${controlesPaquete({id: pkgId, activo: true})}</div></div>
             <div class="package-forms">
-              <div class="package-form"><label>Nombre</label><input type="text" class="pkg-name" data-id="${pkgId}" value="${nombre}" maxlength="50"></div>
+              <div class="package-form"><label>Nombre</label><input type="text" class="pkg-name" data-id="${pkgId}" value="${esc(nombre)}" maxlength="50"></div>
               <div class="package-form"><label>Precio</label><input type="number" class="pkg-price" data-id="${pkgId}" value="${precio.toFixed(2)}" step="0.01" min="0"></div>
             </div>`;
           container.appendChild(card);

@@ -55,6 +55,9 @@
     <a href="/admin" class="back-button">← Volver al Panel Admin</a>
     <h1>{{ nombre }}</h1>
     <p class="bf-lead">Respaldo para cuando tu proveedor esté en mantenimiento o caído: cargas PINs de Free Fire y las recargas siguen funcionando. No tiene precios: el cliente paga el precio de tu paquete, como siempre. Los clientes no ven este apartado.</p>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}{% if mensajes %}
+    <section class="bf-card">{% for cat, m in mensajes %}<p class="bf-msg {{ 'bf-ok' if cat == 'success' else ('bf-warn' if cat == 'warning' else 'bf-bad') }}" style="margin:0;">{{ m }}</p>{% endfor %}</section>
+    {% endif %}{% endwith %}
 
     <section class="bf-card">
       <h2>Estado</h2>
@@ -95,6 +98,24 @@
       </div>
       <div style="margin-top:8px;"><button type="button" class="bf-btn bf-main" id="bf-lote-btn">Agregar PINs</button></div>
       <p class="bf-msg" id="bf-lote-msg"></p>
+      <form method="POST" action="/admin/import_pins_csv" enctype="multipart/form-data" class="bf-row" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--rc-border);">
+        <input type="hidden" name="game_type" value="freefire_global">
+        <input type="hidden" name="volver" value="/admin/bot-freefire">
+        <label>Importar CSV de <select name="batch_monto_id" id="bf-csv-monto" required></select></label>
+        <label>Archivo CSV <input type="file" name="csv_file" accept=".csv" required></label>
+        <button type="submit" class="bf-btn">Importar CSV</button>
+      </form>
+      <p style="margin:6px 0 0;color:var(--rc-ash);font-size:12px;">Del CSV solo se toma el código de cada PIN.</p>
+    </section>
+
+    <section class="bf-card">
+      <h2>Restaurar backup de PINs</h2>
+      <p>Importa un archivo <b>backup_AAAA-MM-DD.zip</b> recibido por correo. Solo carga los PINs que no existen: nunca vuelve a cargar uno que ya está, aunque ya se haya usado.</p>
+      <form method="POST" action="/admin/restore_backup" enctype="multipart/form-data" class="bf-row">
+        <input type="hidden" name="volver" value="/admin/bot-freefire">
+        <label>Archivo .zip <input type="file" name="backup_zip" accept=".zip" required></label>
+        <button type="submit" class="bf-btn">Importar backup</button>
+      </form>
     </section>
 
     <section class="bf-card">
@@ -158,6 +179,7 @@
       }).join('') || '<div class="bf-empty">No hay denominaciones.</div>';
       var opts = den.map(function (d) { return '<option value="' + d.monto_id + '">' + esc(d.nombre) + '</option>'; }).join('');
       document.getElementById('bf-lote-monto').innerHTML = opts;
+      document.getElementById('bf-csv-monto').innerHTML = opts;
       document.getElementById('bf-man-monto').innerHTML = opts;
 
       var dud = estado.dudosos || [];

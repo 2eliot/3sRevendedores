@@ -4503,6 +4503,15 @@ def admin_add_credit():
     return redirect('/admin')
 
 
+_VOLVER_ADMIN = ('/admin', '/admin/bot-freefire')
+
+
+def _volver_admin():
+    """A dónde volver tras un formulario del admin: solo páginas conocidas de la web (nunca una dirección de fuera)."""
+    v = (request.form.get('volver') or '').strip()
+    return v if v in _VOLVER_ADMIN else '/admin'
+
+
 @app.route('/admin/import_pins_csv', methods=['POST'])
 def admin_import_pins_csv():
     if not session.get('is_admin'):
@@ -4515,13 +4524,13 @@ def admin_import_pins_csv():
 
     if not monto_id or not game_type or not f:
         flash('Datos inválidos para importar CSV', 'error')
-        return redirect('/admin')
+        return redirect(_volver_admin())
 
     # Bloquear re-import por nombre (global, sin importar monto/juego)
     original_name = (getattr(f, 'filename', None) or '').strip()
     if not original_name:
         flash('El archivo CSV debe tener un nombre válido', 'error')
-        return redirect('/admin')
+        return redirect(_volver_admin())
     normalized_name = original_name.lower()
 
     try:
@@ -4531,7 +4540,7 @@ def admin_import_pins_csv():
             ex = conn.execute("SELECT 1 FROM admin_imported_files WHERE filename = ?", (normalized_name,)).fetchone()
             if ex:
                 flash(f'Este archivo ya fue importado antes: {original_name}', 'warning')
-                return redirect('/admin')
+                return redirect(_volver_admin())
         finally:
             return_db_connection(conn)
 
@@ -4539,7 +4548,7 @@ def admin_import_pins_csv():
         pins_list = _extract_pin_codes_from_csv_bytes(raw)
         if not pins_list:
             flash('No se encontraron códigos de pin válidos en el CSV', 'warning')
-            return redirect('/admin')
+            return redirect(_volver_admin())
 
         if game_type == 'freefire_latam':
             added_count = add_pins_batch(int(monto_id), pins_list)
@@ -4556,13 +4565,13 @@ def admin_import_pins_csv():
             pkg = get_dynamic_package_by_id(int(monto_id)) if monto_id else None
             if not dyn_game or not dyn_game.get('usa_stock_local') or not pkg or pkg['juego_id'] != dyn_game['id']:
                 flash('Juego o paquete dinámico inválido', 'error')
-                return redirect('/admin')
+                return redirect(_volver_admin())
             added_count = add_dynamic_stock_pins_batch(dyn_game['id'], int(monto_id), pins_list)
             juego_nombre = dyn_game['nombre']
             package_info = {'nombre': pkg['nombre'], 'precio': float(pkg['precio'])}
         else:
             flash('Tipo de juego inválido', 'error')
-            return redirect('/admin')
+            return redirect(_volver_admin())
 
         if package_info:
             paquete_nombre = f"{package_info['nombre']} / ${package_info['precio']:.2f}"
@@ -4584,7 +4593,7 @@ def admin_import_pins_csv():
         else:
             flash(f'Error al importar CSV: {str(e)}', 'error')
 
-    return redirect('/admin')
+    return redirect(_volver_admin())
 
 # ======= Batch update de nombres y precios =======
 @app.route('/admin/save_prices_batch', methods=['POST'])
@@ -11295,7 +11304,7 @@ def admin_restore_backup():
     f = request.files.get('backup_zip')
     if not f or not f.filename.endswith('.zip'):
         flash('Sube un archivo .zip de backup válido.', 'error')
-        return redirect('/admin')
+        return redirect(_volver_admin())
 
     try:
         raw = f.read()
@@ -11319,19 +11328,24 @@ def admin_restore_backup():
                         conn = get_db_connection()
                         batch_id = _generate_batch_id()
                         added = 0
-                        for pin in pins_list:
-                            try:
-                                conn.execute(
-                                    'INSERT OR IGNORE INTO pines_freefire_global (monto_id, pin_codigo, batch_id) VALUES (?,?,?)',
-                                    (mid, pin, batch_id)
-                                )
-                                added += conn.execute(
-                                    'SELECT changes()'
-                                ).fetchone()[0]
-                            except Exception:
-                                pass
-                        conn.commit()
-                        conn.close()
+                        try:
+                            vistos = set()
+                            for pin in pins_list:
+                                if pin in vistos:
+                                    continue
+                                vistos.add(pin)
+                                # Nunca se vuelve a cargar un PIN que ya existe, aunque ya se haya usado: se vendería dos veces
+                                if conn.execute('SELECT 1 FROM pines_freefire_global WHERE pin_codigo = ? LIMIT 1', (pin,)).fetchone():
+                                    continue
+                                conn.execute('INSERT INTO pines_freefire_global (monto_id, pin_codigo, batch_id) VALUES (?, ?, ?)',
+                                             (mid, pin, batch_id))
+                                added += 1
+                            conn.commit()
+                        except Exception:
+                            conn.rollback()
+                            raise
+                        finally:
+                            conn.close()
                         restored_pins += added
                         if added:
                             restored_packages.append(f'monto #{mid}: {added} pines')
@@ -11347,7 +11361,7 @@ def admin_restore_backup():
         logger.error(f'[Restore] Error restaurando backup: {e}')
         flash(f'Error al restaurar backup: {e}', 'error')
 
-    return redirect('/admin')
+    return redirect(_volver_admin())
 
 
 @app.route('/mockup/gameclub-catalogo')
