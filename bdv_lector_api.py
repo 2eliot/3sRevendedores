@@ -189,8 +189,11 @@ def reto():
         if not aprobada or not hmac.compare_digest(aprobada, publica):
             return False
         ahora = time.time()
-        sesiones = [s for s in _leer_json(conn, CONFIG_SESIONES, []) if s.get('vence', 0) > ahora][-2:]
-        sesiones.append({'hash': _hash(clave), 'vence': ahora + SESION_SEG, 'llave': bdv.huella(publica)})
+        vigentes = [s for s in _leer_json(conn, CONFIG_SESIONES, []) if s.get('vence', 0) > ahora]
+        # La llave pública no es secreta: cualquiera puede pedir retos (aunque no abrirlos). Por eso un reto nuevo
+        # solo desplaza a otros retos sin usar, nunca a las claves que el lector ya está usando.
+        sesiones = [s for s in vigentes if s.get('usada')][-3:] + [s for s in vigentes if not s.get('usada')][-2:]
+        sesiones.append({'hash': _hash(clave), 'vence': ahora + SESION_SEG, 'llave': bdv.huella(publica), 'usada': False})
         ad._config_set(conn, CONFIG_SESIONES, json.dumps(sesiones))
         return True
     if not _db(q):
@@ -218,9 +221,13 @@ def _autenticar(tipo):
         aprobada, _ = publica_aprobada(conn)
         if not aprobada:
             return False
-        valida = any(hmac.compare_digest(s.get('hash', ''), h) and s.get('vence', 0) > ahora
-                     and s.get('llave') == bdv.huella(aprobada) for s in _leer_json(conn, CONFIG_SESIONES, []))
+        sesiones = _leer_json(conn, CONFIG_SESIONES, [])
+        sesion = next((s for s in sesiones if hmac.compare_digest(s.get('hash', ''), h)), None)
+        valida = bool(sesion and sesion.get('vence', 0) > ahora and sesion.get('llave') == bdv.huella(aprobada))
         if valida:
+            if not sesion.get('usada'):   # desde ahora un reto nuevo ya no la desplaza
+                sesion['usada'] = True
+                ad._config_set(conn, CONFIG_SESIONES, json.dumps(sesiones))
             ad._config_set(conn, CONFIG_LATIDO, json.dumps({'t': ahora, 'cuando': ad.ahora_local(), 'ip': _ip()}))
         return valida
     return None if _db(q) else _err(401, 'Clave del lector no válida o vencida')

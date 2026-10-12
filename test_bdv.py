@@ -655,6 +655,21 @@ class BdvLectorApiTest(unittest.TestCase):
         self.assertEqual(self.get('/api/lector-bdv/cuentas', wsk).status_code, 401)
         self.assertEqual(self.c.get('/api/lector-bdv/cuentas', headers={'X-API-Key': wsk}).status_code, 401)
 
+    def test_pedir_retos_no_deja_fuera_al_lector(self):
+        self.aprobado()
+        clave = self.clave()
+        self.assertEqual(self.get('/api/lector-bdv/cuentas', clave).status_code, 200)   # el lector ya la está usando
+        sin_usar = self.clave()
+        for _ in range(8):   # alguien pide retos con la llave pública (no es secreta), aunque no pueda abrirlos
+            self.assertEqual(self.c.post('/api/lector-bdv/reto', json={'publica': self.publica}).status_code, 200)
+        self.assertEqual(self.get('/api/lector-bdv/cuentas', clave).status_code, 200)       # el lector sigue dentro
+        self.assertEqual(self.get('/api/lector-bdv/cuentas', sin_usar).status_code, 401)    # solo se rotan los retos sin usar
+        conn = get_db_connection()
+        try:
+            self.assertLessEqual(len(json.loads(ad._config_get(conn, 'bdv_lector_sesiones'))), 5)   # no crece sin límite
+        finally:
+            conn.close()
+
     def test_cuentas_a_leer_y_a_cerrar_con_etag(self):
         self.aprobado()
         clave = self.clave()
