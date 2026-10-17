@@ -961,13 +961,13 @@
           <div class="mp-steps">
             <label class="mp-field">
               <span>1. Elige el juego</span>
-              <select id="mapeo-game-select" onchange="mpGameChanged()">
+              <select id="mapeo-game-select" onchange="mpGameChanged()" data-buscar>
                 <option value="">— Seleccionar juego —</option>
               </select>
             </label>
             <label class="mp-field">
               <span>2. Elige el paquete</span>
-              <select id="mapeo-pkg-select" onchange="mpRenderEditor()" disabled>
+              <select id="mapeo-pkg-select" onchange="mpRenderEditor()" disabled data-buscar>
                 <option value="">— Primero elige un juego —</option>
               </select>
             </label>
@@ -978,7 +978,7 @@
               <strong id="mp-title"></strong>
               <span id="mp-sub"></span>
             </div>
-            <div class="mp-cols" aria-hidden="true"><span>Item</span><span>Paquete</span><span>Cantidad</span><span></span></div>
+            <div class="mp-cols" aria-hidden="true"><span>Proveedor</span><span>Juego</span><span>Paquete</span><span>Cantidad</span><span></span></div>
             <div id="mp-items"></div>
             <button type="button" class="mp-add" onclick="mpAddRow()">+ Agregar item</button>
             <div class="mp-resp">
@@ -2968,24 +2968,34 @@
       });
       return byProd;
     }
-    function mpFillProdSelect(prodSel) {
-      prodSel.appendChild(new Option('— Seleccionar item —', ''));
+    // Orden natural: «86 Diamantes» antes que «172 Diamantes»
+    const mpOrden = (a, b) => String(a).localeCompare(String(b), 'es', {numeric: true, sensitivity: 'base'});
+    // Proveedores con catálogo sincronizado
+    function mpProvs() {
       const prods = Object.values(mpProducts());
-      Object.keys(MP_PROV).forEach(pv => {
-        const lista = prods.filter(pr => pr.prov === pv);
-        if (!lista.length) return;
-        const og = document.createElement('optgroup'); og.label = MP_PROV[pv];
-        lista.forEach(pr => og.appendChild(new Option(pr.name, pr.id)));
-        prodSel.appendChild(og);
-      });
+      return Object.keys(MP_PROV).filter(pv => prods.some(pr => pr.prov === pv));
+    }
+    function mpFillProvSelect(provSel, value) {
+      provSel.innerHTML = '';
+      provSel.appendChild(new Option('— Proveedor —', ''));
+      mpProvs().forEach(pv => provSel.appendChild(new Option(MP_PROV[pv], pv)));
+      if (value) provSel.value = value;
+    }
+    function mpFillProdSelect(prodSel, prov, value) {
+      prodSel.innerHTML = '';
+      prodSel.appendChild(new Option(prov ? '— Seleccionar juego —' : '— Elige un proveedor —', ''));
+      prodSel.disabled = !prov;
+      Object.values(mpProducts()).filter(pr => pr.prov === prov).sort((a, b) => mpOrden(a.name, b.name))
+        .forEach(pr => prodSel.appendChild(new Option(pr.name, pr.id)));
+      if (value != null) prodSel.value = String(value);
     }
 
     function mpFillPkgSelect(pkgSel, prodId, value) {
       const prod = mpProducts()[prodId];
       pkgSel.innerHTML = '';
-      pkgSel.appendChild(new Option(prod ? '— Seleccionar paquete —' : '— Elige un item —', ''));
+      pkgSel.appendChild(new Option(prod ? '— Seleccionar paquete —' : '— Elige un juego —', ''));
       pkgSel.disabled = !prod;
-      if (prod) prod.items.forEach(c => {
+      if (prod) [...prod.items].sort((a, b) => mpOrden(a.remote_package_name, b.remote_package_name)).forEach(c => {
         const extra = (c.prov === 'centralone' && c.in_stock === false) ? ' — sin stock' : '';
         pkgSel.appendChild(new Option(c.remote_package_name + (c.price ? ' (' + mpMoney(c.price) + ')' : '') + extra, c.remote_package_id));
       });
@@ -2996,25 +3006,38 @@
       const wrap = document.getElementById(listId || 'mp-items');
       const row = document.createElement('div');
       row.className = 'mp-row';
-      const prodSel = document.createElement('select'); prodSel.className = 'mp-prod'; prodSel.setAttribute('aria-label', 'Item del proveedor');
-      mpFillProdSelect(prodSel);
-      const pkgSel = document.createElement('select'); pkgSel.className = 'mp-pkg'; pkgSel.setAttribute('aria-label', 'Paquete del revendedor');
+      const nuevoSelect = (cls, etiqueta) => {
+        const s = document.createElement('select'); s.className = cls; s.setAttribute('aria-label', etiqueta);
+        s.setAttribute('data-buscar', '');   // buscador en la lista (static/ui-select.js)
+        return s;
+      };
+      const provSel = nuevoSelect('mp-prov', 'Proveedor');
+      const prodSel = nuevoSelect('mp-prod', 'Juego del proveedor');
+      const pkgSel = nuevoSelect('mp-pkg', 'Paquete del proveedor');
       const qty = document.createElement('input'); qty.type = 'number'; qty.min = 1; qty.max = 50; qty.value = (step && step.cantidad) || 1;
       qty.className = 'mp-qty'; qty.setAttribute('aria-label', 'Cantidad');
       const del = document.createElement('button'); del.type = 'button'; del.className = 'mp-del'; del.textContent = '×';
       del.setAttribute('aria-label', 'Quitar item');
-      if (step) prodSel.value = String(step.remote_product_id);
+      // El proveedor sale del juego guardado (los de Central One empiezan por «co:»); si solo hay uno, queda elegido
+      let prov = '';
+      if (step) prov = String(step.remote_product_id).startsWith('co:') ? 'centralone' : 'inefable';
+      else if (mpProvs().length === 1) prov = mpProvs()[0];
+      mpFillProvSelect(provSel, prov);
+      mpFillProdSelect(prodSel, provSel.value, step ? step.remote_product_id : null);
       mpFillPkgSelect(pkgSel, prodSel.value, step ? step.remote_package_id : null);
       const hint = document.createElement('small'); hint.className = 'mp-hint';
       const pintarHint = () => {
         const c = (_mapeoData.catalog || []).find(x => String(x.remote_product_id) === prodSel.value && String(x.remote_package_id) === pkgSel.value);
         hint.textContent = c && c.prov === 'centralone' && (c.campos || []).length ? 'Central One pide: ' + c.campos.join(' + ') : '';
       };
+      provSel.addEventListener('change', () => {
+        mpFillProdSelect(prodSel, provSel.value, null); mpFillPkgSelect(pkgSel, '', null); pintarHint(); mpSummary();
+      });
       prodSel.addEventListener('change', () => { mpFillPkgSelect(pkgSel, prodSel.value, null); pintarHint(); mpSummary(); });
       pkgSel.addEventListener('change', () => { pintarHint(); mpSummary(); });
       qty.addEventListener('input', mpSummary);
       del.addEventListener('click', () => { row.remove(); mpSummary(); });
-      row.append(prodSel, pkgSel, qty, del, hint);
+      row.append(provSel, prodSel, pkgSel, qty, del, hint);
       wrap.appendChild(row);
       pintarHint();
       mpSummary();
@@ -3072,7 +3095,7 @@
       const items = mpCollect();
       const respaldo = mpCollect('mp-items-resp');
       if (items.concat(respaldo).some(i => !i.remote_product_id || !i.remote_package_id)) {
-        st.className = 'mp-status is-err'; st.textContent = 'Completa el item y el paquete de cada fila (o quita las filas vacías).'; return;
+        st.className = 'mp-status is-err'; st.textContent = 'Completa el proveedor, el juego y el paquete de cada fila (o quita las filas vacías).'; return;
       }
       if (items.concat(respaldo).some(i => i.cantidad < 1 || i.cantidad > 50)) {
         st.className = 'mp-status is-err'; st.textContent = 'La cantidad debe estar entre 1 y 50.'; return;

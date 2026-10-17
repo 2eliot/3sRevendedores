@@ -1766,7 +1766,7 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .mp-card-head { display: flex; flex-direction: column; gap: 2px; padding-bottom: 10px; border-bottom: 1px solid var(--rc-border); }
 .mp-card-head strong { font-size: 16px; }
 .mp-card-head span { font-size: 12px; color: var(--rc-ash); font-family: var(--rc-mono); }
-.mp-cols, .mp-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) 90px 40px; gap: 8px; align-items: center; }
+.mp-cols, .mp-row { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) minmax(0, 1.5fr) 80px 40px; gap: 8px; align-items: center; }
 .mp-cols span { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--rc-smoke); }
 .mp-row select, .mp-row input { width: 100%; min-height: 40px; box-sizing: border-box; font-size: 13px; }
 .mp-row input { text-align: center; }
@@ -1788,8 +1788,8 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 @media (max-width: 700px) {
   .mp-steps { grid-template-columns: 1fr; }
   .mp-cols { display: none; }
-  .mp-row { grid-template-columns: minmax(0, 1fr) 70px 40px; padding: 10px; border: 1px solid var(--rc-border); border-radius: 12px; }
-  .mp-row .mp-prod { grid-column: 1 / -1; }
+  .mp-row { grid-template-columns: minmax(0, 1fr) 40px; padding: 10px; border: 1px solid var(--rc-border); border-radius: 12px; }
+  .mp-row .mp-prov, .mp-row .mp-prod, .mp-row .mp-pkg { grid-column: 1 / -1; }
 }
 
 /* ============================================================

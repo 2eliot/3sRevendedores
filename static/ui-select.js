@@ -5,6 +5,7 @@
    - La lista se construye al abrir, con las opciones del momento.
    - En pantallas táctiles se deja el selector nativo del sistema.
    - Excluir un select: atributo data-native.
+   - Buscador siempre visible (aunque haya pocas opciones): data-buscar.
    ============================================================ */
 (function () {
   'use strict';
@@ -20,6 +21,11 @@
       !sel.disabled && !sel.hasAttribute('data-native');
   }
 
+  // Sin acentos ni mayúsculas: «diamantes» encuentra «Diamántes»
+  function norm(s) {
+    return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -31,7 +37,7 @@
     var panel = el('div', 'ui-select-panel');
     panel.setAttribute('role', 'presentation');
     var search = null;
-    if (sel.options.length >= SEARCH_MIN) {
+    if (sel.options.length >= SEARCH_MIN || sel.hasAttribute('data-buscar')) {
       search = el('input', 'ui-select-search');
       search.type = 'text';
       search.placeholder = 'Buscar…';
@@ -65,7 +71,7 @@
       if (o.disabled) { item.classList.add('is-disabled'); item.setAttribute('aria-disabled', 'true'); }
       if (o.selected) { item.classList.add('is-selected'); item.setAttribute('aria-selected', 'true'); }
       item._option = o;
-      item._text = o.textContent.trim().toLowerCase();
+      item._text = norm(o.textContent.trim());
       list.appendChild(item);
       items.push(item);
     }
@@ -120,11 +126,13 @@
     setActive(state, vis[i], true);
   }
 
+  // Cada palabra escrita debe aparecer, en cualquier orden: «diam 706» encuentra «706 Diamantes»
   function filter(state, q) {
-    q = q.trim().toLowerCase();
+    q = norm(q.trim());
+    var words = q.split(/\s+/).filter(Boolean);
     var any = false;
     state.items.forEach(function (i) {
-      var show = !q || i._text.indexOf(q) !== -1;
+      var show = words.every(function (w) { return i._text.indexOf(w) !== -1; });
       i.hidden = !show;
       if (show) any = true;
     });
