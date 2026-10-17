@@ -2444,8 +2444,14 @@ def _purchase_via_reseller(game, pkg, mapping, slug, user_id, is_admin, precio,
             resp_data = json.loads(body)
         except Exception:
             resp_data = {'ok': False, 'error': f'HTTP {he.code}: {body[:200]}'}
+    except urllib.error.URLError as e:
+        # No se pudo enviar (conexión rechazada, DNS, tiempo agotado al conectar): no llegó al revendedor
+        resp_data = {'ok': False, 'error': f'No se pudo conectar con el revendedor ({e.reason})'}
     except Exception as e:
-        resp_data = {'ok': False, 'error': str(e)}
+        # Se envió pero no llegó la respuesta (tiempo agotado leyendo, conexión cortada): el revendedor
+        # pudo haberla hecho. No se reembolsa aquí; queda en proceso y el reconciliador consulta su estado.
+        resp_data = {'ok': False, 'sin_respuesta': True,
+                     'error': f'Sin respuesta del revendedor ({str(e) or type(e).__name__})'}
 
     _duration = round(time_module.time() - _start, 1)
 
@@ -2540,8 +2546,9 @@ def _purchase_via_reseller(game, pkg, mapping, slug, user_id, is_admin, precio,
         # minutos u horas después. Reembolsar aquí duplica (el cliente recupera
         # el saldo Y la recarga puede entregarse igual). Se deja 'procesando'
         # y poll_pending_reseller_transactions la cierra consultando
-        # /api/v1/order-status por external_order_id.
-        if resp_data.get('pending') or api_status in ('procesando', 'processing', 'pendiente', 'pending', 'queued'):
+        # /api/v1/order-status por external_order_id. Igual si se envió y no llegó la respuesta.
+        if resp_data.get('pending') or resp_data.get('sin_respuesta') or \
+                api_status in ('procesando', 'processing', 'pendiente', 'pending', 'queued'):
             logger.warning(f"[DynGame:{slug}][Reseller] PENDING | user={user_id} order={merchant_code} — queda procesando, SIN reembolso ({err_msg})")
             conn = _get_conn()
             conn.execute('''
