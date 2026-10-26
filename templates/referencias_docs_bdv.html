@@ -85,7 +85,7 @@
     <tr><td><b>Conectado ✅</b></td><td>La web está dentro y lee tus movimientos cada ~25 s.</td><td>Nada.</td></tr>
     <tr><td><b>El banco no responde ⏳</b></td><td>La página del BDV no carga (banco saturado o sin servicio). Se reintenta en 1, 2, 4, 8 y hasta 10 minutos.</td><td>Nada: no cuenta como intento fallido.</td></tr>
     <tr><td><b>El banco rechazó la entrada ⏳</b></td><td>El banco dijo que no una vez. Se espera 5 minutos y se prueba <b>una sola vez</b> más.</td><td>Revisa tus datos si cambiaste algo.</td></tr>
-    <tr><td><b>Datos rechazados ❌</b></td><td>El banco rechazó la entrada dos veces seguidas. La web <b>se detiene</b> y no vuelve a intentar sola, para no bloquearte la cuenta.</td><td>Entra al BDV a mano para ver si pide algo nuevo, guarda tus datos de nuevo o pulsa <b>Reanudar</b>.</td></tr>
+    <tr><td><b>Datos rechazados ❌</b></td><td>El banco rechazó la entrada dos veces seguidas. La web <b>se detiene</b> y no vuelve a intentar sola, para no bloquearte la cuenta.</td><td>Entra al BDV a mano para ver si pide algo nuevo (por ejemplo, una contraseña nueva); después pulsa <b>Cambiar datos</b> si cambiaste algo, o <b>Reanudar</b>.</td></tr>
     <tr><td><b>Pausado ⏸</b></td><td>Apagaste «Leer movimientos»: la sesión de la web en el banco está cerrada.</td><td>Enciéndelo cuando quieras que vuelva a leer.</td></tr>
     <tr><td><b>En espera ⏳</b></td><td>Hay muchas cuentas conectadas a la vez; la tuya entra en cuanto se libera un lugar.</td><td>Nada.</td></tr>
     <tr><td><b>El lector no responde ⚠️</b></td><td>El programa que lee el BDV no da señales hace más de 2 minutos: es un problema del servidor, no de tu cuenta. Tus pagos nuevos se guardan cuando vuelva.</td><td>Si sigue así, avísale al administrador.</td></tr>
@@ -104,6 +104,7 @@
     <li><b>La web solo lee</b> tus movimientos: nunca hace pagos ni transferencias, ni toca nada más de tu banco.</li>
     <li>Tu usuario, tu contraseña y tu número de cuenta se guardan <b>cifrados</b> con una llave que solo tiene el lector del BDV, en otro servidor: la web y su base de datos no pueden abrirlos. <b>Nadie puede volver a verlos</b>: ni tú, ni el administrador, ni la API. En la pantalla se ven como «••••••» y solo se muestran los últimos 4 dígitos de la cuenta.</li>
     <li>Nunca aparecen en registros, mensajes ni respuestas de la API.</li>
+    <li><b>Cambiar datos</b>: si el banco te pide una contraseña nueva (o cambias tu usuario), escribe los datos nuevos en tu cuenta; los actuales no se muestran y lo que dejes vacío se queda igual. Con «Leer movimientos» encendido, la web vuelve a entrar con ellos en menos de un minuto; en pausa, entra al encenderlo.</li>
     <li><b>Borrar conexión</b> cierra la sesión de la web en el banco y borra tus datos guardados. Los pagos que ya se guardaron se quedan.</li>
   </ul>
 

@@ -82,6 +82,10 @@
     /* Cuentas del BDV */
     .rf-bdv { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-top: 10px; background: var(--rc-recess); display: flex; flex-direction: column; gap: 8px; }
     .rf-bdv.rf-borrada { opacity: .65; }
+    .rf-bdv-editar { border: 1px dashed var(--rc-border-strong); border-radius: 12px; padding: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .rf-bdv-editar[hidden] { display: none; }
+    .rf-bdv-editar h3 { margin: 0; font-size: 14px; font-weight: 600; }
+    .rf-bdv-editar p { margin: 0; }
     .rf-estado { font-size: 13px; font-weight: 600; }
     .rf-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; margin-left: auto; color: var(--rc-text); }
     .rf-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -317,7 +321,7 @@
             <label class="rf-check rf-consent"><input type="checkbox" name="consentimiento" required> Autorizo a 3srevendedores a entrar a mi BDV solo para leer mis movimientos.</label>
             <button type="submit" class="rf-btn rf-main">Guardar y conectar</button>
           </form>
-          <p class="rf-muted rf-small">Para cambiar tu usuario o tu contraseña, vuelve a guardar este formulario con el mismo número de cuenta. Solo se ven los últimos 4 dígitos.</p>
+          <p class="rf-muted rf-small">Si el banco te pide una contraseña nueva o cambias tu usuario, pulsa «Cambiar datos» en tu cuenta, abajo. Solo se ven los últimos 4 dígitos.</p>
           <p class="rf-msg" id="rf-bdv-msg"></p>
         </div>
         <div class="rf-card">
@@ -325,6 +329,17 @@
           <p class="rf-muted rf-small">El BDV no deja entrar con otra sesión abierta: si necesitas entrar desde tu teléfono o tu computadora, apaga
             «Leer movimientos» (la web cierra su sesión en el banco). Al encenderlo, vuelve a entrar y lee lo que llegó mientras tanto.</p>
           <div id="rf-bdv-cuentas"><div class="rf-empty">Cargando…</div></div>
+          <!-- fuera de la lista, que se vuelve a pintar cada 5 s: así no se borra lo que se está escribiendo -->
+          <form id="rf-bdv-editar" class="rf-bdv-editar" autocomplete="off" hidden>
+            <h3>Cambiar los datos de <span data-titulo></span></h3>
+            <p class="rf-muted rf-small">Tus datos actuales no se muestran: escribe los nuevos. Lo que dejes vacío se queda como estaba. El número de cuenta y la fecha de corte no cambian.</p>
+            <div class="rf-form">
+              <label>Usuario nuevo del BDV <input name="usuario" maxlength="60" autocomplete="off" placeholder="Igual que antes"></label>
+              <label>Contraseña nueva del BDV <input name="clave" type="password" maxlength="100" autocomplete="new-password" placeholder="Igual que antes"></label>
+              <button type="submit" class="rf-btn rf-main">Guardar datos nuevos</button>
+              <button type="button" class="rf-btn" data-bdv-editar-cerrar>Cancelar</button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -690,6 +705,7 @@
           '<div class="rf-muted rf-small">Usuario: •••••• · Contraseña: •••••• · Última lectura: <span class="rf-mono">' + esc(e.ultima_lectura || '—') +
           '</span> · Último pago nuevo: <span class="rf-mono">' + esc(e.ultimo_pago || '—') + '</span></div>' +
           '<div class="rf-row">' + (e.estado === 'detenido' ? '<button type="button" class="rf-btn rf-main" data-bdv="' + c.id + '" data-accion="reanudar">Reanudar</button>' : '') +
+          '<button type="button" class="rf-btn' + (e.estado === 'detenido' ? ' rf-main' : '') + '" data-bdv-editar="' + c.id + '" data-titulo="' + esc(c.alias + ' ··' + c.ultimos_digitos) + '">Cambiar datos</button>' +
           '<button type="button" class="rf-btn rf-danger" data-bdv="' + c.id + '" data-accion="borrar">Borrar conexión</button></div></div>';
       }).join('') : '<div class="rf-empty">Todavía no has conectado tu cuenta del BDV.</div>';
     }
@@ -701,6 +717,29 @@
       msg('rf-bdv-msg', !!d.ok, d.mensaje || 'Error');
       f.clave.value = '';   // la contraseña nunca se queda en la página
       if (d.ok) { f.reset(); pintarBdv(d); pintarCortes(d.cuentas || []); cargar(); }
+    });
+    // «Cambiar datos»: usuario y/o contraseña nuevos de una conexión (los actuales nunca se muestran)
+    function cerrarEditarBdv() {
+      var f = document.getElementById('rf-bdv-editar');
+      f.reset(); f.hidden = true; delete f.dataset.cuenta;
+    }
+    function abrirEditarBdv(b) {
+      var f = document.getElementById('rf-bdv-editar');
+      f.reset();   // por si el navegador rellenó algo solo
+      f.dataset.cuenta = b.dataset.bdvEditar;
+      f.querySelector('[data-titulo]').textContent = b.dataset.titulo;
+      f.hidden = false;
+      f.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      f.usuario.focus();
+    }
+    document.getElementById('rf-bdv-editar').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var f = e.target;
+      if (!f.usuario.value.trim() && !f.clave.value) { msg('rf-bdv-msg', false, 'Escribe tu usuario nuevo, tu contraseña nueva o los dos'); return; }
+      var d = await post('/referencias/bdv/cuentas/' + f.dataset.cuenta + '/datos', {usuario: f.usuario.value, clave: f.clave.value});
+      f.clave.value = '';   // la contraseña nunca se queda en la página
+      msg('rf-bdv-msg', !!d.ok, d.mensaje || 'Error');
+      if (d.ok) { cerrarEditarBdv(); pintarBdv(d); }
     });
     // Mientras se miran las cuentas del BDV, su estado se actualiza solo
     setInterval(function () { if (BANCO === 'BDV' && pestanaActual() === 'cuentas' && !document.hidden) cargarBdv(); }, 5000);
@@ -813,7 +852,11 @@
     document.addEventListener('click', async function (e) {
       var b = e.target.closest('button');
       if (!b) return;
-      if (b.dataset.pagoBloqueo) {
+      if (b.dataset.bdvEditar) {
+        abrirEditarBdv(b);
+      } else if (b.hasAttribute('data-bdv-editar-cerrar')) {
+        cerrarEditarBdv();
+      } else if (b.dataset.pagoBloqueo) {
         var desb = b.dataset.accion === 'desbloquear';
         if (!confirm(desb ? '¿Desbloquear este pago? Se podrá usar aunque sea anterior a la fecha de corte (hazlo solo si de verdad nadie lo ha usado).'
                           : '¿Volver a bloquear este pago? No se podrá usar mientras sea anterior a la fecha de corte.')) return;

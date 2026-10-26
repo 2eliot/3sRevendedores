@@ -571,7 +571,7 @@ def referencias_bdv_cuentas():
 
 @bp.route('/referencias/bdv/cuentas/<int:cuenta_id>/<accion>', methods=['POST'])
 def referencias_bdv_accion(cuenta_id, accion):
-    """leer (encender) / pausar / reanudar / borrar."""
+    """leer (encender) / pausar / reanudar / datos (cambiar usuario o contraseña) / borrar."""
     import bdv
     uid, err = _sesion_json(post=True)
     if err:
@@ -582,6 +582,9 @@ def referencias_bdv_accion(cuenta_id, accion):
             status, datos = bdv.cambiar_lectura(conn, uid, cuenta_id, accion == 'leer')
         elif accion == 'reanudar':
             status, datos = bdv.reanudar(conn, uid, cuenta_id)
+        elif accion == 'datos':
+            data = request.get_json(silent=True) or {}
+            status, datos = bdv.actualizar_datos(conn, uid, cuenta_id, data.get('usuario'), data.get('clave'))
         elif accion == 'borrar':
             status, datos = bdv.borrar_conexion(conn, uid, cuenta_id)
         else:

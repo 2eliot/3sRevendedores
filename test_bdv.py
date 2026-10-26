@@ -364,6 +364,40 @@ class BdvPantallaTest(unittest.TestCase):
         d = self.c.post(f'/referencias/bdv/cuentas/{cid}/borrar', json={}).get_json()
         self.assertFalse(d['cuentas'][0]['conectada'])
 
+    def test_cambiar_datos_sin_ver_los_actuales(self):
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        self.assertIn('rf-bdv-editar', self.c.get('/referencias').get_data(as_text=True))
+        cid = self.conectar().get_json()['cuentas'][0]['id']
+        antes = q('SELECT * FROM cuentas_banco WHERE id = ?', (cid,))[0]
+        url = f'/referencias/bdv/cuentas/{cid}/datos'
+        self.assertEqual(self.c.post(url, json={'usuario': ' ', 'clave': ''}).status_code, 400)
+        # el banco pidió una contraseña nueva: la lectura estaba en «Datos rechazados»
+        q("UPDATE cuentas_banco SET lector_estado = 'detenido', lector_fallos_login = 2 WHERE id = ?", (cid,))
+        r = self.c.post(url, json={'clave': 'Clave-Nueva-456'})
+        self.assertEqual(r.status_code, 200)
+        self.sin_secretos(r.get_data(as_text=True))
+        self.assertNotIn('Clave-Nueva-456', r.get_data(as_text=True))
+        f = q('SELECT * FROM cuentas_banco WHERE id = ?', (cid,))[0]
+        self.assertEqual((abrir(f['bdv_clave_cifrada']), abrir(f['bdv_usuario_cifrado'])), ('Clave-Nueva-456', USUARIO))
+        self.assertEqual(abrir(f['numero_cuenta_cifrado']), NUMERO)
+        self.assertEqual((f['lector_estado'], f['lector_fallos_login'], f['usar_desde']), ('pendiente', 0, antes['usar_desde']))
+        self.assertNotEqual(f['lector_cambio'], antes['lector_cambio'])   # el lector vuelve a entrar con los nuevos
+        # en pausa: se guardan, pero la web no entra al banco hasta que se encienda la lectura
+        self.c.post(f'/referencias/bdv/cuentas/{cid}/pausar', json={})
+        q("UPDATE cuentas_banco SET lector_estado = 'pausado' WHERE id = ?", (cid,))
+        version = q('SELECT lector_cambio FROM cuentas_banco WHERE id = ?', (cid,))[0]['lector_cambio']
+        d = self.c.post(url, json={'usuario': 'usuario.nuevo'}).get_json()
+        self.assertIn('Leer movimientos', d['mensaje'])
+        f = q('SELECT * FROM cuentas_banco WHERE id = ?', (cid,))[0]
+        self.assertEqual((abrir(f['bdv_usuario_cifrado']), abrir(f['bdv_clave_cifrada'])), ('usuario.nuevo', 'Clave-Nueva-456'))
+        self.assertEqual((f['lector_estado'], bool(f['lector_encendido']), f['lector_cambio']), ('pausado', False, version))
+        # otro usuario no puede cambiarlos; una conexión borrada tampoco
+        self.entrar(self.B, 'beto-pantalla@test.local')
+        self.assertEqual(self.c.post(url, json={'clave': 'x'}).status_code, 404)
+        self.entrar(self.A, 'ana-pantalla@test.local')
+        self.c.post(f'/referencias/bdv/cuentas/{cid}/borrar', json={})
+        self.assertEqual(self.c.post(url, json={'clave': 'x'}).status_code, 409)
+
     def test_admin_ve_conexiones_sin_datos_y_puede_pausar(self):
         self.entrar(self.A, 'ana-pantalla@test.local')
         cid = self.conectar().get_json()['cuentas'][0]['id']

@@ -204,6 +204,49 @@ def reanudar(conn, uid, cuenta_id):
     return 200, {'mensaje': 'Reintentando: la web vuelve a entrar con tus datos'}
 
 
+def actualizar_datos(conn, uid, cuenta_id, usuario='', clave=''):
+    """«Cambiar datos» de una conexión (p. ej. el banco le pidió una contraseña nueva). Los datos actuales nunca se
+    muestran: se escriben los nuevos y lo que se deja vacío se queda como estaba. Mismo número de cuenta y misma fecha
+    de corte. Con la lectura encendida el lector vuelve a entrar con ellos; en pausa, entra al encenderla."""
+    if not cifrado_disponible():
+        return 503, {'mensaje': 'El BDV todavía no está disponible: falta conectar el lector del banco. '
+                                'Avísale al administrador.'}
+    cuenta = _cuenta_bdv(conn, cuenta_id, uid)
+    if not cuenta:
+        return 404, {'mensaje': 'Cuenta no encontrada'}
+    if not cuenta['bdv_clave_cifrada']:
+        return 409, {'mensaje': 'Esta cuenta no tiene conexión: conéctala con el formulario de arriba'}
+    usuario = str(usuario or '').strip()
+    clave = str(clave or '')
+    if not usuario and not clave:
+        return 400, {'mensaje': 'Escribe tu usuario nuevo, tu contraseña nueva o los dos'}
+    if len(usuario) > 60:
+        return 400, {'mensaje': 'El usuario del BDV es demasiado largo'}
+    if len(clave) > 100:
+        return 400, {'mensaje': 'La contraseña del BDV es demasiado larga'}
+    sets, params = ['lector_fallos_login = 0'], []
+    if usuario:
+        sets.append('bdv_usuario_cifrado = ?')
+        params.append(cifrar(usuario))
+    if clave:
+        sets.append('bdv_clave_cifrada = ?')
+        params.append(cifrar(clave))
+    encendido = cuenta['lector_encendido'] is None or bool(cuenta['lector_encendido'])
+    if encendido:
+        # versión nueva: el lector cierra la sesión vieja y entra con los datos nuevos (también si estaba «Datos rechazados»)
+        sets += ["lector_estado = 'pendiente'", 'lector_mensaje = ?', 'lector_cambio = ?']
+        params += ['Datos nuevos guardados: entrando al banco…', nuevo_cambio()]
+        mensaje = 'Datos nuevos guardados. La web vuelve a entrar a tu BDV con ellos en menos de un minuto.'
+    else:
+        sets.append('lector_mensaje = ?')
+        params.append('Datos nuevos guardados. Enciende «Leer movimientos» para que la web entre con ellos.')
+        mensaje = 'Datos nuevos guardados. Cuando enciendas «Leer movimientos», la web entrará con ellos.'
+    conn.execute(f'UPDATE cuentas_banco SET {", ".join(sets)} WHERE id = ? AND usuario_id = ?', (*params, cuenta['id'], uid))
+    conn.commit()
+    logger.info(f'[BDV] Cuenta {cuenta["id"]}: datos de acceso cambiados')  # sin los datos
+    return 200, {'mensaje': mensaje}
+
+
 def borrar_conexion(conn, uid, cuenta_id):
     """Borra los datos cifrados (el lector cierra la sesión del banco). Los pagos ya guardados se quedan."""
     cuenta = _cuenta_bdv(conn, cuenta_id, uid)
