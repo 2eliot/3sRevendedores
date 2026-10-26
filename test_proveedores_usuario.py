@@ -163,6 +163,16 @@ class ProveedoresUsuarioTest(unittest.TestCase):
             q('UPDATE transacciones_dinamicas SET notas = ? WHERE id = ?', (dynamic_games.MULTI_PREFIX + json.dumps(st), r['id']))
 
     # ---------- la llave ----------
+    def test_lo_que_no_es_una_llave_no_sale_de_la_web(self):
+        # p. ej. la contraseña de la web que el navegador pegó solo en el campo
+        self.co.llamadas.clear()
+        r = self.c.post('/mis-proveedores/conexiones', json={'nombre': 'a@test.local', 'llave': 'MiClaveDeLaWeb2026'})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('no es una llave', r.get_json()['error'])
+        self.assertEqual(self.co.llamadas, [])
+        self.assertEqual(len(pu.conexiones(self.a)), 1)
+        self.assertNotIn('type="password"', self.c.get('/mis-proveedores').get_data(as_text=True))
+
     def test_llave_cifrada_y_nunca_se_muestra(self):
         fila = q('SELECT llave_cifrada, prefijo FROM proveedores_usuario WHERE id = ?', (self.pid,))[0]
         self.assertNotIn(LLAVE_A, fila['llave_cifrada'])

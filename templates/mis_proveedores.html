@@ -154,10 +154,11 @@
       <div id="mp-conexiones"><div class="rf-empty">Cargando…</div></div>
       <details class="mp-add" id="mp-add">
         <summary>＋ Conectar un proveedor</summary>
-        <form id="mp-nueva" class="rf-form">
+        <!-- sin campo de contraseña: si no, el navegador lo toma por un inicio de sesión y pega el correo y la contraseña de la web -->
+        <form id="mp-nueva" class="rf-form" autocomplete="off">
           <label>Proveedor <select name="tipo"></select></label>
-          <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: Mi Central One"></label>
-          <label style="flex-basis:280px">Llave de la API <input name="llave" type="password" autocomplete="off" spellcheck="false" placeholder="co_live_…"></label>
+          <label>Nombre <input name="nombre" maxlength="60" autocomplete="off" placeholder="Ej: Mi Central One"></label>
+          <label style="flex-basis:280px">Llave de la API <input name="llave" type="text" class="rf-mono" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="co_live_…"></label>
           <button type="submit" class="rf-btn rf-main">Conectar</button>
         </form>
         <p class="rf-muted rf-small">La llave la sacas del panel de tu proveedor. Se comprueba al conectar, se guarda cifrada y no se vuelve a mostrar (solo su comienzo). Si la cambias allá, quita este proveedor y vuelve a conectarlo.</p>

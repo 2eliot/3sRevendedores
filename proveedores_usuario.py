@@ -211,6 +211,9 @@ def agregar_conexion(uid, nombre, llave, tipo='centralone'):
         raise ValueError('Ese proveedor todavía no se puede conectar.')
     if len(llave) < 12 or len(llave) > 300:
         raise ValueError('Pega la llave completa de tu proveedor.')
+    # (lo que no tiene forma de llave no se envía al proveedor: p. ej. una contraseña que el navegador pegó solo)
+    if not llave.startswith('co_') or re.search(r'\s', llave):
+        raise ValueError(f'Eso no es una llave de {TIPOS[tipo]}: empieza por co_live_… y la sacas de su panel.')
     if len(conexiones(uid)) >= MAX_CONEXIONES:
         raise ValueError(f'Puedes conectar hasta {MAX_CONEXIONES} proveedores.')
     with central_one.con_llave(llave):
