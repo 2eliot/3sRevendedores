@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis proveedores</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}">
+  <script src="{{ url_for('static', filename='theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ brand_css_url() }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}">
+  <script src="{{ url_for('static', filename='price-privacy.js') }}"></script>
+  <script src="{{ url_for('static', filename='ui-common.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='ui-select.js') }}" defer></script>
+  <style>
+    .rf-wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 64px; }
+    .rf-top { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+    .rf-wrap h1 { margin: 8px 0 4px; font-size: 26px; font-weight: 600; }
+    .rf-lead { margin: 0 0 14px; color: var(--rc-ash); font-size: 14px; line-height: 1.5; }
+    .rf-card { background: var(--rc-card); border: 1px solid var(--rc-border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .rf-card h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+    .rf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+    .rf-kpi { background: var(--rc-recess); border: 1px solid var(--rc-border); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+    .rf-kpi > span { display: block; font-size: 11px; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .06em; }
+    .rf-kpi strong { display: block; margin-top: 4px; font-size: 19px; font-family: var(--rc-mono); font-weight: 500; overflow-wrap: anywhere; }
+    .rf-kpi strong .money { font-size: inherit !important; color: inherit !important; font-family: inherit; }
+    .rf-kpi small { display: block; margin-top: 2px; color: var(--rc-ash); font-size: 12px; }
+    .rf-ok { color: var(--rc-green); } .rf-bad { color: var(--rc-coral); }
+    .rf-muted { color: var(--rc-ash); } .rf-small { font-size: 12.5px; } .rf-mono { font-family: var(--rc-mono); }
+    .rf-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    .rf-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--rc-ash); flex: 1 1 150px; min-width: 0; }
+    .rf-form input, .rf-form select { min-height: 40px; padding: 0 10px; border-radius: 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
+    .rf-btn { min-height: 40px; padding: 0 14px; border-radius: 10px; font-weight: 600; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .rf-btn:hover { background: var(--rc-slate); }
+    .rf-btn:disabled { opacity: .55; cursor: default; }
+    .rf-main, .rf-form .rf-main { background: var(--rc-mist) !important; color: var(--rc-card) !important; border: 0; }
+    .rf-danger { color: var(--rc-coral); }
+    .rf-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .rf-badge.disponible { background: var(--rc-green-bg); color: var(--rc-green); }
+    .rf-badge.usado { background: rgba(var(--rc-ink), .07); color: var(--rc-ash); }
+    .rf-empty { padding: 16px; text-align: center; color: var(--rc-ash); font-size: 13px; }
+    .rf-clave { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: var(--rc-recess); display: flex; flex-direction: column; gap: 8px; }
+    .rf-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .rf-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; font-size: 13.5px !important; color: var(--rc-text) !important; flex: 0 0 auto !important; min-height: 40px; }
+    .rf-check input { width: 18px !important; height: 18px; min-height: 0 !important; }
+    .mp-saldo-num { font-family: var(--rc-mono); font-size: 18px; font-weight: 500; }
+    .mp-add { margin-top: 4px; }
+    .mp-add > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; padding: 8px 0; }
+    .mp-add > .rf-form { margin-top: 6px; }
+    .mp-add p, .rf-card > p.rf-small { margin: 8px 0 0; }
+    .mp-sep { flex: 1 1 auto; }
+    .mp-juego { border: 1px solid var(--rc-border); border-radius: 12px; padding: 12px; margin-top: 12px; background: var(--rc-recess); display: flex; flex-direction: column; gap: 10px; }
+    .mp-ico { font-size: 20px; line-height: 1; }
+    .mp-editar-juego[hidden] { display: none; }
+    .mp-paquetes { display: flex; flex-direction: column; gap: 8px; }
+    .mp-paq { display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: space-between; align-items: center; border: 1px solid var(--rc-border); border-radius: 10px; padding: 10px; background: var(--rc-card); }
+    .mp-paq-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 260px; overflow-wrap: anywhere; }
+    .mp-pf { border: 1px dashed var(--rc-border-strong); border-radius: 12px; padding: 12px; background: var(--rc-card); display: flex; flex-direction: column; gap: 8px; }
+    .mp-pf h3 { margin: 0; font-size: 14px; font-weight: 600; }
+    .mp-pf p { margin: 0; }
+    .mp-toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; padding: 10px 14px; border-radius: 12px; background: var(--rc-card); border: 1px solid var(--rc-border-strong); box-shadow: 0 8px 24px rgba(0, 0, 0, .25); font-size: 13.5px; line-height: 1.4; z-index: 1000; }
+    .mp-toast[hidden] { display: none; }
+    @media (max-width: 640px) { .rf-wrap h1 { font-size: 22px; } .rf-kpi strong { font-size: 16px; } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="hamburger" onclick="window.location.href='/'">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M19 12H5m7-7l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="icon-container">
+      <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
+      <div class="dashboard-icon-container" onclick="window.location.href='/dashboard'" title="Mi Dashboard">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+      </div>
+
+      <!-- Noticias y notificaciones (solo usuarios normales) -->
+      {% if not session.get('is_admin') %}
+      <div class="news-icon-container" onclick="window.location.href='/notificaciones'" title="Noticias" role="link" aria-label="Noticias">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        {% if contadores_barra().notificaciones > 0 %}<div class="news-notification-badge">{{ contadores_barra().notificaciones }}</div>{% endif %}
+      </div>
+      {% endif %}
+      <svg class="icon" onclick="window.location.href='/billetera'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="16.5" cy="15" r="1.5"/></svg>
+
+      <!-- Referencias: pagos del banco y verificación de referencias del usuario -->
+      <div class="dashboard-icon-container ref-icon-container" onclick="window.location.href='/referencias'" title="Referencias" role="link" aria-label="Referencias">
+        <svg class="icon{% if request.path.startswith('/referencias') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 11.5l2 2 4-4"/></svg>
+      </div>
+
+      <!-- API: claves de Recargas del usuario y documentación -->
+      <div class="dashboard-icon-container api-icon-container" onclick="window.location.href='/mi-api'" title="API" role="link" aria-label="API">
+        <svg class="icon{% if request.path.startswith('/mi-api') %} active{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5"/><path d="M16 7l5 5-5 5"/><path d="M13.5 4.5l-3 15"/></svg>
+      </div>
+
+      <div class="user-icon" onclick="toggleUserBox()">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>
+        <div id="user-box" class="user-box">
+          <div class="ub-head">
+            <span class="ub-avatar" aria-hidden="true">{{ (session.get('usuario') or '?')[:1]|upper }}</span>
+            <span class="ub-who"><span class="ub-label">Sesión iniciada</span><span class="ub-mail">{{ session.get('usuario', '---') }}</span></span>
+          </div>
+          <label class="price-toggle" onclick="event.stopPropagation()">
+            <span class="price-toggle-text">Ocultar precios<small>Para capturas a tus clientes</small></span>
+            <input type="checkbox" class="price-toggle-input" role="switch" aria-checked="false">
+            <span class="price-toggle-switch" aria-hidden="true"></span>
+          </label>
+          <button type="button" class="ub-theme" data-open-theme>
+            <span class="ub-theme-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></span>
+            <span class="ub-theme-text">Tema<small class="ub-theme-now">Oscuro · Predeterminado</small></span>
+            <svg class="ub-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          {% if session.get('is_admin') %}
+          <a href="/admin" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Panel Admin</a>
+          {% endif %}
+          {% if not session.get('is_admin') %}
+          <a href="https://wa.me/17868522128?text=Hola%2C%20quiero%20recargar%20saldo.%20Mi%20ID%20es%20{{ user_id }}" target="_blank" rel="noopener noreferrer" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg>Contactar al admin</a>
+          {% endif %}
+          <a href="/mis-proveedores" class="admin-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M9 2v5M15 2v5"/><path d="M6 7h12v4a6 6 0 0 1-12 0z"/><path d="M12 17v5"/></svg>Mis proveedores</a>
+          <a href="/logout" class="logout-btn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:8px;flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="rf-wrap">
+    <div class="rf-top">
+      <h1>Mis proveedores</h1>
+      <a class="rf-btn" href="/mi-api">API</a>
+    </div>
+    <p class="rf-lead">Conecta tu propio proveedor y crea tus juegos y paquetes con él. Esas recargas se pagan con el saldo que tienes en tu proveedor: <b>no se descuenta nada de tu saldo de la web</b>. Solo tú ves esos juegos, aquí en la web y en tu API (con tus claves).</p>
+
+    <div class="rf-card">
+      <div class="rf-kpis">
+        <div class="rf-kpi"><span>Saldo en tus proveedores</span><strong id="k-saldo">—</strong><small id="k-saldo-det">Disponible para recargar</small></div>
+        <div class="rf-kpi"><span>Proveedores conectados</span><strong id="k-prov">—</strong><small>Máximo {{ max_conexiones }}</small></div>
+        <div class="rf-kpi"><span>Tus juegos</span><strong id="k-juegos">—</strong><small id="k-paq">—</small></div>
+      </div>
+    </div>
+
+    <div class="rf-card">
+      <h2>Proveedores</h2>
+      <div id="mp-conexiones"><div class="rf-empty">Cargando…</div></div>
+      <details class="mp-add" id="mp-add">
+        <summary>＋ Conectar un proveedor</summary>
+        <form id="mp-nueva" class="rf-form">
+          <label>Proveedor <select name="tipo"></select></label>
+          <label>Nombre <input name="nombre" maxlength="60" placeholder="Ej: Mi Central One"></label>
+          <label style="flex-basis:280px">Llave de la API <input name="llave" type="password" autocomplete="off" spellcheck="false" placeholder="co_live_…"></label>
+          <button type="submit" class="rf-btn rf-main">Conectar</button>
+        </form>
+        <p class="rf-muted rf-small">La llave la sacas del panel de tu proveedor. Se comprueba al conectar, se guarda cifrada y no se vuelve a mostrar (solo su comienzo). Si la cambias allá, quita este proveedor y vuelve a conectarlo.</p>
+      </details>
+    </div>
+
+    <div class="rf-card">
+      <h2>Mis juegos</h2>
+      <form id="mp-nuevo-juego" class="rf-form">
+        <label>Nombre del juego <input name="nombre" maxlength="60" placeholder="Ej: Free Fire"></label>
+        <label style="flex:0 0 80px">Icono <input name="icono" maxlength="4" value="🎮"></label>
+        <label class="rf-check"><input type="checkbox" name="zona"> Pide un segundo dato</label>
+        <label>Nombre del segundo dato <input name="zona_label" maxlength="30" placeholder="Zone ID, servidor…"></label>
+        <button type="submit" class="rf-btn rf-main">Crear juego</button>
+      </form>
+      <p class="rf-muted rf-small">Después agrégale paquetes: cada uno se recarga con un producto del catálogo de tu proveedor. Tus juegos salen en el menú de juegos y en tu API; un juego o paquete con compras no se puede borrar, solo desactivar.</p>
+      <div id="mp-juegos"></div>
+    </div>
+  </main>
+
+  <div class="mp-toast" id="mp-toast" role="status" aria-live="polite" hidden></div>
+
+  <script>
+    function toggleUserBox() { document.getElementById('user-box').classList.toggle('visible'); }
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (ch) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[ch];
+      });
+    }
+    // Sin acentos ni mayúsculas: «diamantes» encuentra «Diamántes»
+    function norm(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+    function money(v) { var n = Number(v); return isFinite(n) ? '$' + n.toFixed(2) : '—'; }
+    function option(valor, texto, elegido) { return '<option value="' + esc(valor) + '"' + (elegido ? ' selected' : '') + '>' + esc(texto) + '</option>'; }
+    var toastT = null;
+    function aviso(ok, t) {
+      var e = document.getElementById('mp-toast');
+      e.className = 'mp-toast ' + (ok ? 'rf-ok' : 'rf-bad'); e.textContent = t || (ok ? 'Listo' : 'Error'); e.hidden = false;
+      clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, ok ? 3500 : 7000);
+    }
+    async function pedir(url, body) {
+      try {
+        var r = await fetch(url, body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+        var d = {}; try { d = await r.json(); } catch (e) {}
+        if (r.status === 401) { location.href = '/auth'; }
+        return d;
+      } catch (e) { return {ok: false, error: 'Sin conexión. Inténtalo de nuevo.'}; }
+    }
+
+    var D = {conexiones: [], juegos: [], tipos: {}};
+    var saldos = {};      // conexión → su saldo (null mientras se consulta)
+    var catalogos = {};   // conexión → su catálogo agrupado por juego del proveedor
+
+    function conexionPorId(id) { return D.conexiones.filter(function (c) { return c.id === id; })[0]; }
+    function juegoPorId(id) { return D.juegos.filter(function (j) { return j.id === id; })[0]; }
+    function paquetePorId(id) {
+      for (var i = 0; i < D.juegos.length; i++) {
+        var p = D.juegos[i].paquetes.filter(function (x) { return x.id === id; })[0];
+        if (p) return p;
+      }
+    }
+
+    async function cargar() {
+      var d = await pedir('/mis-proveedores/datos');
+      if (!d.ok) { aviso(false, d.error || 'No se pudo cargar'); return; }
+      D = d;
+      var tipo = document.querySelector('#mp-nueva [name="tipo"]');
+      if (!tipo.options.length) tipo.innerHTML = Object.keys(D.tipos).map(function (k) { return option(k, D.tipos[k]); }).join('');
+      pintarConexiones(); pintarJuegos();
+      D.conexiones.forEach(function (c) { if (!(c.id in saldos)) cargarSaldo(c.id); });
+      pintarTotal();
+    }
+
+    // ---- Proveedores y su saldo ----
+    function saldoHtml(s) {
+      if (!s) return '<span class="rf-muted rf-small">Consultando saldo…</span>';
+      if (s.error) return '<span class="rf-bad rf-small">' + esc(s.error) + '</span>';
+      return '<span class="mp-saldo-num">' + money(s.disponible) + '</span> <span class="rf-muted rf-small">disponible' +
+        (Number(s.retenido) ? ' · ' + money(s.retenido) + ' retenido' : '') + ' · ' + esc(s.moneda || 'USD') + '</span>';
+    }
+    function pintarConexiones() {
+      var cs = D.conexiones;
+      document.getElementById('k-prov').textContent = cs.length;
+      document.getElementById('mp-add').open = !cs.length;
+      document.getElementById('mp-conexiones').innerHTML = cs.length ? cs.map(function (c) {
+        return '<div class="rf-clave"><div class="rf-row"><b>' + esc(c.nombre) + '</b><span class="rf-muted rf-small">' + esc(c.tipo_nombre) +
+          ' · llave <span class="rf-mono">' + esc(c.prefijo) + '…</span></span></div>' +
+          '<div id="saldo-' + c.id + '">' + saldoHtml(saldos[c.id]) + '</div>' +
+          '<div class="rf-muted rf-small">' + c.catalogo + ' productos en su catálogo' + (c.ultima_sync ? ' · sincronizado ' + esc(c.ultima_sync) + ' UTC' : '') + '</div>' +
+          '<div class="rf-row"><button class="rf-btn" data-prov="saldo" data-pid="' + c.id + '">↻ Saldo</button>' +
+          '<button class="rf-btn" data-prov="sincronizar" data-pid="' + c.id + '">Sincronizar catálogo</button>' +
+          '<button class="rf-btn rf-danger" data-prov="quitar" data-pid="' + c.id + '">Quitar</button></div></div>';
+      }).join('') : '<div class="rf-empty">Todavía no conectas ningún proveedor.</div>';
+    }
+    async function cargarSaldo(pid) {
+      saldos[pid] = null; pintarSaldo(pid); pintarTotal();
+      var d = await pedir('/mis-proveedores/conexiones/' + pid + '/saldo');
+      saldos[pid] = d.ok ? d.saldo : {error: d.error || 'No se pudo consultar el saldo'};
+      pintarSaldo(pid); pintarTotal();
+    }
+    function pintarSaldo(pid) { var e = document.getElementById('saldo-' + pid); if (e) e.innerHTML = saldoHtml(saldos[pid]); }
+    function pintarTotal() {
+      var cs = D.conexiones, total = 0, listos = 0, consultando = 0, fallan = 0;
+      cs.forEach(function (c) {
+        var s = saldos[c.id];
+        if (!s) consultando++; else if (s.error) fallan++; else { total += Number(s.disponible) || 0; listos++; }
+      });
+      document.getElementById('k-saldo').textContent = listos ? money(total) : (consultando ? '…' : '—');
+      document.getElementById('k-saldo-det').textContent = !cs.length ? 'Conecta un proveedor' : consultando ? 'Consultando…' :
+        fallan ? fallan + ' sin responder' : cs.length > 1 ? 'Suma de tus ' + cs.length + ' proveedores' : 'Disponible en ' + cs[0].nombre;
+    }
+    async function accionProveedor(b) {
+      var pid = +b.dataset.pid, a = b.dataset.prov;
+      if (a === 'saldo') return cargarSaldo(pid);
+      if (a === 'quitar' && !confirm('¿Quitar este proveedor? Se borran su llave y su catálogo, y los paquetes que se recargaban con él dejan de funcionar hasta que les pongas otro.')) return;
+      var t = b.textContent; b.disabled = true; b.textContent = a === 'sincronizar' ? 'Sincronizando…' : 'Quitando…';
+      var d = await pedir('/mis-proveedores/conexiones/' + pid + '/' + a, {});
+      b.disabled = false; b.textContent = t;
+      if (!d.ok) return aviso(false, d.error);
+      delete catalogos[pid];
+      if (a === 'sincronizar') {
+        var c = d.catalogo;
+        aviso(true, 'Catálogo actualizado: ' + c.nuevos + ' nuevos, ' + c.actualizados + ' actualizados, ' + c.retirados + ' retirados.');
+      } else {
+        delete saldos[pid];
+        aviso(true, 'Proveedor quitado' + (d.paquetes_sin_proveedor ? ': ' + d.paquetes_sin_proveedor + ' paquete(s) quedaron sin proveedor.' : '.'));
+      }
+      cargar();
+    }
+
+    // ---- Sus juegos y paquetes ----
+    function pintarJuegos() {
+      var js = D.juegos, npaq = js.reduce(function (a, j) { return a + j.paquetes.length; }, 0);
+      document.getElementById('k-juegos').textContent = js.length;
+      document.getElementById('k-paq').textContent = npaq + (npaq === 1 ? ' paquete' : ' paquetes');
+      document.getElementById('mp-juegos').innerHTML = js.length ? js.map(juegoHtml).join('') :
+        '<div class="rf-empty">' + (D.conexiones.length ? 'Crea tu primer juego y agrégale paquetes de tu proveedor.' : 'Primero conecta un proveedor; después crea tus juegos.') + '</div>';
+    }
+    function juegoHtml(j) {
+      return '<div class="mp-juego" id="juego-' + j.id + '">' +
+        '<div class="rf-row"><span class="mp-ico">' + esc(j.icono) + '</span><b>' + esc(j.nombre) + '</b>' +
+        '<span class="rf-badge ' + (j.activo ? 'disponible">Activo' : 'usado">Desactivado') + '</span>' +
+        '<span class="rf-muted rf-small">Pide ID' + (j.zona ? ' y ' + esc(j.zona_label) : '') + '</span><span class="mp-sep"></span>' +
+        '<a class="rf-btn" href="/juego/d/' + encodeURIComponent(j.slug) + '">Abrir</a>' +
+        '<button class="rf-btn" data-juego="editar" data-jid="' + j.id + '">Editar</button>' +
+        '<button class="rf-btn" data-juego="' + (j.activo ? 'desactivar' : 'activar') + '" data-jid="' + j.id + '">' + (j.activo ? 'Desactivar' : 'Activar') + '</button>' +
+        '<button class="rf-btn rf-danger" data-juego="eliminar" data-jid="' + j.id + '">Eliminar</button></div>' +
+        '<div class="mp-editar-juego" id="ej-' + j.id + '" hidden></div>' +
+        '<div class="mp-paquetes">' + (j.paquetes.length ? j.paquetes.map(function (p) { return paqueteHtml(j, p); }).join('') : '<div class="rf-empty">Sin paquetes todavía.</div>') + '</div>' +
+        '<div id="pf-' + j.id + '"></div>' +
+        '<div class="rf-row"><button class="rf-btn rf-main" data-paq="nuevo" data-jid="' + j.id + '"' + (D.conexiones.length ? '' : ' disabled title="Primero conecta un proveedor"') + '>＋ Agregar paquete</button></div>' +
+      '</div>';
+    }
+    function paqueteHtml(j, p) {
+      var m = p.mapeo[0], c = m && conexionPorId(m.conexion_id);
+      var con = !m ? '<span class="rf-bad">Sin proveedor: no se puede recargar</span>' :
+        (c ? esc(c.nombre) : '<span class="rf-bad">Proveedor quitado</span>') + ' · ' + (m.juego_proveedor ? esc(m.juego_proveedor) + ' – ' : '') + esc(m.nombre) +
+        (m.cantidad > 1 ? ' ×' + m.cantidad : '') + (m.existe ? '' : ' <span class="rf-bad">(ya no está en su catálogo)</span>');
+      return '<div class="mp-paq" id="paq-' + p.id + '"><div class="mp-paq-info">' +
+        '<div><b>' + esc(p.nombre) + '</b> <span class="rf-badge ' + (p.activo ? 'disponible">Activo' : 'usado">Desactivado') + '</span></div>' +
+        '<div class="rf-muted rf-small">Se recarga con: ' + con + '</div>' +
+        '<div class="rf-small">Tu precio: <b class="rf-mono">' + money(p.precio) + '</b>' + (m && m.existe ? ' · <span class="rf-muted">te cuesta ' + money(p.costo) + ' en tu proveedor</span>' : '') + '</div></div>' +
+        '<div class="rf-row"><button class="rf-btn" data-paq="editar" data-pkid="' + p.id + '" data-jid="' + j.id + '">Editar</button>' +
+        '<button class="rf-btn" data-paq="' + (p.activo ? 'desactivar' : 'activar') + '" data-pkid="' + p.id + '">' + (p.activo ? 'Desactivar' : 'Activar') + '</button>' +
+        '<button class="rf-btn rf-danger" data-paq="eliminar" data-pkid="' + p.id + '">Eliminar</button></div></div>';
+    }
+    function abrirEditarJuego(j) {
+      var box = document.getElementById('ej-' + j.id);
+      if (!box.hidden) { box.hidden = true; box.innerHTML = ''; return; }
+      box.hidden = false;
+      box.innerHTML = '<form class="rf-form" data-form="juego" data-jid="' + j.id + '">' +
+        '<label>Nombre <input name="nombre" maxlength="60" value="' + esc(j.nombre) + '"></label>' +
+        '<label style="flex:0 0 80px">Icono <input name="icono" maxlength="4" value="' + esc(j.icono) + '"></label>' +
+        '<label class="rf-check"><input type="checkbox" name="zona"' + (j.zona ? ' checked' : '') + '> Pide un segundo dato</label>' +
+        '<label>Nombre del segundo dato <input name="zona_label" maxlength="30" value="' + esc(j.zona ? j.zona_label : '') + '" placeholder="Zone ID, servidor…"></label>' +
+        '<button type="submit" class="rf-btn rf-main">Guardar</button></form>';
+    }
+    async function accionJuego(b) {
+      var jid = +b.dataset.jid, a = b.dataset.juego, j = juegoPorId(jid);
+      if (a === 'editar') return abrirEditarJuego(j);
+      if (a === 'eliminar' && !confirm('¿Eliminar «' + j.nombre + '» con sus paquetes?')) return;
+      var d = await pedir('/mis-proveedores/juegos/' + jid, {accion: a});
+      aviso(!!d.ok, d.ok ? {activar: 'Juego activado', desactivar: 'Juego desactivado', eliminar: 'Juego eliminado'}[a] : d.error);
+      if (d.ok) cargar();
+    }
+
+    // ---- Formulario de un paquete: proveedor → juego del proveedor → producto (con buscador) ----
+    function abrirFormPaquete(jid, p) {
+      var box = document.getElementById('pf-' + jid), m = p && p.mapeo[0];
+      var cid = m && conexionPorId(m.conexion_id) ? m.conexion_id : (D.conexiones[0] || {}).id;
+      box.innerHTML = '<form class="mp-pf" data-form="paquete" data-jid="' + jid + '"' + (p ? ' data-pkid="' + p.id + '"' : '') + '>' +
+        '<h3>' + (p ? 'Editar «' + esc(p.nombre) + '»' : 'Nuevo paquete') + '</h3>' +
+        '<div class="rf-form">' +
+          '<label>Proveedor <select name="conexion_id">' + D.conexiones.map(function (c) { return option(c.id, c.nombre, c.id === cid); }).join('') + '</select></label>' +
+          '<label>Buscar en su catálogo <input name="buscar" type="search" autocomplete="off" placeholder="Ej: 100 diamantes"></label>' +
+        '</div><div class="rf-form">' +
+          '<label>Juego del proveedor <select name="rjuego" data-buscar></select></label>' +
+          '<label style="flex-basis:240px">Producto <select name="package_id" data-buscar></select></label>' +
+          '<label style="flex:0 0 90px">Cantidad <input name="cantidad" type="number" min="1" max="10" value="' + (m ? m.cantidad : 1) + '"></label>' +
+        '</div>' +
+        '<p class="rf-muted rf-small" data-info></p>' +
+        '<div class="rf-form">' +
+          '<label>Nombre del paquete <input name="nombre" maxlength="60" value="' + (p ? esc(p.nombre) : '') + '" placeholder="Como lo verás tú y tu CRM"></label>' +
+          '<label style="flex:0 0 130px">Tu precio <input name="precio" type="number" min="0" step="0.01" value="' + (p ? p.precio : '') + '" placeholder="0.00"></label>' +
+          '<button type="submit" class="rf-btn rf-main">' + (p ? 'Guardar' : 'Agregar') + '</button>' +
+          '<button type="button" class="rf-btn" data-cerrar="pf-' + jid + '">Cancelar</button>' +
+        '</div>' +
+        '<p class="rf-muted rf-small">«Tu precio» es solo una referencia para ti y tu CRM (sale en tu API): no se cobra aquí. La recarga la paga tu proveedor con tu saldo de allá.</p>' +
+        '</form>';
+      var f = box.querySelector('form');
+      f._elegido = m ? m.package_id : '';
+      cargarCatalogoEnForm(f);
+      box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+    async function catalogoDe(pid) {
+      if (!catalogos[pid]) {
+        var d = await pedir('/mis-proveedores/conexiones/' + pid + '/catalogo');
+        if (!d.ok) throw new Error(d.error || 'No se pudo cargar el catálogo');
+        catalogos[pid] = d.juegos || [];
+      }
+      return catalogos[pid];
+    }
+    async function cargarCatalogoEnForm(f) {
+      f.rjuego.innerHTML = '<option value="">Cargando…</option>'; f.package_id.innerHTML = '';
+      try { f._cat = await catalogoDe(f.conexion_id.value); }
+      catch (e) { f._cat = []; aviso(false, e.message); }
+      f._rjuego = '';
+      if (f._elegido) {  // al editar: el juego del proveedor que tiene ese producto
+        var g = f._cat.filter(function (x) { return x.paquetes.some(function (p) { return p.package_id === f._elegido; }); })[0];
+        f._rjuego = g ? g.product_id : '';
+      }
+      llenarJuegos(f);
+    }
+    function coincide(texto, q) { return !q || norm(texto).indexOf(q) >= 0; }
+    function llenarJuegos(f) {
+      var q = norm(f.buscar.value.trim()), actual = f._rjuego || f.rjuego.value;
+      var js = (f._cat || []).filter(function (g) { return coincide(g.nombre, q) || g.paquetes.some(function (p) { return coincide(p.nombre, q); }); });
+      f.rjuego.innerHTML = js.length ? js.map(function (g) { return option(g.product_id, g.nombre + ' (' + g.paquetes.length + ')', g.product_id === actual); }).join('') :
+        '<option value="">' + ((f._cat || []).length ? 'Nada coincide' : 'Catálogo vacío: sincronízalo') + '</option>';
+      f._rjuego = '';
+      llenarPaquetes(f);
+    }
+    function juegoProveedor(f) { return (f._cat || []).filter(function (x) { return x.product_id === f.rjuego.value; })[0]; }
+    function llenarPaquetes(f) {
+      var q = norm(f.buscar.value.trim()), g = juegoProveedor(f), actual = f._elegido || f.package_id.value;
+      // si el buscador coincide con el juego se ven todos sus productos; si no, solo los que coinciden
+      var ps = !g ? [] : coincide(g.nombre, q) ? g.paquetes : g.paquetes.filter(function (p) { return coincide(p.nombre, q); });
+      f.package_id.innerHTML = ps.length ? ps.map(function (p) {
+        return option(p.package_id, p.nombre + ' · ' + money(p.precio) + (p.en_stock ? '' : ' · sin stock'), p.package_id === actual);
+      }).join('') : '<option value="">—</option>';
+      f._elegido = '';
+      mostrarInfo(f);
+    }
+    function productoElegido(f) { var g = juegoProveedor(f); return g ? g.paquetes.filter(function (p) { return p.package_id === f.package_id.value; })[0] : null; }
+    function mostrarInfo(f) {
+      var p = productoElegido(f), info = f.querySelector('[data-info]'), j = juegoPorId(+f.dataset.jid);
+      if (!p) { info.textContent = ''; return; }
+      var cant = Math.max(1, Math.min(10, parseInt(f.cantidad.value, 10) || 1));
+      var t = 'Te cuesta ' + money(p.precio * cant) + ' en tu proveedor.' + (p.campos.length ? ' Pide: ' + p.campos.join(', ') + '.' : '');
+      if (p.campos.length > 1 && j && !j.zona) t += ' Este producto pide más de un dato: activa «Pide un segundo dato» en el juego (Editar).';
+      if (!p.en_stock) t += ' Ahora mismo está sin stock.';
+      info.textContent = t;
+      if (!f.dataset.pkid) f.nombre.placeholder = p.nombre;
+    }
+
+    async function accionPaquete(b) {
+      var a = b.dataset.paq;
+      if (a === 'nuevo') return abrirFormPaquete(+b.dataset.jid, null);
+      var pkid = +b.dataset.pkid, p = paquetePorId(pkid);
+      if (a === 'editar') return abrirFormPaquete(+b.dataset.jid, p);
+      if (a === 'eliminar' && !confirm('¿Eliminar el paquete «' + p.nombre + '»?')) return;
+      var d = await pedir('/mis-proveedores/paquetes/' + pkid, {accion: a});
+      aviso(!!d.ok, d.ok ? {activar: 'Paquete activado', desactivar: 'Paquete desactivado', eliminar: 'Paquete eliminado'}[a] : d.error);
+      if (d.ok) cargar();
+    }
+
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-prov], button[data-juego], button[data-paq], button[data-cerrar]');
+      if (!b) return;
+      if (b.dataset.cerrar) document.getElementById(b.dataset.cerrar).innerHTML = '';
+      else if (b.dataset.prov) accionProveedor(b);
+      else if (b.dataset.juego) accionJuego(b);
+      else accionPaquete(b);
+    });
+    document.addEventListener('input', function (e) {
+      var f = e.target.form;
+      if (!f || f.dataset.form !== 'paquete') return;
+      if (e.target.name === 'buscar') llenarJuegos(f);
+      else if (e.target.name === 'cantidad') mostrarInfo(f);
+    });
+    document.addEventListener('change', function (e) {
+      var f = e.target.form;
+      if (!f || f.dataset.form !== 'paquete') return;
+      if (e.target.name === 'conexion_id') { f._elegido = ''; cargarCatalogoEnForm(f); }
+      else if (e.target.name === 'rjuego') llenarPaquetes(f);
+      else if (e.target.name === 'package_id') mostrarInfo(f);
+    });
+    document.addEventListener('submit', async function (e) {
+      var f = e.target, boton = f.querySelector('button[type="submit"]'), d;
+      if (f.id === 'mp-nueva') {
+        e.preventDefault();
+        boton.disabled = true; boton.textContent = 'Conectando…';
+        d = await pedir('/mis-proveedores/conexiones', {tipo: f.tipo.value, nombre: f.nombre.value, llave: f.llave.value});
+        boton.disabled = false; boton.textContent = 'Conectar';
+        if (!d.ok) return aviso(false, d.error);
+        f.nombre.value = ''; f.llave.value = '';
+        saldos[d.id] = d.saldo;
+        aviso(true, 'Proveedor conectado' + (d.catalogo ? ': ' + d.catalogo.nuevos + ' productos en su catálogo.' : '.') +
+          (d.catalogo_error ? ' No se pudo leer su catálogo (' + d.catalogo_error + '): pulsa «Sincronizar catálogo».' : ''));
+        cargar();
+      } else if (f.id === 'mp-nuevo-juego') {
+        e.preventDefault();
+        boton.disabled = true;
+        d = await pedir('/mis-proveedores/juegos', {nombre: f.nombre.value, icono: f.icono.value, zona: f.zona.checked, zona_label: f.zona_label.value});
+        boton.disabled = false;
+        if (!d.ok) return aviso(false, d.error);
+        f.nombre.value = ''; f.zona.checked = false; f.zona_label.value = '';
+        aviso(true, 'Juego creado. Ahora agrégale sus paquetes.');
+        await cargar();
+        if (D.conexiones.length && document.getElementById('pf-' + d.id)) abrirFormPaquete(d.id, null);
+      } else if (f.dataset.form === 'juego') {
+        e.preventDefault();
+        d = await pedir('/mis-proveedores/juegos/' + f.dataset.jid, {accion: 'editar', nombre: f.nombre.value, icono: f.icono.value, zona: f.zona.checked, zona_label: f.zona_label.value});
+        aviso(!!d.ok, d.ok ? 'Juego guardado' : d.error);
+        if (d.ok) cargar();
+      } else if (f.dataset.form === 'paquete') {
+        e.preventDefault();
+        var p = productoElegido(f);
+        if (!p) return aviso(false, 'Elige el producto de tu proveedor.');
+        var body = {conexion_id: +f.conexion_id.value, package_id: p.package_id, cantidad: +f.cantidad.value || 1,
+                    nombre: f.nombre.value.trim() || p.nombre, precio: f.precio.value === '' ? 0 : +f.precio.value};
+        boton.disabled = true;
+        d = await pedir(f.dataset.pkid ? '/mis-proveedores/paquetes/' + f.dataset.pkid : '/mis-proveedores/juegos/' + f.dataset.jid + '/paquetes', body);
+        boton.disabled = false;
+        if (!d.ok) return aviso(false, d.error);
+        var pkid = f.dataset.pkid || d.id;
+        aviso(true, f.dataset.pkid ? 'Paquete guardado' : 'Paquete agregado');
+        await cargar();
+        var fila = document.getElementById('paq-' + pkid);
+        if (fila) fila.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      }
+    });
+    cargar();
+  </script>
+</body>
+</html>

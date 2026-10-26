@@ -397,6 +397,8 @@ import recuperar as _recuperar
 app.register_blueprint(_recuperar.bp)
 from bdv_lector_api import bp as bdv_lector_api_bp   # API del lector externo del BDV
 app.register_blueprint(bdv_lector_api_bp)
+from proveedores_usuario import bp as proveedores_usuario_bp   # «Mis proveedores»: el proveedor propio de cada usuario
+app.register_blueprint(proveedores_usuario_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
@@ -432,9 +434,11 @@ app.jinja_env.globals['ahora_local'] = ahora_local
 
 @app.context_processor
 def inject_dynamic_games_menu():
-    """Inyecta la lista de juegos dinámicos activos en todas las plantillas."""
+    """Inyecta la lista de juegos dinámicos activos en todas las plantillas (los de la web y, para su dueño, sus juegos
+    propios: ver proveedores_usuario)."""
     try:
-        games = get_dynamic_games_list(only_active=True)
+        from dynamic_games import juegos_para
+        games = juegos_para(session.get('user_db_id') if 'usuario' in session else None)
         from dynamic_games import get_game_categoria
         id_games = [g for g in games if (g.get('modo') or 'id') == 'id']
         otros = [g for g in games if (g.get('modo') or 'id') != 'id']
@@ -2706,6 +2710,13 @@ def _retirar_juegos_de_ejemplo():
 
 
 _retirar_juegos_de_ejemplo()
+
+# Proveedores propios de cada usuario: tablas y columnas (juegos_dinamicos.usuario_id, rev_item_mapping_steps.proveedor_usuario_id)
+try:
+    import proveedores_usuario as _proveedores_usuario
+    _proveedores_usuario.init_tablas()
+except Exception as _e:
+    logger.warning(f'[Proveedores propios] No se pudieron preparar las tablas: {_e}')
 
 # Claves de API separadas (Recargas / Referencias): columnas y reinicio único de las claves anteriores
 try:
@@ -5302,7 +5313,7 @@ def admin_gameclub_price_health():
         # Juegos dinámicos
         if pg_table_exists(conn, 'juegos_dinamicos') and pg_table_exists(conn, 'paquetes_dinamicos') and pg_table_exists(conn, 'precios_compra'):
             dyn_games_rows = conn.execute(
-                'SELECT id, nombre, slug, gamepoint_product_id FROM juegos_dinamicos ORDER BY nombre'
+                'SELECT id, nombre, slug, gamepoint_product_id FROM juegos_dinamicos WHERE usuario_id IS NULL ORDER BY nombre'
             ).fetchall()
             for g in dyn_games_rows:
                 g = dict(g)

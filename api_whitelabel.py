@@ -194,14 +194,15 @@ def api_v1_account():
 @bp.route('/api/v1/products', methods=['GET'])
 @require_api_key
 def api_v1_products():
-    """Catálogo: solo juegos creados por el admin con paquetes mapeados y su precio."""
+    """Catálogo: los juegos creados por el admin con paquetes mapeados y su precio y, al final, los juegos propios de esta
+    cuenta (con su proveedor: own_provider = true; su precio es el que él puso y no se descuenta de su saldo)."""
     from api_panel import catalogo
     games = []
     try:
-        for j in catalogo():
+        for j in catalogo(request._ws_account['usuario_id']):
             games.append({
                 'game_type': 'dynamic', 'game_id': j['product_id'], 'name': j['nombre'], 'slug': j['slug'],
-                'mode': 'id', 'icon': j['icono'], 'description': '',
+                'mode': 'id', 'icon': j['icono'], 'description': '', 'own_provider': bool(j.get('propio')),
                 'player_id2_label': j['player_id2'], 'servers': j['servidor'], 'verify_id': j['verifica_id'],
                 'packages': [{'package_id': p['package_id'], 'name': p['nombre'], 'price': p['precio'], 'description': ''}
                              for p in j['paquetes']],
@@ -282,7 +283,8 @@ def api_v1_recharge():
 
     # --- Resolver juego y paquete: solo juegos creados por el admin con Mapeo activo ---
     from api_panel import paquete_mapeado
-    game, pkg = paquete_mapeado(product_id, package_id)
+    # (un paquete propio, con el proveedor de un usuario, solo lo encuentra la cuenta de su dueño)
+    game, pkg = paquete_mapeado(product_id, package_id, account['usuario_id'])
     if not game:
         return jsonify({'ok': False, 'error': f'Paquete {package_id} no encontrado, inactivo o sin mapeo'}), 404
     return _recharge_mapped(account, game, pkg, player_id, player_id2, external_order_id)
@@ -293,7 +295,8 @@ def _recharge_mapped(account, game, pkg, player_id, player_id2, external_order_i
     Cobra el precio del paquete al usuario vinculado y lo devuelve si falla."""
     from dynamic_games import ejecutar_recarga_mapeo, units_de_mapeo
     usuario_id = account['usuario_id']
-    precio = float(pkg['precio'])
+    # (con su proveedor propio no se le cobra nada aquí: la orden queda con precio 0)
+    precio = 0.0 if game.get('usuario_id') else float(pkg['precio'])
     _start = time_module.time()
 
     conn = _get_conn()

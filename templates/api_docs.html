@@ -52,7 +52,7 @@
   <div class="dc-actions"><button class="dc-btn" data-pdf style="background:var(--rc-mist);color:var(--rc-card);border:0;" onclick="descargarPDF('#dc-doc', 'api-documentacion.pdf', this)">⬇ Descargar PDF</button><button class="dc-btn" onclick="window.print()">Imprimir</button></div>
   <nav class="dc-toc">
     <a href="#inicio">Inicio rápido</a><a href="#flujo">Flujo del CRM</a><a href="#productos">Catálogo</a><a href="#verify-id">Verificar ID</a>
-    <a href="#recarga">Recargar</a><a href="#estado">Estado de órdenes</a><a href="#saldo">Saldo</a>
+    <a href="#recarga">Recargar</a><a href="#propios">Con tu proveedor</a><a href="#estado">Estado de órdenes</a><a href="#saldo">Saldo</a>
     <a href="#errores">Errores</a><a href="#juegos">Juegos y paquetes</a>
   </nav>
 
@@ -78,13 +78,13 @@
 
   <h2 id="productos">Catálogo</h2>
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/products</code> <span class="dc-chip">clave de Recargas</span></h3>
-  <p>{% if admin %}Lista <strong>solo los juegos que creaste</strong> y, de ellos, <strong>solo los paquetes con Mapeo activo</strong>, con el precio que les pusiste.{% else %}Lista los juegos y paquetes que se pueden recargar por API, con su precio.{% endif %} El <code>game_id</code> de cada juego es el <code>product_id</code> que usan las demás llamadas.</p>
+  <p>{% if admin %}Lista <strong>solo los juegos que creaste</strong> y, de ellos, <strong>solo los paquetes con Mapeo activo</strong>, con el precio que les pusiste.{% else %}Lista los juegos y paquetes que se pueden recargar por API, con su precio.{% endif %} El <code>game_id</code> de cada juego es el <code>product_id</code> que usan las demás llamadas. {% if admin %}Con la clave de un usuario salen también, al final, los juegos que él creó con su propio proveedor{% else %}Al final salen también los juegos que creaste con tu propio proveedor{% endif %} (<code>"own_provider": true</code>, ver <a href="#propios" style="color:var(--rc-hl);">Con tu proveedor</a>).</p>
 <pre>curl {{ api_url }}/api/v1/products -H "X-API-Key: wsk_TU_CLAVE"</pre>
 <pre>{
   "ok": true,
   "games": [
     {"game_id": 12, "name": "Free fire ID", "game_type": "dynamic", "mode": "id",
-     "player_id2_label": null, "verify_id": true,
+     "player_id2_label": null, "verify_id": true, "own_provider": false,
      "packages": [{"package_id": 40, "name": "110 💎", "price": 0.95}]}
   ],
   "user": {"user_id": 12, "name": "CRM", "balance": 150.0}
@@ -126,6 +126,16 @@
 {"ok": true, "order_id": 88, "status": "completada", "parcial": true, "cobrado": 0.95, "devuelto": 0.95}   ← paquete de varios ítems entregado a medias</pre>
   <p>Se recarga igual que en la web: si el <em>Bot de Free Fire</em> está encendido y tiene PINs de ese paquete, se usa primero; si no, el proveedor del Mapeo. La respuesta llega cuando termina la recarga (puede tardar varios segundos). Estados posibles: <code>completada</code>, <code>fallida</code> (con el saldo ya devuelto) y <code>procesando</code> (el proveedor la aceptó y se cierra sola; consulta su estado con <code>order-status</code>).</p>
 
+  <h2 id="propios">Paquetes con tu proveedor</h2>
+  <p>{% if admin %}Cada usuario puede conectar su propio proveedor (Central One) en su apartado <strong>Mis proveedores</strong> y crear allí sus juegos y paquetes.{% else %}En <a href="/mis-proveedores" style="color:var(--rc-hl);">Mis proveedores</a> conectas tu propio proveedor (Central One) y creas tus juegos y paquetes con él.{% endif %} Se usan con las mismas llamadas de arriba, sin nada distinto en la petición:</p>
+  <ul>
+    <li><strong>Solo los ve {% if admin %}su dueño{% else %}tu cuenta{% endif %}:</strong> salen en <code>/api/v1/products</code> con <code>"own_provider": true</code> únicamente con las claves de {% if admin %}ese usuario{% else %}tus claves{% endif %}. Con la clave de otra cuenta responden <code>404</code>, como si no existieran.</li>
+    <li><strong>No se cobra nada del saldo de la web:</strong> la recarga la paga {% if admin %}el proveedor del usuario, con el saldo que tiene allá{% else %}tu proveedor, con el saldo que tienes allá{% endif %}. El <code>price</code> es solo la referencia que {% if admin %}él le puso{% else %}le pusiste{% endif %}; la orden queda con precio <code>0</code> y <code>remaining_balance</code> no cambia. Nunca responde <code>402</code>.</li>
+    <li><strong>Mismas respuestas y estados</strong> (<code>completada</code>, <code>fallida</code>, <code>procesando</code>), el mismo <code>external_order_id</code> contra duplicados y el mismo <code>order-status</code>.</li>
+    <li><strong>Verificar ID</strong> no está disponible para estos juegos (<code>"verify_id": false</code>).</li>
+    <li>Si {% if admin %}el usuario quita su proveedor{% else %}quitas tu proveedor{% endif %} o su llave deja de valer, la recarga responde <code>503</code> y no se hace.</li>
+  </ul>
+
   <h2 id="estado">Estado de órdenes</h2>
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/order-status?external_order_id=ORD-1001</code></h3>
 <pre>{"ok": true, "found": true, "status": "completada",
@@ -143,13 +153,13 @@
     <tr><th>HTTP</th><th>Cuándo</th></tr>
     <tr><td><code>400</code></td><td>Faltan datos o tienen un formato inválido.</td></tr>
     <tr><td><code>401</code></td><td>Falta la clave, es incorrecta o está desactivada.</td></tr>
-    <tr><td><code>402</code></td><td>Saldo insuficiente para la recarga.</td></tr>
+    <tr><td><code>402</code></td><td>Saldo insuficiente para la recarga (nunca en los paquetes con tu proveedor).</td></tr>
     <tr><td><code>403</code></td><td>La clave no tiene permiso para esa acción, o es una clave de Referencias.</td></tr>
     <tr><td><code>404</code></td><td>Juego, paquete u orden no encontrados, o verificación de ID no disponible para ese juego.</td></tr>
     <tr><td><code>409</code></td><td>Esa <code>external_order_id</code> tiene una recarga todavía en proceso.</td></tr>
     <tr><td><code>202</code></td><td>Recarga aceptada y todavía en proceso (consulta su estado más tarde).</td></tr>
     <tr><td><code>422</code></td><td>La recarga falló (el saldo ya se devolvió).</td></tr>
-    <tr><td><code>503</code></td><td>El proveedor no está configurado en la web.</td></tr>
+    <tr><td><code>503</code></td><td>El proveedor no está configurado en la web o, en un paquete con tu proveedor, ese proveedor ya no está conectado.</td></tr>
     <tr><td><code>429</code></td><td>Demasiadas peticiones; espera un minuto.</td></tr>
   </table></div>
 
@@ -158,7 +168,8 @@
   {% for j in juegos %}
   <div class="dc-game">
     <h3>{{ j.nombre }} <span class="dc-chip">product_id <code>{{ j.product_id }}</code></span>
-      <span class="dc-chip">Verificar ID: {% if j.verifica_id %}<span class="dc-yes">sí</span>{% else %}<span class="dc-no">no</span>{% endif %}</span></h3>
+      <span class="dc-chip">Verificar ID: {% if j.verifica_id %}<span class="dc-yes">sí</span>{% else %}<span class="dc-no">no</span>{% endif %}</span>
+      {% if j.propio %}<span class="dc-chip">Con tu proveedor · no se cobra de tu saldo</span>{% endif %}</h3>
     <p style="margin:0 0 6px;font-size:13px;color:var(--rc-ash);">
       Campos: <code>player_id</code>{% if j.player_id2 %} + <code>player_id2</code> ({{ j.player_id2 }}){% endif %}
     </p>

@@ -13,7 +13,12 @@ En el catálogo local (rev_catalog_items) sus productos se guardan con remote_pr
 y remote_package_id = UUID del producto, así el Mapeo los distingue de los de Inefable.
 
 No hay sandbox: cualquier pedido mueve saldo real.
+
+La llave de siempre es la del dueño de la web (CENTRALONE_API_KEY). Un usuario que trae su propio Central One (ver
+proveedores_usuario.py) usa la suya solo dentro de «with con_llave(llave):»; fuera de ese bloque todo sigue con la del dueño.
 """
+import contextlib
+import contextvars
 import json
 import logging
 import os
@@ -23,6 +28,24 @@ import time
 import requests
 
 logger = logging.getLogger(__name__)
+
+# La llave de un usuario mientras dura «with con_llave(...)» (por hilo/petición); None = la del dueño (variable de entorno)
+_llave_usuario = contextvars.ContextVar('centralone_llave_usuario', default=None)
+
+
+@contextlib.contextmanager
+def con_llave(llave):
+    """Las consultas a Central One dentro del bloque usan esta llave (la del proveedor propio de un usuario)."""
+    marca = _llave_usuario.set(str(llave or '').strip())
+    try:
+        yield
+    finally:
+        _llave_usuario.reset(marca)
+
+
+def _llave():
+    propia = _llave_usuario.get()
+    return propia if propia is not None else os.environ.get('CENTRALONE_API_KEY', '').strip()
 
 PREFIJO = 'co:'
 NOMBRE = 'Central One'
@@ -55,14 +78,14 @@ def base_url():
 
 
 def configurado():
-    return bool(os.environ.get('CENTRALONE_API_KEY', '').strip())
+    return bool(_llave())
 
 
 def _pedir(metodo, path, body=None, idem=None, sin_llave=False):
     """(status_http, json). status 0 = sin respuesta (red caída o timeout). Nunca lanza."""
     headers = {'Accept': 'application/json', 'User-Agent': '3sRevendedores/1.0'}
     if not sin_llave:
-        headers['Authorization'] = 'Bearer ' + os.environ.get('CENTRALONE_API_KEY', '').strip()
+        headers['Authorization'] = 'Bearer ' + _llave()
     if idem:
         headers['Idempotency-Key'] = idem
     try:

@@ -204,12 +204,15 @@ def paquetes_mapeados(juego_id):
         conn.close()
 
 
-def catalogo():
-    """Solo los juegos creados por el admin (recarga por ID) y, de ellos, los paquetes con Mapeo activo,
-    con el precio que puso el admin. No incluye juegos ni precios de ejemplo del código."""
+def catalogo(usuario_id=None):
+    """Los juegos creados por el admin (recarga por ID) y, de ellos, los paquetes con Mapeo activo, con el precio que puso
+    el admin. No incluye juegos ni precios de ejemplo del código. Con usuario_id, al final van también los juegos PROPIOS de
+    ese usuario (con su proveedor: ver proveedores_usuario), marcados con «propio» y con el precio que él les puso (no se le
+    descuenta de su saldo: paga directo a su proveedor). Los de otros usuarios nunca salen."""
     from dynamic_games import get_all_dynamic_games, get_dynamic_packages, parse_campos_config
     juegos = []
-    for g in get_all_dynamic_games(only_active=True):
+    propios = get_all_dynamic_games(only_active=True, usuario_id=int(usuario_id)) if usuario_id else []
+    for g in get_all_dynamic_games(only_active=True) + propios:
         if (g.get('modo') or 'id') != 'id' or g.get('usa_stock_local'):
             continue
         mapeados = paquetes_mapeados(g['id'])
@@ -224,19 +227,23 @@ def catalogo():
             'product_id': g['id'], 'nombre': g['nombre'], 'slug': g['slug'], 'modo': 'id', 'icono': g.get('icono') or '',
             'player_id2': (id2.get('label') or 'Zone ID') if id2.get('enabled') else None,
             'servidor': (srv.get('opciones') or []) if srv.get('enabled') else None,
-            'verifica_id': _verifica_id(g), 'paquetes': paquetes,
+            'verifica_id': False if g.get('usuario_id') else _verifica_id(g), 'paquetes': paquetes,
+            'propio': bool(g.get('usuario_id')),
         })
     return juegos
 
 
-def paquete_mapeado(product_id, package_id):
-    """(juego, paquete) si el paquete pertenece a un juego del catálogo y está mapeado; si no, (None, None)."""
+def paquete_mapeado(product_id, package_id, usuario_id=None):
+    """(juego, paquete) si el paquete pertenece a un juego del catálogo y está mapeado; si no, (None, None). Un paquete de
+    un juego propio solo vale para su dueño (usuario_id); para cualquier otro es como si no existiera."""
     from dynamic_games import get_dynamic_game_by_id, get_dynamic_package_by_id
     pkg = get_dynamic_package_by_id(package_id)
     if not pkg or not pkg.get('activo') or (product_id is not None and int(pkg['juego_id']) != int(product_id)):
         return None, None
     game = get_dynamic_game_by_id(pkg['juego_id'])
     if not game or not game.get('activo') or (game.get('modo') or 'id') != 'id' or game.get('usa_stock_local'):
+        return None, None
+    if game.get('usuario_id') and (usuario_id is None or int(game['usuario_id']) != int(usuario_id)):
         return None, None
     if pkg['id'] not in paquetes_mapeados(game['id']):
         return None, None
@@ -330,7 +337,8 @@ def admin_api_docs():
 
 def _docs(admin):
     try:
-        juegos = catalogo()
+        # (el usuario ve también sus paquetes propios, con su proveedor; el admin, el catálogo de la web)
+        juegos = catalogo() if admin else catalogo(_uid_sesion())
     except Exception as e:
         logger.error(f'[API] Error armando el catálogo para la documentación: {e}')
         juegos = []

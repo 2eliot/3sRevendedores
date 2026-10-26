@@ -109,14 +109,31 @@ def set_gp_usd_to_myr_rate(rate: float):
     conn.close()
 
 
-def get_all_dynamic_games(only_active=False):
+def get_all_dynamic_games(only_active=False, usuario_id=None):
+    """Los juegos de la web (para todos). Con usuario_id: solo los juegos PROPIOS de ese usuario (los que creó con su
+    proveedor, ver proveedores_usuario). Un juego propio nunca sale en la lista de la web: solo se pide a propósito."""
     conn = _get_conn()
-    if only_active:
-        rows = conn.execute('SELECT * FROM juegos_dinamicos WHERE activo = TRUE ORDER BY nombre').fetchall()
-    else:
-        rows = conn.execute('SELECT * FROM juegos_dinamicos ORDER BY nombre').fetchall()
+    dueno = 'usuario_id = ?' if usuario_id is not None else 'usuario_id IS NULL'
+    params = (usuario_id,) if usuario_id is not None else ()
+    activo = ' AND activo = TRUE' if only_active else ''
+    rows = conn.execute(f'SELECT * FROM juegos_dinamicos WHERE {dueno}{activo} ORDER BY nombre', params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def _puede_usar(game):
+    """Un juego de la web lo usa cualquiera; uno propio (de un usuario), solo su dueño (con su sesión)."""
+    dueno = (game or {}).get('usuario_id')
+    uid = session.get('user_db_id')
+    return not dueno or (uid is not None and int(dueno) == int(uid))
+
+
+def juegos_para(uid, only_active=True):
+    """Lo que ve un usuario: los juegos de la web y, después, los suyos propios."""
+    games = get_all_dynamic_games(only_active=only_active)
+    if uid:
+        games += [dict(g, propio=True) for g in get_all_dynamic_games(only_active=only_active, usuario_id=int(uid))]
+    return games
 
 
 def get_dynamic_game_by_slug(slug):
@@ -902,7 +919,8 @@ def dynamic_game_page(slug):
         return redirect('/auth')
 
     game = get_dynamic_game_by_slug(slug)
-    if not game:
+    # (un juego propio de un usuario solo lo ve su dueño: para los demás no existe, ni para el admin)
+    if not game or not _puede_usar(game):
         flash('Juego no encontrado.', 'error')
         return redirect('/')
 
@@ -942,7 +960,7 @@ def dynamic_game_page(slug):
     # Lazy import to avoid circular dependency
     from app import get_games_active
     games_active = get_games_active()
-    dynamic_games_menu = get_all_dynamic_games(only_active=True)
+    dynamic_games_menu = juegos_para(session.get('user_db_id'))
 
     return render_template('juego_dinamico.html',
                            game=game,
@@ -968,7 +986,7 @@ def validar_dinamico(slug):
         return redirect('/auth')
 
     game = get_dynamic_game_by_slug(slug)
-    if not game:
+    if not game or not _puede_usar(game):
         flash('Juego no encontrado.', 'error')
         return redirect('/')
 
@@ -1037,6 +1055,17 @@ def validar_dinamico(slug):
 
     precio = pkg['precio']
     # Ya no se requiere gamepoint_package_id, solo mapping de revendedores
+
+    # Un paquete propio (con el proveedor del usuario): no se mira ni se toca su saldo de la web; se recarga con su proveedor
+    if game.get('usuario_id'):
+        units = units_de_mapeo(game['id'], package_id)
+        if not units:
+            flash('Este paquete no tiene un producto de tu proveedor: conéctalo en «Mis proveedores».', 'error')
+            return redirect(redirect_url)
+        return _purchase_via_reseller_multi(
+            game, pkg, units, slug, user_id, is_admin, 0.0, package_id,
+            player_id, player_id2, servidor, redirect_url, time_module.time()
+        )
 
     # Check balance
     if not is_admin:
@@ -1862,7 +1891,11 @@ def units_de_respaldo(juego_id, paquete_id):
     return units
 
 
-def _proveedor_listo(prov):
+def _proveedor_listo(prov, u=None):
+    if prov == 'usuario':
+        # el proveedor propio del usuario (su conexión): listo si sigue conectado
+        import proveedores_usuario
+        return bool(u and u.get('conexion') and proveedores_usuario.llave_de(u['conexion']))
     if prov == 'centralone':
         import central_one
         return central_one.configurado()
@@ -1872,6 +1905,19 @@ def _proveedor_listo(prov):
 def _recargar_unidad(u, player_id, player_id2, servidor):
     """Envía UNA recarga al proveedor de la unidad. Devuelve el formato de respuesta de Inefable."""
     prov = u.get('prov') or _prov_de(u.get('prod'))
+    if prov == 'usuario':
+        # con el Central One del propio usuario (su llave), nunca con el de la web
+        import central_one
+        import proveedores_usuario
+        llave = proveedores_usuario.llave_de(u.get('conexion'))
+        if not llave:
+            return {'ok': False, 'error': 'Tu proveedor ya no está conectado: conéctalo de nuevo en «Mis proveedores»'}
+        item = proveedores_usuario.item_de(u['conexion'], u['pkg'])
+        with central_one.con_llave(llave):
+            resp = central_one.recargar(u['pkg'], item, player_id, player_id2, servidor, u['ext'])
+        if resp.get('co_id'):
+            u['co_id'] = resp['co_id']
+        return resp
     if not _proveedor_listo(prov):
         return {'ok': False, 'error': ('Central One' if prov == 'centralone' else 'Inefable') + ' no está configurado'}
     if prov == 'centralone':
@@ -1895,16 +1941,23 @@ def _recargar_unidad(u, player_id, player_id2, servidor):
 def _estado_unidad(u, player_id, player_id2, servidor, old):
     """Reconciliador: actualiza una unidad 'pend'/'sent' consultando a su proveedor."""
     prov = u.get('prov') or _prov_de(u.get('prod'))
-    if not _proveedor_listo(prov):
+    if not _proveedor_listo(prov, u):
         return
-    if prov == 'centralone':
+    if prov in ('centralone', 'usuario'):
         import central_one
-        conn = _get_conn()
-        try:
-            item = central_one.item_de_catalogo(conn, u['pkg'])
-        finally:
-            conn.close()
-        r = central_one.estado(u, item, player_id, player_id2 or '', servidor or '')
+        if prov == 'usuario':
+            # (la del proveedor propio del usuario se consulta con su llave)
+            import proveedores_usuario
+            item = proveedores_usuario.item_de(u['conexion'], u['pkg'])
+            with central_one.con_llave(proveedores_usuario.llave_de(u['conexion'])):
+                r = central_one.estado(u, item, player_id, player_id2 or '', servidor or '')
+        else:
+            conn = _get_conn()
+            try:
+                item = central_one.item_de_catalogo(conn, u['pkg'])
+            finally:
+                conn.close()
+            r = central_one.estado(u, item, player_id, player_id2 or '', servidor or '')
         if r.get('co_id'):
             u['co_id'] = r['co_id']
         if r.get('ok'):
@@ -1932,21 +1985,30 @@ def _load_mapping_units(juego_id, paquete_id):
     try:
         conn = _get_conn()
         rows = conn.execute(
-            'SELECT remote_product_id, remote_package_id, remote_label, cantidad FROM rev_item_mapping_steps '
+            'SELECT remote_product_id, remote_package_id, remote_label, cantidad, proveedor_usuario_id FROM rev_item_mapping_steps '
             'WHERE juego_id = ? AND paquete_id = ? ORDER BY orden', (juego_id, paquete_id)).fetchall()
         units = []
         for r in rows:
             peso = 0.0
-            cat = conn.execute('SELECT raw_json FROM rev_catalog_items WHERE remote_product_id = ? AND remote_package_id = ?',
-                               (r['remote_product_id'], r['remote_package_id'])).fetchone()
+            conexion = r['proveedor_usuario_id']
+            if conexion:
+                # (paso con el proveedor propio del usuario: su catálogo)
+                cat = conn.execute('SELECT raw_json FROM catalogo_proveedor_usuario WHERE proveedor_id = ? AND remote_package_id = ?',
+                                   (conexion, r['remote_package_id'])).fetchone()
+            else:
+                cat = conn.execute('SELECT raw_json FROM rev_catalog_items WHERE remote_product_id = ? AND remote_package_id = ?',
+                                   (r['remote_product_id'], r['remote_package_id'])).fetchone()
             if cat:
                 try:
                     peso = float((json.loads(cat['raw_json'] or '{}') or {}).get('price') or 0)
                 except Exception:
                     peso = 0.0
             for _ in range(max(1, int(r['cantidad'] or 1))):
-                units.append({'prod': str(r['remote_product_id']), 'pkg': str(r['remote_package_id']),
-                              'label': r['remote_label'] or '', 'w': peso, 'prov': _prov_de(r['remote_product_id'])})
+                unit = {'prod': str(r['remote_product_id']), 'pkg': str(r['remote_package_id']),
+                        'label': r['remote_label'] or '', 'w': peso, 'prov': 'usuario' if conexion else _prov_de(r['remote_product_id'])}
+                if conexion:
+                    unit['conexion'] = int(conexion)
+                units.append(unit)
         conn.close()
         # Sin precio remoto en alguna unidad → todas pesan igual
         if any(u['w'] <= 0 for u in units):
@@ -2069,18 +2131,20 @@ def _multi_finalize(tx, state, refund_allowed):
         INSERT INTO historial_compras (usuario_id, monto, paquete_nombre, pin, tipo_evento, duracion_segundos, saldo_antes, saldo_despues)
         VALUES (?, ?, ?, ?, 'compra', ?, ?, ?)
     ''', (tx['usuario_id'], cobrado, paquete_display, pin_info, tx.get('duracion', 0), _saldo + cobrado, _saldo))
-    try:
-        juego_key = f"dyn_{tx['slug']}"
-        costo_row = conn.execute('SELECT precio_compra FROM precios_compra WHERE juego=? AND paquete_id=?',
-                                 (juego_key, tx['paquete_id'])).fetchone()
-        costo_unit = (costo_row['precio_compra'] if costo_row else 0) * (cobrado / precio if precio else 1)
-        profit_unit = round(cobrado - costo_unit, 4)
-        conn.execute('''
-            INSERT INTO profit_ledger (usuario_id, juego, paquete_id, cantidad, precio_venta_unit, costo_unit, profit_unit, profit_total, transaccion_id)
-            VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
-        ''', (tx['usuario_id'], juego_key, tx['paquete_id'], cobrado, costo_unit, profit_unit, profit_unit, tx['transaccion_id']))
-    except Exception:
-        pass
+    # (una compra con el proveedor propio del usuario va con monto 0: no es una venta de la web, no tiene ganancia)
+    if precio > 0 and not tx.get('propio'):
+        try:
+            juego_key = f"dyn_{tx['slug']}"
+            costo_row = conn.execute('SELECT precio_compra FROM precios_compra WHERE juego=? AND paquete_id=?',
+                                     (juego_key, tx['paquete_id'])).fetchone()
+            costo_unit = (costo_row['precio_compra'] if costo_row else 0) * (cobrado / precio if precio else 1)
+            profit_unit = round(cobrado - costo_unit, 4)
+            conn.execute('''
+                INSERT INTO profit_ledger (usuario_id, juego, paquete_id, cantidad, precio_venta_unit, costo_unit, profit_unit, profit_total, transaccion_id)
+                VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+            ''', (tx['usuario_id'], juego_key, tx['paquete_id'], cobrado, costo_unit, profit_unit, profit_unit, tx['transaccion_id']))
+        except Exception:
+            pass
     if refund_allowed:
         try:
             from update_monthly_spending import update_monthly_spending
@@ -2111,6 +2175,10 @@ def units_de_mapeo(juego_id, paquete_id):
     units = _load_mapping_units(juego_id, paquete_id)
     if units:
         return units
+    # (un juego propio de un usuario se recarga solo con su proveedor: sin pasos no se recarga, nunca con los de la web)
+    game = get_dynamic_game_by_id(juego_id)
+    if game and game.get('usuario_id'):
+        return []
     return [{'prod': str(head['remote_product_id']), 'pkg': str(head['remote_package_id']),
              'label': head['remote_label'] or '', 'w': 1.0, 'prov': _prov_de(head['remote_product_id'])}]
 
@@ -2136,13 +2204,27 @@ def ejecutar_recarga_mapeo(game, pkg, units, user_id, cobrar, player_id, player_
     numero_control = f"DGR-{secrets.token_hex(4).upper()}"
     base = {'numero_control': numero_control, 'merchant_code': merchant_code, 'player_name': '', 'error': ''}
 
-    plan = bot_freefire.plan_para(game['id'], package_id)
+    # Un juego propio (con el proveedor del usuario, ver proveedores_usuario): solo lo compra su dueño, no se cobra de su saldo
+    # de la web (paga directo a su proveedor) y nunca usa el Bot de Free Fire ni el respaldo de la web. Queda con monto 0.
+    propio = bool(game.get('usuario_id'))
+    if propio:
+        if not user_id or int(game['usuario_id']) != int(user_id):
+            return dict(base, estado='no_config', error='Este paquete no existe.')
+        if not units or any(u.get('prov') != 'usuario' for u in units):
+            return dict(base, estado='no_config', error='Este paquete no tiene un producto de tu proveedor.')
+        precio = 0.0
+        cobrar = False
+        sufijo_historial = f"{sufijo_historial} · con tu proveedor"
+
+    plan = None if propio else bot_freefire.plan_para(game['id'], package_id)
     if plan and not bot_freefire.hay_stock(plan):
         plan = None
-    respaldo = units_de_respaldo(game['id'], package_id) if respaldo_activo() else []
-    principal_ok = bool(units) and all(_proveedor_listo(u.get('prov') or 'inefable') for u in units)
-    respaldo_ok = bool(respaldo) and all(_proveedor_listo(u.get('prov') or 'inefable') for u in respaldo)
+    respaldo = units_de_respaldo(game['id'], package_id) if respaldo_activo() and not propio else []
+    principal_ok = bool(units) and all(_proveedor_listo(u.get('prov') or 'inefable', u) for u in units)
+    respaldo_ok = bool(respaldo) and all(_proveedor_listo(u.get('prov') or 'inefable', u) for u in respaldo)
     if not plan and not principal_ok and not respaldo_ok:
+        if propio:
+            return dict(base, estado='no_config', error='Tu proveedor ya no está conectado: conéctalo de nuevo en «Mis proveedores».')
         return dict(base, estado='no_config',
                     error='El revendedor no está configurado.' if units else 'Este paquete no está mapeado para recarga automática.')
     if not principal_ok:
@@ -2244,7 +2326,7 @@ def ejecutar_recarga_mapeo(game, pkg, units, user_id, cobrar, player_id, player_
     tx = {'id': tx_id, 'usuario_id': user_id, 'monto': precio, 'numero_control': numero_control,
           'transaccion_id': merchant_code, 'player_id': player_id, 'player_id2': player_id2,
           'paquete_id': package_id, 'juego_nombre': game['nombre'], 'slug': slug,
-          'paquete_nombre': pkg['nombre'], 'duracion': _duration, 'sufijo': sufijo_historial}
+          'paquete_nombre': pkg['nombre'], 'duracion': _duration, 'sufijo': sufijo_historial, 'propio': propio}
     name = next((u['name'] for u in state['units'] if u.get('name')), '')
 
     # Si queda alguna en proceso (o sin respuesta) no se toca el saldo todavía
@@ -2271,8 +2353,10 @@ def _purchase_via_reseller_multi(game, pkg, units, slug, user_id, is_admin, prec
                                  nombre_fallback=nombre_verificado(f'dyn_{slug}', player_id, player_id2 or ''),
                                  _start=_start)
     estado = res['estado']
+    # (con el proveedor propio del usuario no se toca su saldo de la web: ni se cobra ni se devuelve)
+    propio = bool(game.get('usuario_id'))
     if estado in ('no_config', 'sin_saldo', 'error_inicio'):
-        if estado == 'no_config':
+        if estado == 'no_config' and not propio:
             flash(res['error'] + ' Contacta al administrador.', 'error')
         else:
             flash(res['error'], 'error')
@@ -2288,9 +2372,11 @@ def _purchase_via_reseller_multi(game, pkg, units, slug, user_id, is_admin, prec
         return redirect(f'/juego/d/{slug}?compra=exitosa')
     if estado == 'rechazado':
         err = res.get('error') or 'Error del revendedor'
-        flash(f'La recarga falló: {err}. Tu saldo ha sido devuelto.', 'error')
+        flash(f'La recarga falló: {err}. ' + ('No se descontó nada de tu saldo.' if propio else 'Tu saldo ha sido devuelto.'), 'error')
         return redirect(redirect_url)
-    if res.get('refund'):
+    if res.get('ok') and res.get('total') and res['ok'] < res['total'] and propio:
+        flash(f"Se completaron {res['ok']} de {res['total']} recargas con tu proveedor.", 'error')
+    elif res.get('refund'):
         flash(f"Se completaron {res['ok']} de {res['total']} recargas. Se devolvieron ${res['refund']:.2f} a tu saldo.", 'error')
     session[f'compra_dyn_{slug}_exitosa'] = {
         'paquete_nombre': pkg['nombre'], 'monto_compra': res['cobrado'], 'numero_control': res['numero_control'],
@@ -2312,10 +2398,8 @@ def _sync_session_saldo(user_id):
 
 
 def poll_pending_reseller_multi():
-    """Cierra compras secuenciales con recargas en proceso (o interrumpidas), con Inefable o Central One."""
-    import central_one
-    if not (_proveedor_listo('inefable') or central_one.configurado()):
-        return
+    """Cierra compras secuenciales con recargas en proceso (o interrumpidas), con Inefable o Central One (el de la web o el
+    propio de un usuario: por eso corre aunque la web no tenga proveedores configurados)."""
     try:
         conn = _get_conn()
         rows = conn.execute('''
