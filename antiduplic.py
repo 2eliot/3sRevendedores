@@ -804,6 +804,44 @@ def _pago_de_uso(row):
             'hora': str(row['hora']), 'monto': _f2(row['monto']), 'tipo': row['tipo'], 'estado': row['estado']}
 
 
+def donde_se_uso(row):
+    """Dónde se usó un pago: el nombre de la clave de API que lo usó (p. ej. «3S-Ticket» o «Web»: así una misma cuenta
+    del banco en varias plataformas dice en cuál se usó), o si se asignó a mano en Referencias."""
+    hecho = str(row['hecho_por'] or '')
+    if hecho.startswith('api:'):
+        return re.sub(r'\s*\(#\d+\)$', '', hecho[4:]).strip() or 'API'
+    if hecho.startswith(('usuario:', 'admin:')) or row['origen'] == 'manual':
+        return 'Referencias (a mano)'
+    return {'revendedor': 'Revendedor', 'crm': 'Sistema externo'}.get(row['origen'], row['origen'] or '')
+
+
+def _ya_usado(conn, pago_id, con_detalle=True, cuenta_api_id=None):
+    """Respuesta «usado» con cuándo, dónde y en qué orden se usó (el mensaje lo dice todo: así sale en las notas de
+    cada plataforma sin que tenga que leer campos nuevos). Si la usó la misma clave que pregunta dice «en otra orden»;
+    si fue otra, el nombre de esa clave (p. ej. la web pregunta y se usó en «3S-Ticket»). Sin detalle (un revendedor que
+    reporta un pago del dueño) solo dice cuándo: no se le cuenta quién ni dónde la usó."""
+    uso = conn.execute('SELECT usado_en, orden_id, origen, hecho_por FROM usos_referencia WHERE pago_id = ?', (pago_id,)).fetchone()
+    if not uso:
+        return _r(False, 'usado', 'Referencia ya utilizada')
+    cuando = uso['usado_en'] or ''
+    if not con_detalle:
+        return _r(False, 'usado', 'Referencia ya utilizada' + (f' el {cuando}' if cuando else ''), usado_en=cuando)
+    donde, orden = donde_se_uso(uso), uso['orden_id'] or ''
+    clave = re.search(r'^api:.*\(#(\d+)\)$', str(uso['hecho_por'] or ''))
+    misma = bool(clave and cuenta_api_id is not None and int(clave.group(1)) == int(cuenta_api_id))
+    if clave:   # el nombre de hoy de esa clave (si el admin la renombró, ya sale con el nombre nuevo)
+        actual = conn.execute('SELECT nombre FROM webservice_accounts WHERE id = ?', (int(clave.group(1)),)).fetchone()
+        if actual and str(actual['nombre'] or '').strip():
+            donde = str(actual['nombre']).strip()
+    if misma:
+        lugar = ' en otra orden' + (f' ({orden})' if orden else '')
+    else:
+        lugar = (f' en «{donde}»' if donde else '') + (f' (orden {orden})' if orden else '')
+    mensaje = 'Referencia ya utilizada' + (f' el {cuando}' if cuando else '') + lugar
+    return _r(False, 'usado', mensaje, usado_en=cuando, plataforma=donde or None, orden_id=orden or None,
+              misma_plataforma=misma)
+
+
 def usar_pago(conn, uid, pago_id, origen, revendedor_id, orden_id, ref_rep, monto_rep, hecho_por='', desde_revision=False,
               banco=BANCAMIGA):
     """Marca el pago del usuario como usado de forma atómica. True si lo tomó esta llamada."""
@@ -820,7 +858,8 @@ def usar_pago(conn, uid, pago_id, origen, revendedor_id, orden_id, ref_rep, mont
 
 
 def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='revendedor',
-                          revendedor_id=None, orden_id=None, usuario_id=None, hecho_por='', banco=BANCAMIGA):
+                          revendedor_id=None, orden_id=None, usuario_id=None, hecho_por='', banco=BANCAMIGA,
+                          cuenta_api_id=None):
     """Verifica una referencia contra los pagos DEL USUARIO en ESE BANCO y, si hay uno solo, lo marca como usado."""
     init_tablas()
     banco = banco_de(banco)
@@ -868,9 +907,7 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
         if not disponibles:
             usados = [c for c in todos if c['estado'] == 'usado']
             if usados:
-                uso = conn.execute('SELECT usado_en FROM usos_referencia WHERE pago_id = ?', (usados[0]['id'],)).fetchone()
-                cuando = uso['usado_en'] if uso else ''
-                return _r(False, 'usado', f'Referencia ya utilizada{(" el " + str(cuando)) if cuando else ""}', usado_en=cuando)
+                return _ya_usado(conn, usados[0]['id'], origen != 'revendedor', cuenta_api_id)
             if any(c['estado'] == 'revision' for c in todos):
                 return _r(False, 'revision', 'Este pago está en revisión manual')
             bloqueado = next((c for c in todos if c['estado'] == 'bloqueado'), None)
@@ -913,7 +950,7 @@ def verificar_y_usar_pago(referencia, monto, fecha=None, hora=None, origen='reve
                                banco=banco)
             if not tomado:
                 conn.rollback()
-                return _r(False, 'usado', 'Referencia ya utilizada')
+                return _ya_usado(conn, pago['id'], origen != 'revendedor', cuenta_api_id)   # otra petición lo tomó justo antes
             conn.commit()
         except Exception:
             # p. ej. la misma orden_id aprobada a la vez por otra petición
@@ -951,7 +988,8 @@ def api_verificar_pago():
         return jsonify(_r(False, 'revision', 'Falta orden_id')), 400
     res = verificar_y_usar_pago(data.get('referencia'), data.get('monto'), data.get('fecha'), data.get('hora'),
                                 origen, None, data.get('orden_id'), usuario_id=cuenta['usuario_id'],
-                                hecho_por=f"api:{cuenta['nombre']} (#{cuenta['id']})", banco=banco_clave(cuenta.get('banco')))
+                                hecho_por=f"api:{cuenta['nombre']} (#{cuenta['id']})", banco=banco_clave(cuenta.get('banco')),
+                                cuenta_api_id=cuenta['id'])
     return jsonify(res)
 
 
@@ -968,6 +1006,7 @@ def _uso_dict(r):
         'revendedor': ' '.join(x for x in (r['rev_nombre'], r['rev_apellido']) if x) or None,
         'correo': r['rev_correo'], 'referencia_reportada': r['referencia_reportada'],
         'monto_reportado': _f2(r['monto_reportado']), 'usado_en': r['usado_en'], 'hecho_por': r['hecho_por'],
+        'plataforma': donde_se_uso(r) or None,
     }
 
 

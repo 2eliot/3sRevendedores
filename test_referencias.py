@@ -120,6 +120,45 @@ class ReferenciasTest(unittest.TestCase):
         self.assertEqual(self.verificar(ka, '7568126123', 100, 'O-A2')['codigo'], 'usado')
         self.assertEqual(self.verificar(kb, '7568126123', 100, 'O-B')['codigo'], 'aprobado')
 
+    def test_misma_cuenta_en_dos_plataformas_dice_donde_se_uso(self):
+        """Una clave en 3S-Ticket y otra en la web, de la misma cuenta: la segunda sabe en cuál y con qué orden se usó."""
+        self.enviar([pago('7568126123', 100), pago('1112223334', 50)], 'token-antiguo')
+        conn = get_db_connection()
+        try:
+            _, ticket = api_panel.crear_cuenta(conn, '3S-Ticket', self.A, 'referencias', {'verificar_pago': True})
+            _, web = api_panel.crear_cuenta(conn, 'Web', self.A, 'referencias', {'verificar_pago': True})
+            conn.commit()
+        finally:
+            conn.close()
+        self.assertEqual(self.verificar(web, '7568126123', 100, 'WEB-1050')['codigo'], 'aprobado')
+        r = self.verificar(ticket, '7568126123', 100, '3S-2-abc-C1')   # 3S-Ticket: «se usó en Web»
+        self.assertEqual((r['codigo'], r['plataforma'], r['orden_id'], r['misma_plataforma']), ('usado', 'Web', 'WEB-1050', False))
+        self.assertIn('en «Web» (orden WEB-1050)', r['mensaje'])
+        self.assertTrue(r['mensaje'].startswith('Referencia ya utilizada el ' + r['usado_en']))
+        r = self.verificar(web, '7568126123', 100, 'WEB-1060')   # la misma web: «en otra orden»
+        self.assertEqual((r['codigo'], r['misma_plataforma']), ('usado', True))
+        self.assertIn('en otra orden (WEB-1050)', r['mensaje'])
+        self.assertNotIn('«', r['mensaje'])
+        self.assertEqual(self.verificar(ticket, '1112223334', 50, '3S-2-def-C1')['codigo'], 'aprobado')
+        r = self.verificar(web, '1112223334', 50, 'WEB-1051')   # la web: «se usó en 3S-Ticket»
+        self.assertIn('en «3S-Ticket» (orden 3S-2-def-C1)', r['mensaje'])
+        q("UPDATE webservice_accounts SET nombre = 'WhatsApp 3S' WHERE nombre = '3S-Ticket'")   # el admin la renombra
+        self.assertIn('en «WhatsApp 3S»', self.verificar(web, '1112223334', 50, 'WEB-1052')['mensaje'])
+        # en el panel y en la API de consultas, cada pago usado dice su plataforma
+        with self.c.session_transaction() as s:
+            s.update(usuario='ana@test.local', user_db_id=self.A, is_admin=False)
+        pagos = self.c.get('/referencias/datos?estado=usado').get_json()['pagos']
+        self.assertEqual(sorted(p['uso']['plataforma'] for p in pagos), ['3S-Ticket', 'Web'])
+
+    def test_asignado_a_mano_dice_referencias(self):
+        self.enviar([pago('4445556667', 70)], 'token-antiguo')
+        with self.c.session_transaction() as s:
+            s.update(usuario='ana@test.local', user_db_id=self.A, is_admin=False)
+        pid = q('SELECT id FROM pagos_banco')[0]['id']
+        self.assertEqual(self.c.post('/referencias/asignar', json={'pago_id': pid, 'orden_id': 'O-MANO'}).status_code, 200)
+        r = self.verificar(self.clave_api(self.A, verificar_pago=True), '4445556667', 70, 'O-X')
+        self.assertEqual((r['codigo'], r['plataforma'], r['orden_id']), ('usado', 'Referencias (a mano)', 'O-MANO'))
+
     def test_mismo_orden_id_en_dos_usuarios_no_choca(self):
         self.enviar([pago('5555666677', 20)], 'token-antiguo')
         self.enviar([pago('8888999911', 20)], self.lector_b)

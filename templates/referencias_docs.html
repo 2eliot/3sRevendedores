@@ -126,7 +126,19 @@
 <pre>curl -X POST {{ api_url }}/api/verificar-pago -H "X-API-Key: wsk_••••••••••••" -H "Content-Type: application/json" \
   -d '{"referencia": "126123", "monto": "7.350,00", "orden_id": "ORD-1001"}'</pre>
 <pre>{"ok": true, "codigo": "aprobado", "mensaje": "Pago verificado",
- "pago": {"id": 31, "referencia": "7568126123", "fecha": "2026-10-05", "hora": "08:14:52", "monto": 7350.0, "tipo": "NC", "estado": "usado"}}</pre>
+ "pago": {"id": 31, "referencia": "7568126123", "fecha": "2026-10-05", "hora": "08:14:52", "monto": 7350.0, "tipo": "NC", "estado": "usado"}}
+
+{"ok": false, "codigo": "usado",
+ "mensaje": "Referencia ya utilizada el 2026-10-05 08:15:10 en «Web» (orden WEB-1050)",
+ "usado_en": "2026-10-05 08:15:10", "plataforma": "Web", "orden_id": "WEB-1050", "misma_plataforma": false}   ← la usó otra plataforma
+
+{"ok": false, "codigo": "usado", "mensaje": "Referencia ya utilizada el 2026-10-05 08:15:10 en otra orden (WEB-1050)",
+ "usado_en": "2026-10-05 08:15:10", "plataforma": "Web", "orden_id": "WEB-1050", "misma_plataforma": true}    ← la usaste tú con esta misma clave</pre>
+  <div class="dc-note"><b>¿Usas la misma cuenta del banco en varias plataformas</b> (por ejemplo 3S-Ticket y tu página web)? Crea una clave
+    para cada una y ponle de nombre la plataforma: cuando una referencia ya se usó, el <code>mensaje</code> dice en cuál
+    (<code>plataforma</code> = nombre de la clave que la usó, o «Referencias (a mano)») y con qué orden; si la usó la misma clave
+    que pregunta, dice «en otra orden». Usa números de orden distintos en cada plataforma (por ejemplo <code>WEB-1050</code>):
+    una orden ya aprobada responde <code>ya_aprobado</code>.</div>
 
   <h3 id="consultas"><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/resumen</code> <span class="dc-perm">Ver pagos</span></h3>
   <p>Resumen de hoy (o de <code>?fecha=AAAA-MM-DD</code>) y el último envío del bot por cuenta.</p>
@@ -148,7 +160,7 @@
   {"id": 31, "referencia": "7568126123", "fecha": "2026-10-05", "hora": "08:14:52", "monto": 7350.0, "estado": "usado",
    "cuenta_id": 4, "cuenta": "Bancamiga principal",
    "uso": {"orden_id": "ORD-1001", "origen": "crm", "usado_en": "2026-10-05 08:15:10",
-           "referencia_reportada": "126123", "monto_reportado": 7350.0, "hecho_por": "api:Mi CRM (#3)"}}]}</pre>
+           "referencia_reportada": "126123", "monto_reportado": 7350.0, "hecho_por": "api:Mi CRM (#3)", "plataforma": "Mi CRM"}}]}</pre>
 
   <h3><span class="dc-m dc-get">GET</span> <code>/api/v1/referencias/pagos/&lt;id&gt;</code> <span class="dc-perm">Ver pagos</span></h3>
   <p>Un pago con su uso. Si no existe o no es tuyo: <code>404</code>.</p>
@@ -178,7 +190,7 @@
     <tr><th><code>codigo</code></th><th><code>ok</code></th><th>Qué significa</th><th>Qué hacer</th></tr>
     <tr><td><code>aprobado</code></td><td>true</td><td>Pago válido; queda usado por esta orden.</td><td>Seguir (por ejemplo, recargar).</td></tr>
     <tr><td><code>ya_aprobado</code></td><td>true</td><td>Esta orden ya tenía su pago aprobado.</td><td>Seguir sin cobrar otro pago.</td></tr>
-    <tr><td><code>usado</code></td><td>false</td><td>Referencia duplicada: ya la usó otra orden.</td><td>Rechazar y avisar al cliente.</td></tr>
+    <tr><td><code>usado</code></td><td>false</td><td>Referencia duplicada: ya la usó otra orden. Trae <code>usado_en</code>, <code>plataforma</code> y <code>orden_id</code> (también en el <code>mensaje</code>).</td><td>Rechazar y avisar al cliente.</td></tr>
     <tr><td><code>no_encontrado</code></td><td>false</td><td>Todavía no está en tus movimientos.</td><td>Reintentar en 1 minuto.</td></tr>
     <tr><td><code>monto_no_coincide</code></td><td>false</td><td>La referencia existe con otro monto (o el monto es inválido).</td><td>Pedir que revise el monto.</td></tr>
     <tr><td><code>falta_fecha</code></td><td>false</td><td>Referencia de 4 o 5 dígitos sin fecha.</td><td>Pedir la fecha.</td></tr>
