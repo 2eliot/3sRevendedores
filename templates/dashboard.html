@@ -1300,6 +1300,84 @@
         </div>
       </div>
 
+      <!-- Ganancias (ganancias.py): gasto, venta y ganancia de cada paquete con los precios de venta y la tasa del usuario -->
+      <style>
+        .gan-head { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .gan-ctrl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .gan-ctrl select { min-height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; }
+        .gan-btn { min-height: 36px; padding: 0 12px; border-radius: 10px; font-weight: 600; font-size: 13px; cursor: pointer; border: 1px solid var(--rc-border-strong); background: var(--rc-recess); color: var(--rc-text); }
+        .gan-btn:hover { background: var(--rc-slate); }
+        .gan-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        .gan-pos { color: var(--rc-green) !important; } .gan-neg { color: var(--rc-coral) !important; } .gan-muted { color: var(--rc-ash); }
+        .gan-aviso { margin: 0 0 10px; font-size: 13px; color: var(--rc-yellow); }
+        .gan-tabla { table-layout: auto !important; min-width: 560px; }
+        .gan-tabla td, .gan-tabla th { white-space: nowrap !important; }
+        .gan-tabla td.gan-num, .gan-tabla th.gan-num { text-align: right; }
+        .gan-tabla tbody tr { cursor: pointer; }
+        .gan-tabla tbody tr.gan-sel { background: rgba(var(--rc-ink), .06); }
+        .gan-tabla tfoot td { font-weight: 700; border-top: 1px solid var(--rc-border-strong); }
+        .gan-sub { display: block; font-size: 11.5px; color: var(--rc-ash); font-weight: 500; }
+        .gan-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .gan-detalle { margin-top: 12px; }
+        .gan-detalle h3, .gan-precios h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+        .gan-precios { margin-top: 14px; border: 1px dashed var(--rc-border-strong); border-radius: 12px; padding: 12px; }
+        .gan-precios[hidden], .gan-detalle[hidden] { display: none; }
+        .gan-tasa { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 13px; }
+        .gan-precios input, .gan-tasa input { min-height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px; width: 110px; box-sizing: border-box; }
+        .gan-precios select { min-height: 34px; padding: 0 6px; border-radius: 8px; font-size: 13px; }
+        .gan-juego { margin-top: 12px; }
+        .gan-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--rc-border); }
+        .gan-campos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; font-size: 12.5px; }
+        .gan-ok { font-size: 12px; color: var(--rc-green); min-width: 14px; }
+        @media (max-width: 640px) {
+          .gan-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .gan-fila { grid-template-columns: 1fr; }
+          .gan-campos { justify-content: flex-start; }
+          /* cada paquete (o venta) como tarjeta: el nombre arriba y los números con su etiqueta debajo */
+          .gan-tabla { min-width: 0 !important; width: 100%; }
+          .gan-tabla thead { display: none; }
+          .gan-tabla tr { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 8px; padding: 10px 4px; border-bottom: 1px solid var(--rc-border); }
+          .gan-tabla td { display: block; padding: 0 !important; border: 0 !important; text-align: left !important; white-space: normal !important; font-size: 12.5px; }
+          .gan-tabla td:first-child { grid-column: 1 / -1; font-weight: 600; font-size: 13.5px; }
+          /* (ui.css esconde la primera columna de las tablas del Dashboard en el celular; aquí es el nombre del paquete) */
+          .dashboard-container .games-section.gan .gan-tabla td:first-child { display: block !important; }
+          .gan-tabla td[data-l]::before { content: attr(data-l); display: block; font-size: 10.5px; font-weight: 500; color: var(--rc-ash); text-transform: uppercase; letter-spacing: .04em; }
+          .gan-tabla tfoot tr { border-bottom: 0; }
+        }
+      </style>
+      <div class="games-section gan" id="ganancias" style="margin-top:16px;">
+        <div class="gan-head">
+          <div class="section-title" style="margin:0;">Ganancias</div>
+          <div class="gan-ctrl">
+            {% if is_admin %}<select id="gan-quien" aria-label="Ver las ganancias de"><option value="todos">Todos los usuarios</option><option value="yo">Mis ventas</option></select>{% endif %}
+            <button type="button" class="gan-btn" id="gan-abrir-precios">Mis precios y tasa</button>
+          </div>
+        </div>
+        <div class="stats-grid dash-kpis gan-kpis">
+          <div class="stat-card dash-kpi"><div class="stat-title">Gasto</div><div class="stat-value" id="gan-k-gasto">—</div><div class="stat-subtitle" id="gan-k-vendidos">—</div></div>
+          <div class="stat-card dash-kpi"><div class="stat-title">Venta</div><div class="stat-value" id="gan-k-venta">—</div><div class="stat-subtitle" id="gan-k-venta-bs">—</div></div>
+          <div class="stat-card dash-kpi"><div class="stat-title">Ganancia</div><div class="stat-value" id="gan-k-ganancia">—</div><div class="stat-subtitle" id="gan-k-ganancia-bs">—</div></div>
+        </div>
+        <p class="gan-aviso" id="gan-aviso" hidden></p>
+        <div class="gan-scroll">
+          <table class="table-dark gan-tabla">
+            <thead class="table-header-row"><tr><th>Paquete</th><th class="gan-num">Vendidos</th><th class="gan-num">Gasto</th><th class="gan-num">Venta</th><th class="gan-num">Ganancia</th></tr></thead>
+            <tbody id="gan-filas"><tr><td colspan="5" class="gan-muted" style="text-align:center;padding:14px;">Cargando…</td></tr></tbody>
+            <tfoot id="gan-total"></tfoot>
+          </table>
+        </div>
+        <div class="gan-detalle" id="gan-detalle" hidden></div>
+        <div class="gan-precios" id="gan-precios" hidden>
+          <h3>Mis precios de venta</h3>
+          <div class="gan-tasa">
+            <label for="gan-tasa-in">Tasa:</label> <input id="gan-tasa-in" inputmode="decimal" placeholder="Ej: 245,50"> <span class="gan-muted">Bs por $</span>
+            <button type="button" class="gan-btn" id="gan-tasa-guardar">Guardar tasa</button> <span class="gan-ok" id="gan-tasa-ok"></span>
+          </div>
+          <p class="gan-muted" style="font-size:12.5px;margin:0;">Escribe el precio al que vendes cada paquete, en $ o en Bs (queda en la moneda en que lo escribas). Un cambio vale para las ventas que hagas desde ahora: lo ya vendido conserva el precio que tenía.</p>
+          <div id="gan-juegos"></div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -1562,6 +1640,160 @@
         });
       }
     });
+  </script>
+
+  <script>
+    // ---------- Ganancias (ganancias.py) ----------
+    (function () {
+      var GAN = {inicio: {{ (inicio or fin)|tojson }}, fin: {{ fin|tojson }}, admin: {{ 'true' if is_admin else 'false' }}};
+      var ultimo = null, paqueteAbierto = null, tasaActual = null;
+      function $id(i) { return document.getElementById(i); }
+      function esc(v) {
+        return String(v == null ? '' : v).replace(/[&<>"'`]/g, function (c) {
+          return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[c];
+        });
+      }
+      function usd(n) { return n == null ? '—' : (n < 0 ? '-$' : '$') + Math.abs(n).toFixed(2); }
+      function bs(n) { return n == null ? '—' : n.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' Bs'; }
+      function clase(n) { return n == null ? '' : (n < 0 ? 'gan-neg' : 'gan-pos'); }
+      function numero(txt) { var s = String(txt || '').trim().replace(/\s/g, ''); if (!s) return null; if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.'); var n = Number(s); return isFinite(n) ? n : NaN; }
+      async function pedir(url, body) {
+        try {
+          var r = await fetch(url, body === undefined ? {} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+          if (r.status === 401) { location.href = '/auth'; return {}; }
+          return await r.json();
+        } catch (e) { return {ok: false, error: 'Sin conexión'}; }
+      }
+      function quien() { var s = $id('gan-quien'); return s ? s.value : 'yo'; }
+      function url(extra) {
+        var p = new URLSearchParams({inicio: GAN.inicio, fin: GAN.fin, usuario: quien()});
+        Object.keys(extra || {}).forEach(function (k) { p.set(k, extra[k]); });
+        return '/ganancias/datos?' + p.toString();
+      }
+
+      async function cargar() {
+        var d = await pedir(url());
+        if (!d.ok) { $id('gan-filas').innerHTML = '<tr><td colspan="5" class="gan-muted" style="text-align:center;padding:14px;">' + esc(d.error || 'No se pudo cargar') + '</td></tr>'; return; }
+        ultimo = d;
+        var sel = $id('gan-quien');
+        if (sel && d.usuarios) {
+          var actual = sel.value;
+          sel.innerHTML = '<option value="todos">Todos los usuarios</option><option value="yo">Mis ventas</option>' +
+            d.usuarios.map(function (u) { return '<option value="' + u.id + '">' + esc(u.nombre) + '</option>'; }).join('');
+          sel.value = Array.prototype.some.call(sel.options, function (o) { return o.value === actual; }) ? actual : 'todos';
+        }
+        var t = d.total;
+        $id('gan-k-gasto').textContent = usd(t.gasto);
+        $id('gan-k-vendidos').textContent = t.vendidos + (t.vendidos === 1 ? ' recarga' : ' recargas');
+        $id('gan-k-venta').textContent = usd(t.venta);
+        $id('gan-k-venta-bs').textContent = t.venta_bs ? bs(t.venta_bs) : '—';
+        var kg = $id('gan-k-ganancia'); kg.textContent = usd(t.ganancia); kg.className = 'stat-value ' + clase(t.ganancia);
+        $id('gan-k-ganancia-bs').textContent = t.ganancia_bs ? bs(t.ganancia_bs) : '—';
+        var aviso = $id('gan-aviso');
+        aviso.hidden = !t.sin_precio;
+        aviso.textContent = t.sin_precio ? t.sin_precio + (t.sin_precio === 1 ? ' recarga no tiene' : ' recargas no tienen') +
+          ' precio de venta (o está en Bs sin tasa): no suman venta ni ganancia.' + (d.puede_editar ? ' Ponles precio en «Mis precios y tasa».' : '') : '';
+        $id('gan-filas').innerHTML = d.paquetes.length ? d.paquetes.map(function (p) {
+          return '<tr class="table-row' + (p.paquete_id === paqueteAbierto ? ' gan-sel' : '') + '" data-gan-paquete="' + p.paquete_id + '">' +
+            '<td>' + esc(p.paquete) + '<span class="gan-sub">' + esc(p.juego) + (p.propio ? ' · con tu proveedor' : '') + '</span></td>' +
+            '<td class="gan-num" data-l="Vendidos">' + p.vendidos + '</td>' +
+            '<td class="gan-num" data-l="Gasto">' + usd(p.gasto) + '</td>' +
+            '<td class="gan-num" data-l="Venta">' + (p.sin_precio === p.vendidos ? '<span class="gan-muted">sin precio</span>' : usd(p.venta) + (p.venta_bs ? '<span class="gan-sub">' + bs(p.venta_bs) + '</span>' : '')) + '</td>' +
+            '<td class="gan-num ' + clase(p.sin_precio === p.vendidos ? null : p.ganancia) + '" data-l="Ganancia">' + (p.sin_precio === p.vendidos ? '—' : usd(p.ganancia) + (p.ganancia_bs ? '<span class="gan-sub">' + bs(p.ganancia_bs) + '</span>' : '')) + '</td></tr>';
+        }).join('') : '<tr><td colspan="5" class="gan-muted" style="text-align:center;padding:14px;">Sin recargas en el día seleccionado</td></tr>';
+        $id('gan-total').innerHTML = d.paquetes.length ? '<tr><td>TOTAL</td><td class="gan-num" data-l="Vendidos">' + t.vendidos + '</td><td class="gan-num" data-l="Gasto">' + usd(t.gasto) +
+          '</td><td class="gan-num" data-l="Venta">' + usd(t.venta) + (t.venta_bs ? '<span class="gan-sub">' + bs(t.venta_bs) + '</span>' : '') +
+          '</td><td class="gan-num ' + clase(t.ganancia) + '" data-l="Ganancia">' + usd(t.ganancia) + (t.ganancia_bs ? '<span class="gan-sub">' + bs(t.ganancia_bs) + '</span>' : '') + '</td></tr>' : '';
+        if (paqueteAbierto) detalle(paqueteAbierto);
+      }
+
+      // ---- Una a una las ventas de un paquete ----
+      async function detalle(pid) {
+        var box = $id('gan-detalle');
+        var d = await pedir(url({paquete: pid}));
+        if (!d.ok || !d.paquetes.length) { box.hidden = true; return; }
+        var p = d.paquetes[0], todos = GAN.admin && quien() === 'todos';
+        box.hidden = false;
+        box.innerHTML = '<h3>' + esc(p.paquete) + ' <span class="gan-muted" style="font-weight:500;">· ' + p.vendidos + ' vendidos · ganancia ' + usd(p.ganancia) + '</span></h3>' +
+          '<div class="gan-scroll"><table class="table-dark gan-tabla"><thead class="table-header-row"><tr><th>Hora</th>' + (todos ? '<th>Usuario</th>' : '') +
+          '<th class="gan-num">Gasto</th><th class="gan-num">Venta</th><th class="gan-num">Ganancia</th></tr></thead><tbody>' +
+          d.ventas.map(function (v) {
+            return '<tr><td>' + esc(v.hora) + '</td>' + (todos ? '<td data-l="Usuario">' + esc(v.usuario) + '</td>' : '') +
+              '<td class="gan-num" data-l="Gasto">' + usd(v.gasto) + '</td><td class="gan-num" data-l="Venta">' + (v.venta == null ? '<span class="gan-muted">sin precio</span>' : usd(v.venta) + (v.venta_bs != null ? '<span class="gan-sub">' + bs(v.venta_bs) + '</span>' : '')) +
+              '</td><td class="gan-num ' + clase(v.ganancia) + '" data-l="Ganancia">' + (v.ganancia == null ? '—' : usd(v.ganancia) + (v.ganancia_bs != null ? '<span class="gan-sub">' + bs(v.ganancia_bs) + '</span>' : '')) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+      }
+      document.addEventListener('click', function (e) {
+        var fila = e.target.closest('[data-gan-paquete]');
+        if (!fila) return;
+        var pid = +fila.dataset.ganPaquete;
+        paqueteAbierto = paqueteAbierto === pid ? null : pid;
+        document.querySelectorAll('[data-gan-paquete]').forEach(function (f) { f.classList.toggle('gan-sel', +f.dataset.ganPaquete === paqueteAbierto); });
+        if (paqueteAbierto) detalle(paqueteAbierto); else $id('gan-detalle').hidden = true;
+      });
+      if ($id('gan-quien')) $id('gan-quien').addEventListener('change', function () { paqueteAbierto = null; $id('gan-detalle').hidden = true; cargar(); });
+
+      // ---- Mis precios y tasa ----
+      function conversion(moneda, monto) {
+        if (monto == null || isNaN(monto) || !tasaActual) return '';
+        return moneda === 'VES' ? '≈ ' + usd(monto / tasaActual) : '≈ ' + bs(monto * tasaActual);
+      }
+      async function abrirPrecios() {
+        var box = $id('gan-precios');
+        if (!box.hidden) { box.hidden = true; return; }
+        var d = await pedir('/ganancias/precios');
+        if (!d.ok) { alert(d.error || 'No se pudo cargar'); return; }
+        tasaActual = d.tasa;
+        $id('gan-tasa-in').value = d.tasa ? String(d.tasa).replace('.', ',') : '';
+        $id('gan-juegos').innerHTML = d.juegos.map(function (j) {
+          return '<div class="gan-juego"><h3>' + esc(j.nombre) + (j.propio ? ' <span class="gan-muted" style="font-weight:500;">· con tu proveedor</span>' : '') + '</h3>' +
+            j.paquetes.map(function (p) {
+              var v = p.venta || {moneda: 'USD', monto: null};
+              return '<div class="gan-fila" data-gan-pk="' + p.id + '"><div>' + esc(p.nombre) +
+                '<span class="gan-sub">' + (j.propio ? 'Precio en tu API: ' : 'Te cuesta en la web: ') + usd(p.precio_web) + '</span></div>' +
+                '<div class="gan-campos">' +
+                (j.propio ? '<label>Mi costo $ <input data-gan-tipo="costo" inputmode="decimal" value="' + (p.costo == null ? '' : String(p.costo).replace('.', ',')) + '" placeholder="0,00"></label>' : '') +
+                '<label>Mi precio <input data-gan-tipo="venta" inputmode="decimal" value="' + (v.monto == null ? '' : String(v.monto).replace('.', ',')) + '" placeholder="Sin precio"></label>' +
+                '<select data-gan-moneda aria-label="Moneda"><option value="USD"' + (v.moneda === 'USD' ? ' selected' : '') + '>$</option><option value="VES"' + (v.moneda === 'VES' ? ' selected' : '') + '>Bs</option></select>' +
+                '<span class="gan-muted" data-gan-conv>' + conversion(v.moneda, v.monto) + '</span><span class="gan-ok" data-gan-ok></span></div></div>';
+            }).join('') + '</div>';
+        }).join('') || '<p class="gan-muted">No hay paquetes.</p>';
+        box.hidden = false;
+        box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      }
+      $id('gan-abrir-precios').addEventListener('click', abrirPrecios);
+      $id('gan-tasa-guardar').addEventListener('click', async function () {
+        var n = numero($id('gan-tasa-in').value);
+        if (n == null || isNaN(n) || n <= 0) { $id('gan-tasa-ok').textContent = 'Escribe la tasa'; return; }
+        var d = await pedir('/ganancias/tasa', {tasa: n});
+        $id('gan-tasa-ok').textContent = d.ok ? 'Guardada ✓' : (d.error || 'Error');
+        if (d.ok) {
+          tasaActual = n;
+          document.querySelectorAll('[data-gan-pk]').forEach(function (f) {
+            f.querySelector('[data-gan-conv]').textContent = conversion(f.querySelector('[data-gan-moneda]').value, numero(f.querySelector('[data-gan-tipo="venta"]').value));
+          });
+          cargar();
+        }
+      });
+      async function guardarFila(f, tipo) {
+        var input = f.querySelector('[data-gan-tipo="' + tipo + '"]'), ok = f.querySelector('[data-gan-ok]');
+        var monto = numero(input.value), moneda = tipo === 'costo' ? 'USD' : f.querySelector('[data-gan-moneda]').value;
+        if (monto != null && (isNaN(monto) || monto < 0)) { ok.textContent = 'Número no válido'; ok.className = 'gan-ok gan-neg'; return; }
+        var d = await pedir('/ganancias/precio', {paquete_id: +f.dataset.ganPk, tipo: tipo, moneda: moneda, monto: monto});
+        ok.className = 'gan-ok' + (d.ok ? '' : ' gan-neg');
+        ok.textContent = d.ok ? '✓' : (d.error || 'Error');
+        if (tipo === 'venta') f.querySelector('[data-gan-conv]').textContent = conversion(moneda, monto);
+        if (d.ok) cargar();
+      }
+      document.addEventListener('change', function (e) {
+        var f = e.target.closest('[data-gan-pk]');
+        if (!f) return;
+        if (e.target.matches('[data-gan-tipo]')) guardarFila(f, e.target.dataset.ganTipo);
+        else if (e.target.matches('[data-gan-moneda]')) guardarFila(f, 'venta');
+      });
+
+      cargar();
+    })();
   </script>
 </body>
 </html>

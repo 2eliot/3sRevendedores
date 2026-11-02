@@ -399,6 +399,8 @@ from bdv_lector_api import bp as bdv_lector_api_bp   # API del lector externo de
 app.register_blueprint(bdv_lector_api_bp)
 from proveedores_usuario import bp as proveedores_usuario_bp   # «Mis proveedores»: el proveedor propio de cada usuario
 app.register_blueprint(proveedores_usuario_bp)
+from ganancias import bp as ganancias_bp   # «Ganancias» del Dashboard: gasto, venta y ganancia de cada usuario
+app.register_blueprint(ganancias_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
@@ -2732,6 +2734,11 @@ try:
     _proveedores_usuario.init_tablas()
 except Exception as _e:
     logger.warning(f'[Proveedores propios] No se pudieron preparar las tablas: {_e}')
+try:
+    import ganancias as _ganancias
+    _ganancias.init_tablas()
+except Exception as _e:
+    logger.warning(f'[Ganancias] No se pudieron preparar las tablas: {_e}')
 
 # Claves de API separadas (Recargas / Referencias): columnas y reinicio único de las claves anteriores
 try:
