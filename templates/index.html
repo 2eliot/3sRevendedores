@@ -78,6 +78,16 @@
     </div>
 
     <div class="icon-container">
+      <!-- Campana de notificaciones (static/campana.js): la primera a la izquierda -->
+      {% if session.get('usuario') %}
+      <div class="news-icon-container" onclick="window.location.href='/notificaciones'">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        {% if total_notification_count > 0 %}
+        <div class="news-notification-badge">{{ total_notification_count }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
+
       <svg class="icon" onclick="window.location.href='/'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V19a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1V9.5"/></svg>
       
       <!-- Botón de Dashboard (para usuarios normales y admin) -->
@@ -90,15 +100,6 @@
         </svg>
       </div>
       
-      <!-- Botón de Noticias (siempre visible para usuarios normales; solo el badge depende del contador) -->
-      {% if session.get('usuario') %}
-      <div class="news-icon-container" onclick="window.location.href='/notificaciones'">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-        {% if total_notification_count > 0 %}
-        <div class="news-notification-badge">{{ total_notification_count }}</div>
-        {% endif %}
-      </div>
-      {% endif %}
       
       <!-- Icono de billetera para todos los usuarios (admin y normales) -->
       <div class="wallet-icon-container" onclick="window.location.href='/billetera'">
@@ -155,7 +156,6 @@
       <span class="user-chip chip-saldo"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/></svg>Saldo <span class="chip-value" id="saldo-display">${{ "%.2f"|format(balance) }}</span></span>
     </p>
   </section>
-
 
   <!-- Popup modal de noticias -->
   <div id="news-popup-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:10000; align-items:center; justify-content:center; padding:20px;">
