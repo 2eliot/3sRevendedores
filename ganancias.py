@@ -11,7 +11,9 @@ con sus recargas, por paquete y en total; el admin ve el global de todos (cada v
 
 Precios, costos y tasa guardan su historial (columna «desde», UTC): cada venta usa los que había cuando se hizo, así un
 cambio solo vale de ahí en adelante y los días pasados (y lo vendido antes en el mismo día) no cambian. Una venta anterior
-a la primera vez que se puso un precio (o la tasa) usa ese primer valor.
+a la primera vez que se puso un precio (o la tasa) usa ese primer valor. Si desde el último cambio no se vendió nada de ese
+paquete (o nada, para la tasa), el cambio nuevo corrige ese mismo en vez de sumar otro: así escribir 760 con la moneda en $
+y pasarla enseguida a Bs deja 760 Bs, también para lo vendido antes.
 """
 import bisect
 import logging
@@ -293,17 +295,32 @@ def guardar_precio(uid, paquete_id, tipo, moneda, monto):
         raise ValueError('Ese paquete no existe')
     conn = get_db_connection()
     try:
-        ultimo = conn.execute('SELECT moneda, monto FROM ganancias_precios WHERE usuario_id = ? AND paquete_id = ? AND tipo = ? '
+        ultimo = conn.execute('SELECT id, moneda, monto, desde FROM ganancias_precios WHERE usuario_id = ? AND paquete_id = ? AND tipo = ? '
                               'ORDER BY desde DESC, id DESC LIMIT 1', (uid, paquete_id, tipo)).fetchone()
         igual = ultimo and ultimo['moneda'] == moneda and (
             (ultimo['monto'] is None and monto is None) or
             (ultimo['monto'] is not None and monto is not None and abs(float(ultimo['monto']) - monto) < 1e-9))
-        if not igual and (ultimo or monto is not None):
+        if igual or (not ultimo and monto is None):
+            return
+        if ultimo and not _vendido_desde(conn, uid, ultimo['desde'], paquete_id):
+            # ninguna venta lo usó todavía: se corrige ese mismo (p. ej. escribió el número y después cambió la moneda)
+            conn.execute('UPDATE ganancias_precios SET moneda = ?, monto = ? WHERE id = ?', (moneda, monto, ultimo['id']))
+        else:
             conn.execute('INSERT INTO ganancias_precios (usuario_id, paquete_id, tipo, moneda, monto, desde) VALUES (?, ?, ?, ?, ?, ?)',
                          (uid, paquete_id, tipo, moneda, monto, _ahora()))
-            conn.commit()
+        conn.commit()
     finally:
         conn.close()
+
+
+def _vendido_desde(conn, uid, desde, paquete_id=None):
+    """¿Alguna recarga aprobada del usuario (de ese paquete) desde «desde»? Si no, el último precio o tasa no lo usó nadie."""
+    sql = "SELECT 1 FROM transacciones_dinamicas WHERE usuario_id = ? AND estado = 'aprobado' AND fecha >= ?"
+    params = [uid, _texto_fecha(desde)]
+    if paquete_id is not None:
+        sql += ' AND paquete_id = ?'
+        params.append(paquete_id)
+    return conn.execute(sql + ' LIMIT 1', tuple(params)).fetchone() is not None
 
 
 def guardar_tasa(uid, tasa):
@@ -316,10 +333,15 @@ def guardar_tasa(uid, tasa):
         raise ValueError('La tasa no es válida')
     conn = get_db_connection()
     try:
-        ultima = conn.execute('SELECT tasa FROM ganancias_tasas WHERE usuario_id = ? ORDER BY desde DESC, id DESC LIMIT 1', (uid,)).fetchone()
-        if not ultima or abs(float(ultima['tasa']) - tasa) > 1e-9:
+        ultima = conn.execute('SELECT id, tasa, desde FROM ganancias_tasas WHERE usuario_id = ? ORDER BY desde DESC, id DESC LIMIT 1',
+                              (uid,)).fetchone()
+        if ultima and abs(float(ultima['tasa']) - tasa) <= 1e-9:
+            return
+        if ultima and not _vendido_desde(conn, uid, ultima['desde']):
+            conn.execute('UPDATE ganancias_tasas SET tasa = ? WHERE id = ?', (tasa, ultima['id']))   # nadie la usó: se corrige
+        else:
             conn.execute('INSERT INTO ganancias_tasas (usuario_id, tasa, desde) VALUES (?, ?, ?)', (uid, tasa, _ahora()))
-            conn.commit()
+        conn.commit()
     finally:
         conn.close()
 

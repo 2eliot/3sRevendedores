@@ -109,6 +109,33 @@ class GananciasTest(unittest.TestCase):
         self.precio(self.A, self.p110, 1.00, utc='2026-11-02 20:00:00')   # lo pone por primera vez en la noche
         self.assertEqual(self.calcular(self.A)['total']['venta'], 1.0)
 
+    def test_corregir_la_moneda_enseguida_no_deja_el_precio_viejo(self):
+        """Lo que pasó en producción: escribió 760 con la moneda en $ y un segundo después la pasó a Bs."""
+        self.tasa(self.A, 1010, utc='2026-11-02 13:00:00')
+        self.venta(self.A, self.p110, 0.66, '2026-11-02 12:00:00')   # vendido antes de poner precios
+        self.precio(self.A, self.p110, 760, moneda='USD', utc='2026-11-02 13:13:29')
+        self.precio(self.A, self.p110, 760, moneda='VES', utc='2026-11-02 13:13:30')
+        self.assertEqual([(r['moneda'], r['monto']) for r in q('SELECT moneda, monto FROM ganancias_precios')], [('VES', 760.0)])
+        f = self.fila(self.calcular(self.A), self.p110)
+        self.assertEqual((f['venta_bs'], round(f['venta'], 4)), (760.0, round(760 / 1010, 4)))
+
+    def test_con_ventas_en_medio_el_cambio_se_suma_al_historial(self):
+        self.precio(self.A, self.p110, 1.00, utc='2026-11-02 05:00:00')
+        self.venta(self.A, self.p110, 0.66, '2026-11-02 06:00:00')
+        self.precio(self.A, self.p110, 1.50, utc='2026-11-02 07:00:00')
+        self.assertEqual(len(q('SELECT id FROM ganancias_precios')), 2)
+        self.venta(self.A, self.tarjeta, 2.13, '2026-11-02 08:00:00')   # otra venta, de otro paquete: no cuenta para el 110
+        self.precio(self.A, self.p110, 1.40, utc='2026-11-02 09:00:00')   # nadie compró 110 desde las 07:00: corrige
+        self.assertEqual([r['monto'] for r in q('SELECT monto FROM ganancias_precios ORDER BY id')], [1.0, 1.4])
+
+    def test_corregir_la_tasa_sin_ventas_en_medio(self):
+        self.tasa(self.A, 100, utc='2026-11-02 05:00:00')
+        self.tasa(self.A, 1010, utc='2026-11-02 05:01:00')   # se equivocó y la corrigió
+        self.assertEqual([r['tasa'] for r in q('SELECT tasa FROM ganancias_tasas')], [1010.0])
+        self.venta(self.A, self.p110, 0.66, '2026-11-02 06:00:00')
+        self.tasa(self.A, 1020, utc='2026-11-02 07:00:00')   # con una venta en medio: queda el historial
+        self.assertEqual(len(q('SELECT id FROM ganancias_tasas')), 2)
+
     def test_precio_en_bolivares_con_su_tasa(self):
         self.tasa(self.A, 200, utc='2026-11-02 05:00:00')
         self.precio(self.A, self.tarjeta, 600, moneda='VES')
