@@ -2322,6 +2322,21 @@ _dyn_price_sync_thread.start()
 logger.info(f"[DynPrice AutoSync] Thread iniciado — sincronización cada {_DYN_SYNC_INTERVAL_HOURS}h")
 
 
+# === Precio automático (Free fire ID): precio = costo en el proveedor principal del Mapeo, cada 20 min (precios_auto.py) ===
+def _precios_auto_loop():
+    time_module.sleep(90)
+    while True:
+        try:
+            import precios_auto
+            precios_auto.tick()   # cada minuto pregunta; trabaja una vez cada 20 min (uno solo de los workers)
+        except Exception as e:
+            logger.error(f"[Precio auto] Error: {e}")
+        time_module.sleep(60)
+
+_precios_auto_thread = threading.Thread(target=_precios_auto_loop, daemon=True)
+_precios_auto_thread.start()
+
+
 # === Gift Cards: Polling de seriales pendientes cada 60s ===
 def _dyngame_serial_poll_loop():
     """Hilo que verifica transacciones de Gift Cards pendientes y actualiza el serial."""

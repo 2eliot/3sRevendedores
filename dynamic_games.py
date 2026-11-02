@@ -898,9 +898,12 @@ def admin_sync_game_prices(game_id):
 
 def sync_all_dynamic_games_prices():
     """Sync prices for all dynamic games (activos e inactivos)."""
+    import precios_auto
     games = get_all_dynamic_games(only_active=False)
     results = []
     for g in games:
+        if precios_auto.es_juego_auto(g):
+            continue   # su precio lo pone precios_auto (costo del proveedor principal del Mapeo)
         try:
             r = sync_dynamic_game_prices(g['id'])
             results.append({'game': g['nombre'], 'result': r})
