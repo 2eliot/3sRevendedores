@@ -1851,3 +1851,37 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .header .icon-container > svg.icon { padding: calc((var(--nav-caja) - 22px) / 2); }
 .header .icon-container > div:hover, .header .icon-container > a:hover, .header .icon-container > svg.icon:hover { background: rgba(var(--rc-ink), 0.06); }
 .header .icon-container .icon { color: var(--rc-text) !important; stroke: currentColor !important; filter: none !important; }
+
+/* ---------- Campana de notificaciones (static/campana.js): se sacude cuando llega algo y el número late ---------- */
+@keyframes campana-sacude {
+  0%, 100% { transform: rotate(0); }
+  10%, 30%, 50% { transform: rotate(-16deg); }
+  20%, 40%, 60% { transform: rotate(16deg); }
+  70% { transform: rotate(-8deg); }
+  80% { transform: rotate(6deg); }
+}
+.news-icon-container.campana-sacude .icon { animation: campana-sacude 1s ease-in-out 2; transform-origin: 50% 10%; }
+@keyframes campana-late {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, .6); }
+  50% { transform: scale(1.2); box-shadow: 0 0 0 7px rgba(239, 68, 68, 0); }
+}
+.news-notification-badge.campana-late { animation: campana-late 1.3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .news-icon-container.campana-sacude .icon, .news-notification-badge.campana-late { animation: none; }
+}
+.campana-panel { position: fixed; z-index: 4000; width: min(360px, calc(100vw - 16px)); max-height: min(70vh, 520px); overflow-y: auto;
+  background: var(--rc-card); border: 1px solid var(--rc-border-strong); border-radius: 14px; box-shadow: 0 14px 40px rgba(0, 0, 0, .45); }
+.campana-panel[hidden] { display: none; }
+.campana-cab { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 12px 14px;
+  border-bottom: 1px solid var(--rc-border); background: var(--rc-card); font-weight: 600; font-size: 14px; color: var(--rc-text); }
+.campana-cab a { font-size: 12.5px; font-weight: 500; color: var(--rc-hl); text-decoration: none; }
+.campana-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-bottom: 1px solid var(--rc-border); }
+.campana-item:last-child { border-bottom: 0; }
+.campana-item.nuevo { background: rgba(var(--rc-ink), .06); }
+.campana-ico { font-size: 18px; line-height: 1.2; flex: 0 0 auto; }
+.campana-cuerpo { min-width: 0; flex: 1 1 auto; }
+.campana-tit { font-size: 13.5px; font-weight: 600; color: var(--rc-text); }
+.campana-txt { font-size: 12.5px; color: var(--rc-ash); margin-top: 2px; overflow-wrap: anywhere; }
+.campana-fecha { font-size: 11px; color: var(--rc-ash); margin-top: 3px; }
+.campana-punto { width: 8px; height: 8px; border-radius: 50%; background: var(--rc-coral); flex: 0 0 auto; margin-top: 6px; }
+.campana-vacio { padding: 18px; text-align: center; color: var(--rc-ash); font-size: 13px; }

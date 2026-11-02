@@ -401,6 +401,8 @@ from proveedores_usuario import bp as proveedores_usuario_bp   # «Mis proveedor
 app.register_blueprint(proveedores_usuario_bp)
 from ganancias import bp as ganancias_bp   # «Ganancias» del Dashboard: gasto, venta y ganancia de cada usuario
 app.register_blueprint(ganancias_bp)
+from campana import bp as campana_bp   # campana de la barra: avisos, noticias y saldo acreditado, en vivo
+app.register_blueprint(campana_bp)
 app.jinja_env.globals['verify_api_enabled'] = verify_api_enabled
 
 
