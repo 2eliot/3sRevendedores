@@ -1533,6 +1533,24 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 }
 .dash-seg .filter-btn:hover { color: var(--rc-text) !important; background: rgba(var(--rc-ink),.05) !important; }
 .dash-seg .filter-btn.active { background: var(--rc-mist) !important; color: var(--rc-card) !important; }
+.dash-filters { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.dash-cal { display: flex; align-items: center; gap: 6px; margin: 0; }
+.dash-cal-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.dash-cal input[type="date"] {
+  min-height: 40px; padding: 0 10px; border-radius: 12px;
+  border: 1px solid var(--rc-border); background: var(--rc-card);
+  color: var(--rc-text); font-family: var(--rc-mono); font-size: 13px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] .dash-cal input[type="date"] { color-scheme: light; }
+.dash-cal input[type="date"]:focus-visible { outline: 2px solid var(--rc-accent); outline-offset: 2px; }
+.dash-cal.is-active input[type="date"] { border-color: var(--rc-accent); }
+.dash-cal-btn {
+  min-height: 40px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid var(--rc-border); background: var(--rc-mist);
+  color: var(--rc-card); font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.dash-cal-btn:hover { filter: brightness(.96); }
 .dash-kpis { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; margin-bottom: 14px; }
 .dash-kpi { padding: 12px 14px !important; border-radius: 12px !important; text-align: left !important; }
 .dash-kpi .stat-title { font-size: 11px !important; margin-bottom: 4px; }
@@ -1543,8 +1561,11 @@ form.idg.idg-has-pkg > button[type=submit] { margin-top: 18px !important; animat
 .dashboard-container .games-section td, .dashboard-container .games-section th { padding: 10px 12px !important; font-size: 13px; }
 @media (max-width: 560px) {
   .dash-head { align-items: stretch; }
+  .dash-filters { width: 100%; flex-direction: column; align-items: stretch; }
   .dash-seg { width: 100%; }
   .dash-seg .filter-btn { flex: 1; padding: 0 8px !important; }
+  .dash-cal { width: 100%; }
+  .dash-cal input[type="date"] { flex: 1; min-width: 0; }
 }
 @media (max-width: 560px) {
   .dash-seg .filter-btn { white-space: nowrap; font-size: 12.5px !important; padding: 0 6px !important; }

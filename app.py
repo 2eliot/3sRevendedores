@@ -8110,21 +8110,35 @@ def dashboard():
         return redirect('/')
     
     # Obtener parámetros de filtro de fecha
-    fecha_inicio = request.args.get('inicio', '')
-    fecha_fin = request.args.get('fin', '')
-    preset = request.args.get('preset', 'hoy')  # Por defecto "hoy"
-    
+    fecha_inicio = (request.args.get('inicio') or '').strip()
+    fecha_fin = (request.args.get('fin') or '').strip()
+    fecha_suelta = (request.args.get('fecha') or '').strip()
+    preset = (request.args.get('preset') or '').strip().lower()
+
     # Manejar presets de fecha (usar zona horaria de Venezuela)
     from datetime import datetime, timedelta
     import pytz
     venezuela_tz = pytz.timezone('America/Caracas')
     today = datetime.now(venezuela_tz)
-    
-    if preset == 'hoy' or (not preset and not fecha_inicio and not fecha_fin):
-        # Por defecto siempre mostrar "hoy"
-        fecha_inicio = today.strftime('%Y-%m-%d')
-        fecha_fin = today.strftime('%Y-%m-%d')
-        preset = 'hoy'  # Asegurar que el preset esté marcado como activo
+    hoy = today.strftime('%Y-%m-%d')
+
+    def _fecha_dashboard(valor):
+        """Devuelve la fecha como YYYY-MM-DD, o None si no es válida."""
+        try:
+            return datetime.strptime(str(valor), '%Y-%m-%d').strftime('%Y-%m-%d')
+        except (TypeError, ValueError):
+            return None
+
+    # El calendario manda una sola fecha. También se aceptan inicio/fin para no romper enlaces viejos.
+    fecha_elegida = _fecha_dashboard(fecha_suelta)
+    if fecha_elegida:
+        if fecha_elegida > hoy:
+            fecha_elegida = hoy
+            preset = 'hoy'
+        else:
+            preset = 'personalizado'
+        fecha_inicio = fecha_elegida
+        fecha_fin = fecha_elegida
     elif preset == 'ayer':
         yesterday = today - timedelta(days=1)
         fecha_inicio = yesterday.strftime('%Y-%m-%d')
@@ -8133,10 +8147,23 @@ def dashboard():
         day_before_yesterday = today - timedelta(days=2)
         fecha_inicio = day_before_yesterday.strftime('%Y-%m-%d')
         fecha_fin = day_before_yesterday.strftime('%Y-%m-%d')
-    elif not fecha_inicio or not fecha_fin:
-        # Si no se proporcionan fechas válidas, usar "hoy" por defecto
-        fecha_inicio = today.strftime('%Y-%m-%d')
-        fecha_fin = today.strftime('%Y-%m-%d')
+    elif preset == 'hoy':
+        fecha_inicio = hoy
+        fecha_fin = hoy
+    elif fecha_inicio and fecha_fin:
+        inicio_dt = _fecha_dashboard(fecha_inicio)
+        fin_dt = _fecha_dashboard(fecha_fin)
+        if inicio_dt and fin_dt:
+            if inicio_dt > fin_dt:
+                inicio_dt, fin_dt = fin_dt, inicio_dt
+            fecha_inicio, fecha_fin = inicio_dt, fin_dt
+            preset = 'personalizado'
+        else:
+            fecha_inicio = fecha_fin = hoy
+            preset = 'hoy'
+    else:
+        # Por defecto siempre mostrar "hoy"
+        fecha_inicio = fecha_fin = hoy
         preset = 'hoy'
     
     # Actualizar saldo desde la base de datos y obtener compras persistentes.
@@ -8516,6 +8543,8 @@ def dashboard():
                          dias_analizados=dias_analizados,
                          inicio=fecha_inicio,
                          fin=fecha_fin,
+                         preset_activo=preset,
+                         hoy=hoy,
                          user_id=session.get('id', '00000'),
                          balance=session.get('saldo', 0),
                          is_admin=is_admin,

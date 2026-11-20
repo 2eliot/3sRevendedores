@@ -1228,18 +1228,25 @@
         <div class="dashboard-info-section">
           
           
-          {% set _preset = request.args.get('preset') or 'hoy' %}
+          {% set _preset = preset_activo or 'hoy' %}
           <div class="dash-head">
             <div>
               <h1 class="dash-title">Resumen del día</h1>
               <p class="dash-date">{{ fin }}</p>
             </div>
             <!-- Filtros de fecha -->
-            <nav class="filter-buttons-integrated dash-seg" aria-label="Elegir día">
-              <a href="?preset=hoy" class="filter-btn {% if _preset == 'hoy' %}active{% endif %}" {% if _preset == 'hoy' %}aria-current="page"{% endif %}>Hoy</a>
-              <a href="?preset=ayer" class="filter-btn {% if _preset == 'ayer' %}active{% endif %}" {% if _preset == 'ayer' %}aria-current="page"{% endif %}>Ayer</a>
-              <a href="?preset=antes_ayer" class="filter-btn {% if _preset == 'antes_ayer' %}active{% endif %}" {% if _preset == 'antes_ayer' %}aria-current="page"{% endif %}>Antes de ayer</a>
-            </nav>
+            <div class="dash-filters">
+              <nav class="filter-buttons-integrated dash-seg" aria-label="Elegir día">
+                <a href="?preset=hoy" class="filter-btn {% if _preset == 'hoy' %}active{% endif %}" {% if _preset == 'hoy' %}aria-current="page"{% endif %}>Hoy</a>
+                <a href="?preset=ayer" class="filter-btn {% if _preset == 'ayer' %}active{% endif %}" {% if _preset == 'ayer' %}aria-current="page"{% endif %}>Ayer</a>
+                <a href="?preset=antes_ayer" class="filter-btn {% if _preset == 'antes_ayer' %}active{% endif %}" {% if _preset == 'antes_ayer' %}aria-current="page"{% endif %}>Antes de ayer</a>
+              </nav>
+              <form class="dash-cal{% if _preset == 'personalizado' %} is-active{% endif %}" method="get" action="/dashboard" aria-label="Buscar por fecha">
+                <label class="dash-cal-label" for="dash-fecha">Buscar por fecha</label>
+                <input type="date" id="dash-fecha" name="fecha" value="{{ fin }}" max="{{ hoy }}" aria-label="Elegir fecha del resumen" onchange="this.form.submit()">
+                <button type="submit" class="dash-cal-btn" aria-label="Ver la fecha elegida">Ver</button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
