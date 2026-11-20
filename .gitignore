@@ -186,3 +186,6 @@ settings.local.py
 # Carpetas innecesarias
 Inefablepines/
 .continue/
+
+# Contexto local con datos de despliegue (el repo es público: nunca subir)
+AGENTS.local.md
