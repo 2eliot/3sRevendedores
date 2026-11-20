@@ -143,7 +143,7 @@ cd "C:\Users\reals\Desktop\3SREVENDEDORES WEB\3sRevendedores-main"
 
 - Hay pruebas por módulo: `test_antiduplic`, `test_bdv`, `test_dynamic_recharge`, `test_ganancias`, `test_precios_auto`, `test_proveedores_usuario`, `test_campana`, `test_api_panel`, `test_referencias`, `test_central_one`, `test_saldo_negativo_fix`, `test_stock_priority`, `test_dashboard_fecha` (calendario del Resumen del día), etc.
 - No hay CI ni una suite única; corre las que toquen el cambio y, si el cambio es grande, varias. Al importar `app.py` se inician hilos de fondo (precios, reconciliación, backup); es normal ver sus logs en las pruebas.
-- Verificado el 20-nov-2026: `test_campana` → 5 pruebas OK.
+- Verificado el 20-nov-2026: `test_campana` 5 OK, `test_dashboard_fecha` 7 OK; combinadas con `test_ganancias`, **26 pruebas OK**.
 
 ---
 
@@ -282,11 +282,11 @@ Nunca imprimas ni commitees valores. En producción van en el `.env` del servido
 
 ## 11. Estado actual (20-nov-2026)
 
-- **HEAD:** `7fc7dc9` — "Campana: la primera a la izquierda en la barra" (2-nov-2026).
-- **Rama:** `rediseno-sebastian`; `main`, `origin/main`, `origin/rediseno-sebastian` y HEAD están todos en `7fc7dc9`. Hay cambios locales sin commit (ver más abajo). **`master` es un puntero viejo (`c221c3c`): no lo uses.**
-- **Producción:** `https://3srevendedores.uk` responde 200 (pantalla de acceso). Último despliegue conocido: `7fc7dc9` (2-nov-2026).
-- **Feature recientes ya desplegadas:** Referencias por usuario/banco, API con permisos y claves hasheadas, BDV con lector externo, «Mis proveedores» (Central One propio), precio automático de Free Fire ID, Ganancias en el Dashboard y campana de notificaciones en vivo.
-- **Sin pendientes de código desplegados** al cerrar la última tanda. Al 20-nov-2026 hay cambios locales **sin commit**: filtro de calendario en «Resumen del día» (`/dashboard?fecha=YYYY-MM-DD`) y su prueba `test_dashboard_fecha`; **no desplegados**. Verifica `git status` antes de asumir.
+- **Código desplegado:** `06f7a25` — "Dashboard: filtro por fecha en el resumen del día" (20-nov-2026). Los tres archivos de la web en el servidor coinciden con ese commit (verificado ignorando CRLF).
+- **Rama:** `rediseno-sebastian`; `main` y `origin/main` incluyen `06f7a25` y el commit de contexto `6d6a4af` (puede ir uno o dos commits de documentación después del código). **`master` es un puntero viejo (`c221c3c`): no lo uses.**
+- **Producción:** `https://3srevendedores.uk` responde 200 (pantalla de acceso); `/dashboard` sin sesión redirige (302) a `/auth`. Servicio activo.
+- **Feature recientes ya desplegadas:** Referencias por usuario/banco, API con permisos y claves hasheadas, BDV con lector externo, «Mis proveedores» (Central One propio), precio automático de Free Fire ID, Ganancias en el Dashboard, campana de notificaciones en vivo y **calendario para ver el Resumen del día por fecha** (`/dashboard?fecha=YYYY-MM-DD`).
+- **Sin pendientes de código desplegados.** Verifica `git status` y `git log` antes de asumir que este archivo está al día.
 - **Deuda conocida:** README y guías viejas desactualizadas; repo público; sin CI; sin 2FA en esta web; el bot de Free Fire es antiguo y el operador dijo que lo actualizaría más adelante; las tablas de Blood Strike siguen en producción vacías (no se usan).
 
 ---
